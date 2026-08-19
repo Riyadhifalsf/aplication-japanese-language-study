@@ -112,12 +112,12 @@ class AppController extends ChangeNotifier {
   static const dailyGoal = 100;
   static const kanjiMasteryThreshold = 3;
   List<int> get kanjiReviewIntervals => [
-    reviewIntervalDays,
-    reviewIntervalDays * 2,
-    reviewIntervalDays * 4,
-    reviewIntervalDays * 8,
-    reviewIntervalDays * 16,
-  ];
+        reviewIntervalDays,
+        reviewIntervalDays * 2,
+        reviewIntervalDays * 4,
+        reviewIntervalDays * 8,
+        reviewIntervalDays * 16,
+      ];
 
   @override
   void dispose() {
@@ -129,6 +129,19 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> load() async {
+    try {
+      await _load();
+    } catch (_) {
+      // A corrupt local preference or an unavailable asset must not leave the
+      // user on the startup screen forever. The shell can still open and any
+      // content-dependent screen will remain unavailable until a restart.
+      ready = true;
+      bootstrapRevision.value++;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _load() async {
     _preferences = await SharedPreferences.getInstance();
     final prefs = _preferences!;
     final savedAccounts = prefs.getStringList('localAccounts_v1') ?? const [];
@@ -139,8 +152,11 @@ class AppController extends ChangeNotifier {
       if (parts.length >= 3 && parts[0].trim().isNotEmpty) {
         final email = parts[0].trim().toLowerCase();
         final stored = parts[1];
-        _localAccounts[email] = RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(stored) ? stored : _hashPassword(stored);
-        _localAccountNames[email] = parts[2].trim().isEmpty ? email.split('@').first : parts[2].trim();
+        _localAccounts[email] = RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(stored)
+            ? stored
+            : _hashPassword(stored);
+        _localAccountNames[email] =
+            parts[2].trim().isEmpty ? email.split('@').first : parts[2].trim();
       }
     }
     await _ensureDemoAccounts(prefs);
@@ -166,19 +182,28 @@ class AppController extends ChangeNotifier {
     learningMode = prefs.getString('learningMode') ?? 'Seimbang';
     appLanguage = prefs.getString('appLanguage') ?? 'id';
     ttsGender = prefs.getString('ttsGender') ?? 'auto';
-    reviewIntervalDays = ((prefs.getInt('reviewIntervalDays') ?? 2).clamp(1, 30)).toInt();
+    reviewIntervalDays =
+        ((prefs.getInt('reviewIntervalDays') ?? 2).clamp(1, 30)).toInt();
     googleLinked = prefs.getBool('googleLinked') ?? false;
     isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
     isAdmin = prefs.getBool('isAdmin') ?? false;
     authProvider = prefs.getString('authProvider') ?? '';
     isPremium = prefs.getBool('isPremium') ?? false;
-    membershipPlan = prefs.getString('membershipPlan') ?? (isPremium ? 'premium' : 'free');
+    membershipPlan =
+        prefs.getString('membershipPlan') ?? (isPremium ? 'premium' : 'free');
     membershipTier = membershipPlan == 'lifetime' ? 'premium' : membershipPlan;
     premiumUntil = _readDate(prefs.getString('premiumUntil'));
-    unlockedLevels..clear()..addAll(prefs.getStringList('unlockedLevels') ?? const ['N5']);
+    unlockedLevels
+      ..clear()
+      ..addAll(prefs.getStringList('unlockedLevels') ?? const ['N5']);
     if (!unlockedLevels.contains('N5')) unlockedLevels.add('N5');
-    placementBestScores..clear()..addAll(_readStringIntMap('placementBestScores'));
-    isPremium = membershipPlan != 'free' && (membershipPlan == 'lifetime' || premiumUntil == null || premiumUntil!.isAfter(DateTime.now()));
+    placementBestScores
+      ..clear()
+      ..addAll(_readStringIntMap('placementBestScores'));
+    isPremium = membershipPlan != 'free' &&
+        (membershipPlan == 'lifetime' ||
+            premiumUntil == null ||
+            premiumUntil!.isAfter(DateTime.now()));
     activeRoadmapStepId = prefs.getString('activeRoadmapStepId') ?? 'n5';
     hasUnreadNotifications = prefs.getBool('hasUnreadNotifications') ?? true;
     reviewReminderEnabled = prefs.getBool('reviewReminderEnabled') ?? true;
@@ -215,7 +240,8 @@ class AppController extends ChangeNotifier {
     sessionCount = prefs.getInt('sessionCount') ?? 0;
     _installIdentitySeed = prefs.getString('installIdentitySeed') ?? '';
     if (_installIdentitySeed.isEmpty) {
-      _installIdentitySeed = '${DateTime.now().microsecondsSinceEpoch}-${profileEmail.hashCode}';
+      _installIdentitySeed =
+          '${DateTime.now().microsecondsSinceEpoch}-${profileEmail.hashCode}';
       await prefs.setString('installIdentitySeed', _installIdentitySeed);
     }
     if (firstUsedAt == null) {
@@ -229,7 +255,10 @@ class AppController extends ChangeNotifier {
         if (decoded is List) {
           activityJournal
             ..clear()
-            ..addAll(decoded.whereType<Map>().map((e) => Map<String, Object?>.from(e)).take(2000));
+            ..addAll(decoded
+                .whereType<Map>()
+                .map((e) => Map<String, Object?>.from(e))
+                .take(2000));
         }
       } catch (_) {}
     }
@@ -287,7 +316,8 @@ class AppController extends ChangeNotifier {
     contentReady = true;
     bootstrapRevision.value++;
     notifyListeners();
-    unawaited(HomeWidgetService.instance.update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
+    unawaited(HomeWidgetService.instance
+        .update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
     unawaited(NotificationService.instance.syncReviewSchedule(
       enabled: reviewReminderEnabled,
       hour: reviewReminderHour,
@@ -306,7 +336,9 @@ class AppController extends ChangeNotifier {
   int get learnedVocabularyCount => masteredVocabularyIds.length;
   int get learnedGrammarCount => completedGrammarIds.length;
   int get learnedKanjiCount => learnedKanjiIds.length;
-  String get languageLabel => appLanguage == 'en' ? 'English' : 'Bahasa Indonesia';
+  int get masteredKanjiCount => masteredKanjiIds.length;
+  String get languageLabel =>
+      appLanguage == 'en' ? 'English' : 'Bahasa Indonesia';
   String get greeting {
     final h = DateTime.now().hour;
     if (h >= 5 && h < 17) return 'Konnichiwa';
@@ -321,8 +353,10 @@ class AppController extends ChangeNotifier {
   }
 
   bool get hasNeverStudiedJapanese =>
-      learnedKanjiIds.isEmpty && masteredVocabularyIds.isEmpty &&
-      completedGrammarIds.isEmpty && completedLearningStepIds.isEmpty &&
+      learnedKanjiIds.isEmpty &&
+      masteredVocabularyIds.isEmpty &&
+      completedGrammarIds.isEmpty &&
+      completedLearningStepIds.isEmpty &&
       quizAnswered == 0;
 
   String adaptiveReading({required String reading, required String level}) {
@@ -336,7 +370,8 @@ class AppController extends ChangeNotifier {
   bool get communityEnabled => featureEnabled(FeatureFlagsService.community);
   bool get followersEnabled => featureEnabled(FeatureFlagsService.followers);
   bool get commentsEnabled => featureEnabled(FeatureFlagsService.comments);
-  bool get web3PassportEnabled => featureEnabled(FeatureFlagsService.web3Passport);
+  bool get web3PassportEnabled =>
+      featureEnabled(FeatureFlagsService.web3Passport);
   bool get aiCoachEnabled => featureEnabled(FeatureFlagsService.aiCoach);
   bool get speakingEnabled => featureEnabled(FeatureFlagsService.speaking);
 
@@ -353,43 +388,182 @@ class AppController extends ChangeNotifier {
 
   String _toRomaji(String input) {
     const map = {
-      'あ':'a','い':'i','う':'u','え':'e','お':'o','か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko','さ':'sa','し':'shi','す':'su','せ':'se','そ':'so','た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to','な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no','は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho','ま':'ma','み':'mi','む':'mu','め':'me','も':'mo','や':'ya','ゆ':'yu','よ':'yo','ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro','わ':'wa','を':'wo','ん':'n','が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go','ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo','だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do','ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo','ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po',
-      'ゃ':'ya','ゅ':'yu','ょ':'yo','っ':'', 'ー':'-',
+      'あ': 'a',
+      'い': 'i',
+      'う': 'u',
+      'え': 'e',
+      'お': 'o',
+      'か': 'ka',
+      'き': 'ki',
+      'く': 'ku',
+      'け': 'ke',
+      'こ': 'ko',
+      'さ': 'sa',
+      'し': 'shi',
+      'す': 'su',
+      'せ': 'se',
+      'そ': 'so',
+      'た': 'ta',
+      'ち': 'chi',
+      'つ': 'tsu',
+      'て': 'te',
+      'と': 'to',
+      'な': 'na',
+      'に': 'ni',
+      'ぬ': 'nu',
+      'ね': 'ne',
+      'の': 'no',
+      'は': 'ha',
+      'ひ': 'hi',
+      'ふ': 'fu',
+      'へ': 'he',
+      'ほ': 'ho',
+      'ま': 'ma',
+      'み': 'mi',
+      'む': 'mu',
+      'め': 'me',
+      'も': 'mo',
+      'や': 'ya',
+      'ゆ': 'yu',
+      'よ': 'yo',
+      'ら': 'ra',
+      'り': 'ri',
+      'る': 'ru',
+      'れ': 're',
+      'ろ': 'ro',
+      'わ': 'wa',
+      'を': 'wo',
+      'ん': 'n',
+      'が': 'ga',
+      'ぎ': 'gi',
+      'ぐ': 'gu',
+      'げ': 'ge',
+      'ご': 'go',
+      'ざ': 'za',
+      'じ': 'ji',
+      'ず': 'zu',
+      'ぜ': 'ze',
+      'ぞ': 'zo',
+      'だ': 'da',
+      'ぢ': 'ji',
+      'づ': 'zu',
+      'で': 'de',
+      'ど': 'do',
+      'ば': 'ba',
+      'び': 'bi',
+      'ぶ': 'bu',
+      'べ': 'be',
+      'ぼ': 'bo',
+      'ぱ': 'pa',
+      'ぴ': 'pi',
+      'ぷ': 'pu',
+      'ぺ': 'pe',
+      'ぽ': 'po',
+      'ゃ': 'ya',
+      'ゅ': 'yu',
+      'ょ': 'yo',
+      'っ': '',
+      'ー': '-',
     };
-    final pairs = <String,String>{'きゃ':'kya','きゅ':'kyu','きょ':'kyo','しゃ':'sha','しゅ':'shu','しょ':'sho','ちゃ':'cha','ちゅ':'chu','ちょ':'cho','にゃ':'nya','にゅ':'nyu','にょ':'nyo','ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo','みゃ':'mya','みゅ':'myu','みょ':'myo','りゃ':'rya','りゅ':'ryu','りょ':'ryo','ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo','じゃ':'ja','じゅ':'ju','じょ':'jo','びゃ':'bya','びゅ':'byu','びょ':'byo','ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo'};
-    var out='';
-    for(var i=0;i<input.length;i++){
-      if(i+1<input.length && pairs.containsKey(input.substring(i,i+2))){out+=pairs[input.substring(i,i+2)]!;i++;continue;}
-      final c=input[i];
-      if(c=='っ' && i+1<input.length){
-        final next=map[input[i+1]]??''; if(next.isNotEmpty) out+=next[0]; continue;
+    final pairs = <String, String>{
+      'きゃ': 'kya',
+      'きゅ': 'kyu',
+      'きょ': 'kyo',
+      'しゃ': 'sha',
+      'しゅ': 'shu',
+      'しょ': 'sho',
+      'ちゃ': 'cha',
+      'ちゅ': 'chu',
+      'ちょ': 'cho',
+      'にゃ': 'nya',
+      'にゅ': 'nyu',
+      'にょ': 'nyo',
+      'ひゃ': 'hya',
+      'ひゅ': 'hyu',
+      'ひょ': 'hyo',
+      'みゃ': 'mya',
+      'みゅ': 'myu',
+      'みょ': 'myo',
+      'りゃ': 'rya',
+      'りゅ': 'ryu',
+      'りょ': 'ryo',
+      'ぎゃ': 'gya',
+      'ぎゅ': 'gyu',
+      'ぎょ': 'gyo',
+      'じゃ': 'ja',
+      'じゅ': 'ju',
+      'じょ': 'jo',
+      'びゃ': 'bya',
+      'びゅ': 'byu',
+      'びょ': 'byo',
+      'ぴゃ': 'pya',
+      'ぴゅ': 'pyu',
+      'ぴょ': 'pyo'
+    };
+    var out = '';
+    for (var i = 0; i < input.length; i++) {
+      if (i + 1 < input.length &&
+          pairs.containsKey(input.substring(i, i + 2))) {
+        out += pairs[input.substring(i, i + 2)]!;
+        i++;
+        continue;
       }
-      out+=map[c]??c;
+      final c = input[i];
+      if (c == 'っ' && i + 1 < input.length) {
+        final next = map[input[i + 1]] ?? '';
+        if (next.isNotEmpty) out += next[0];
+        continue;
+      }
+      out += map[c] ?? c;
     }
     return out;
   }
-  String get web3Identity => Web3PassportService.instance.identityFrom(profileEmail.isNotEmpty ? profileEmail : _installIdentitySeed);
+
+  String get web3Identity => Web3PassportService.instance.identityFrom(
+      profileEmail.isNotEmpty ? profileEmail : _installIdentitySeed);
   int get web3CredentialCount => web3Credentials.length;
   int get activeDays => studyDateKeys.length;
   int get totalActiveMinutes => totalActiveSeconds ~/ 60;
   String _installIdentitySeed = '';
-  int get overallMasteryPoints => learnedKanjiCount + learnedVocabularyCount + learnedGrammarCount + completedLearningStepIds.length;
+  int get overallMasteryPoints =>
+      learnedKanjiCount +
+      learnedVocabularyCount +
+      learnedGrammarCount +
+      completedLearningStepIds.length;
   double levelOverallMastery(String level) {
-    final order = ['N5','N4','N3','N2','N1'];
+    final order = ['N5', 'N4', 'N3', 'N2', 'N1'];
     final index = order.indexOf(level);
     if (index < 0) return 0;
     final stepPrefix = 'path-${level.toLowerCase()}-';
-    final doneSteps = completedLearningStepIds.where((id) => id.startsWith(stepPrefix)).length;
-    final totalSteps = const {'N5':25,'N4':25,'N3':20,'N2':15,'N1':14}[level] ?? 1;
+    final doneSteps = completedLearningStepIds
+        .where((id) => id.startsWith(stepPrefix))
+        .length;
+    final totalSteps =
+        const {'N5': 25, 'N4': 25, 'N3': 20, 'N2': 15, 'N1': 14}[level] ?? 1;
     final kanjiPool = repository.kanji.where((k) => k.level == level).length;
-    final vocabPool = repository.vocabulary.where((v) => v.level == level).length;
+    final vocabPool =
+        repository.vocabulary.where((v) => v.level == level).length;
     final grammarPool = repository.grammar.length.clamp(1, 100000);
-    final kp = kanjiPool == 0 ? 0.0 : masteredKanjiIds.where((id) => repository.kanjiById(id)?.level == level).length / kanjiPool;
-    final vp = vocabPool == 0 ? 0.0 : masteredVocabularyIds.where((id) => repository.vocabularyById(id)?.level == level).length / vocabPool;
-    final gp = (completedGrammarIds.length / grammarPool).clamp(0.0, 1.0).toDouble();
+    final kp = kanjiPool == 0
+        ? 0.0
+        : masteredKanjiIds
+                .where((id) => repository.kanjiById(id)?.level == level)
+                .length /
+            kanjiPool;
+    final vp = vocabPool == 0
+        ? 0.0
+        : masteredVocabularyIds
+                .where((id) => repository.vocabularyById(id)?.level == level)
+                .length /
+            vocabPool;
+    final gp =
+        (completedGrammarIds.length / grammarPool).clamp(0.0, 1.0).toDouble();
     final sp = (doneSteps / totalSteps).clamp(0.0, 1.0).toDouble();
-    return (kp * .25 + vp * .25 + gp * .20 + sp * .30).clamp(0.0, 1.0).toDouble();
+    return (kp * .25 + vp * .25 + gp * .20 + sp * .30)
+        .clamp(0.0, 1.0)
+        .toDouble();
   }
+
   int? get todayKanjiId {
     final candidates = switch (todayKanjiMode) {
       'favorites' => favoriteKanjiIds.toList(),
@@ -397,13 +571,20 @@ class AppController extends ChangeNotifier {
       'manual' => todayKanjiPinnedId > 0 ? [todayKanjiPinnedId] : <int>[],
       _ => learnedKanjiIds.toList(),
     };
-    final source = candidates.isNotEmpty ? candidates : repository.kanji.where((k) => isLevelUnlocked(k.level)).map((k) => k.id).toList();
+    final source = candidates.isNotEmpty
+        ? candidates
+        : repository.kanji
+            .where((k) => isLevelUnlocked(k.level))
+            .map((k) => k.id)
+            .toList();
     if (source.isEmpty) return null;
     source.sort();
     final daySeed = _epochDay(DateTime.now());
     return source[daySeed % source.length];
   }
-  String get todayKanjiCharacter => repository.kanjiById(todayKanjiId ?? -1)?.character ?? '日';
+
+  String get todayKanjiCharacter =>
+      repository.kanjiById(todayKanjiId ?? -1)?.character ?? '日';
 
   int featureXpRequirement(String feature) => switch (feature) {
         'kanji' => 20,
@@ -414,8 +595,8 @@ class AppController extends ChangeNotifier {
         _ => 0,
       };
 
-  bool canAccessFeature(String feature) => xp >= featureXpRequirement(feature) || hasFullAccess;
-
+  bool canAccessFeature(String feature) =>
+      xp >= featureXpRequirement(feature) || hasFullAccess;
 
   String get reviewReminderTimeLabel =>
       '${reviewReminderHour.toString().padLeft(2, '0')}:'
@@ -484,7 +665,7 @@ class AppController extends ChangeNotifier {
   }
 
   void setTodayKanjiMode(String mode, {int? pinnedId}) {
-    if (!{'adaptive','favorites','due','manual'}.contains(mode)) return;
+    if (!{'adaptive', 'favorites', 'due', 'manual'}.contains(mode)) return;
     todayKanjiMode = mode;
     if (pinnedId != null) todayKanjiPinnedId = pinnedId;
     _preferences?.setString('todayKanjiMode', todayKanjiMode);
@@ -503,14 +684,17 @@ class AppController extends ChangeNotifier {
   void endSession() {
     final started = sessionStartedAt;
     if (started == null) return;
-    final seconds = DateTime.now().difference(started).inSeconds.clamp(0, 86400).toInt();
+    final seconds =
+        DateTime.now().difference(started).inSeconds.clamp(0, 86400).toInt();
     totalActiveSeconds += seconds;
     sessionStartedAt = null;
     _preferences?.setInt('totalActiveSeconds', totalActiveSeconds);
-    recordActivity('session_ended', 'Sesi belajar selesai (${seconds ~/ 60} menit)');
+    recordActivity(
+        'session_ended', 'Sesi belajar selesai (${seconds ~/ 60} menit)');
   }
 
-  void recordActivity(String type, String label, {Map<String, Object?> meta = const {}}) {
+  void recordActivity(String type, String label,
+      {Map<String, Object?> meta = const {}}) {
     activityJournal.add({
       'at': DateTime.now().toIso8601String(),
       'type': type,
@@ -523,15 +707,19 @@ class AppController extends ChangeNotifier {
     _preferences?.setString('activityJournal_v1', jsonEncode(activityJournal));
   }
 
-  void issueWeb3Credential(String event, {Map<String, Object?> meta = const {}}) {
+  void issueWeb3Credential(String event,
+      {Map<String, Object?> meta = const {}}) {
     final now = DateTime.now();
-    final credential = Web3PassportService.instance.credentialId(identity: web3Identity, event: event, issuedAt: now);
+    final credential = Web3PassportService.instance
+        .credentialId(identity: web3Identity, event: event, issuedAt: now);
     web3Credentials.add(credential);
     latestWeb3Credential = credential;
-    if (web3Credentials.length > 100) web3Credentials.removeRange(0, web3Credentials.length - 100);
+    if (web3Credentials.length > 100)
+      web3Credentials.removeRange(0, web3Credentials.length - 100);
     _preferences?.setStringList('web3Credentials', web3Credentials);
     _preferences?.setString('latestWeb3Credential', latestWeb3Credential);
-    recordActivity('web3_credential', 'Credential Web3 diterbitkan', meta: {'event': event, ...meta});
+    recordActivity('web3_credential', 'Credential Web3 diterbitkan',
+        meta: {'event': event, ...meta});
   }
 
   void markFeatureRelease(String title, String details) {
@@ -655,14 +843,38 @@ class AppController extends ChangeNotifier {
       profilePhotoUrl = nextPhoto;
       _preferences?.setString('profilePhotoUrl', profilePhotoUrl);
     }
-    if (birthDate != null) { profileBirthDate = birthDate.trim(); _preferences?.setString('profileBirthDate', profileBirthDate); }
-    if (phone != null) { profilePhone = phone.trim(); _preferences?.setString('profilePhone', profilePhone); }
-    if (bio != null) { profileBio = bio.trim(); _preferences?.setString('profileBio', profileBio); }
-    if (handle != null) { profileHandle = handle.trim(); _preferences?.setString('profileHandle', profileHandle); }
-    if (instagram != null) { profileInstagram = instagram.trim(); _preferences?.setString('profileInstagram', profileInstagram); }
-    if (youtube != null) { profileYoutube = youtube.trim(); _preferences?.setString('profileYoutube', profileYoutube); }
-    if (followers != null) { profileFollowers = followers.clamp(0, 1000000000); _preferences?.setInt('profileFollowers', profileFollowers); }
-    if (following != null) { profileFollowing = following.clamp(0, 1000000000); _preferences?.setInt('profileFollowing', profileFollowing); }
+    if (birthDate != null) {
+      profileBirthDate = birthDate.trim();
+      _preferences?.setString('profileBirthDate', profileBirthDate);
+    }
+    if (phone != null) {
+      profilePhone = phone.trim();
+      _preferences?.setString('profilePhone', profilePhone);
+    }
+    if (bio != null) {
+      profileBio = bio.trim();
+      _preferences?.setString('profileBio', profileBio);
+    }
+    if (handle != null) {
+      profileHandle = handle.trim();
+      _preferences?.setString('profileHandle', profileHandle);
+    }
+    if (instagram != null) {
+      profileInstagram = instagram.trim();
+      _preferences?.setString('profileInstagram', profileInstagram);
+    }
+    if (youtube != null) {
+      profileYoutube = youtube.trim();
+      _preferences?.setString('profileYoutube', profileYoutube);
+    }
+    if (followers != null) {
+      profileFollowers = followers.clamp(0, 1000000000);
+      _preferences?.setInt('profileFollowers', profileFollowers);
+    }
+    if (following != null) {
+      profileFollowing = following.clamp(0, 1000000000);
+      _preferences?.setInt('profileFollowing', profileFollowing);
+    }
     notifyListeners();
   }
 
@@ -700,12 +912,13 @@ class AppController extends ChangeNotifier {
     if (level == 'N5') return true;
     if (!isAuthenticated) return false;
     if (level == 'N4') return true;
-    if (hasFullAccess && ['N3','N2','N1'].contains(level)) return true;
-    return unlockedLevels.contains(level) && !['N3','N2','N1'].contains(level);
+    if (hasFullAccess && ['N3', 'N2', 'N1'].contains(level)) return true;
+    return unlockedLevels.contains(level) &&
+        !['N3', 'N2', 'N1'].contains(level);
   }
 
   void unlockLevel(String level) {
-    if (['N5','N4','N3','N2','N1'].contains(level)) {
+    if (['N5', 'N4', 'N3', 'N2', 'N1'].contains(level)) {
       unlockedLevels.add(level);
       _preferences?.setStringList('unlockedLevels', unlockedLevels.toList());
       notifyListeners();
@@ -713,16 +926,17 @@ class AppController extends ChangeNotifier {
   }
 
   String? requiredPreviousLevel(String level) {
-    const order = ['N5','N4','N3','N2','N1'];
+    const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
     final i = order.indexOf(level);
     return i <= 0 ? null : order[i - 1];
   }
 
   bool canUnlockNextLevel(String level) {
-    const order = ['N5','N4','N3','N2','N1'];
+    const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
     final i = order.indexOf(level);
     if (i < 0 || i == order.length - 1) return false;
-    final completed = completedLearningStepIds.contains('level-${level.toLowerCase()}-final');
+    final completed =
+        completedLearningStepIds.contains('level-${level.toLowerCase()}-final');
     return completed || (placementBestScores[level] ?? 0) >= 80;
   }
 
@@ -730,16 +944,18 @@ class AppController extends ChangeNotifier {
     final best = placementBestScores[level] ?? 0;
     if (score > best) placementBestScores[level] = score;
     if (score >= 80) {
-      const order = ['N5','N4','N3','N2','N1'];
+      const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
       final i = order.indexOf(level);
       if (i >= 0 && i < order.length - 1) unlockedLevels.add(order[i + 1]);
     }
     _preferences?.setStringList('unlockedLevels', unlockedLevels.toList());
-    _preferences?.setString('placementBestScores', jsonEncode(placementBestScores));
+    _preferences?.setString(
+        'placementBestScores', jsonEncode(placementBestScores));
     notifyListeners();
   }
 
-  String _hashPassword(String password) => sha256.convert(utf8.encode(password)).toString();
+  String _hashPassword(String password) =>
+      sha256.convert(utf8.encode(password)).toString();
 
   Future<void> _ensureDemoAccounts(SharedPreferences prefs) async {
     var changed = false;
@@ -760,7 +976,11 @@ class AppController extends ChangeNotifier {
     final emails = _localAccounts.keys.toList()..sort();
     final values = [
       for (final email in emails)
-        [email, _localAccounts[email] ?? '', _localAccountNames[email] ?? email.split('@').first].join('\u001f'),
+        [
+          email,
+          _localAccounts[email] ?? '',
+          _localAccountNames[email] ?? email.split('@').first
+        ].join('\u001f'),
     ];
     await prefs.setStringList('localAccounts_v1', values);
   }
@@ -773,9 +993,11 @@ class AppController extends ChangeNotifier {
     final normalizedEmail = email.trim().toLowerCase();
     final normalizedName = name.trim();
     if (normalizedName.length < 2) return 'Nama minimal 2 karakter.';
-    if (!normalizedEmail.contains('@') || !normalizedEmail.contains('.')) return 'Format email tidak valid.';
+    if (!normalizedEmail.contains('@') || !normalizedEmail.contains('.'))
+      return 'Format email tidak valid.';
     if (password.length < 6) return 'Password minimal 6 karakter.';
-    if (_localAccounts.containsKey(normalizedEmail) || normalizedEmail == 'admin@example.com') {
+    if (_localAccounts.containsKey(normalizedEmail) ||
+        normalizedEmail == 'admin@example.com') {
       return 'Email sudah terdaftar.';
     }
     _localAccounts[normalizedEmail] = _hashPassword(password);
@@ -789,23 +1011,31 @@ class AppController extends ChangeNotifier {
   Future<bool> loginWithEmail(String email, String password) async {
     final normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.isEmpty || password.length < 6) return false;
-    final isKnownAdmin = normalizedEmail == 'admin@example.com' && _hashPassword(password) == _hashPassword('admin123456');
+    final isKnownAdmin = normalizedEmail == 'admin@example.com' &&
+        _hashPassword(password) == _hashPassword('admin123456');
     final registeredPassword = _localAccounts[normalizedEmail];
     final passwordHash = _hashPassword(password);
-    if (!isKnownAdmin && (registeredPassword == null || registeredPassword != passwordHash)) {
+    if (!isKnownAdmin &&
+        (registeredPassword == null || registeredPassword != passwordHash)) {
       return false;
     }
     isAuthenticated = true;
     isAdmin = isKnownAdmin;
     authProvider = 'email';
     profileEmail = normalizedEmail;
-    profileName = isAdmin ? 'Administrator' : (_localAccountNames[normalizedEmail] ?? normalizedEmail.split('@').first);
+    profileName = isAdmin
+        ? 'Administrator'
+        : (_localAccountNames[normalizedEmail] ??
+            normalizedEmail.split('@').first);
     await Future.wait([
       _preferences?.setBool('isAuthenticated', true) ?? Future.value(false),
       _preferences?.setBool('isAdmin', isAdmin) ?? Future.value(false),
-      _preferences?.setString('authProvider', authProvider) ?? Future.value(false),
-      _preferences?.setString('profileEmail', profileEmail) ?? Future.value(false),
-      _preferences?.setString('profileName', profileName) ?? Future.value(false),
+      _preferences?.setString('authProvider', authProvider) ??
+          Future.value(false),
+      _preferences?.setString('profileEmail', profileEmail) ??
+          Future.value(false),
+      _preferences?.setString('profileName', profileName) ??
+          Future.value(false),
     ]);
     notifyListeners();
     return true;
@@ -820,8 +1050,10 @@ class AppController extends ChangeNotifier {
     await Future.wait([
       _preferences?.setBool('isAuthenticated', true) ?? Future.value(false),
       _preferences?.setBool('isAdmin', isAdmin) ?? Future.value(false),
-      _preferences?.setString('authProvider', authProvider) ?? Future.value(false),
-      _preferences?.setString('profileEmail', profileEmail) ?? Future.value(false),
+      _preferences?.setString('authProvider', authProvider) ??
+          Future.value(false),
+      _preferences?.setString('profileEmail', profileEmail) ??
+          Future.value(false),
     ]);
     notifyListeners();
     return true;
@@ -870,7 +1102,8 @@ class AppController extends ChangeNotifier {
   }
 
   void markPremiumPurchased() {
-    setMembershipPlan('premium', until: DateTime.now().add(const Duration(days: 30)));
+    setMembershipPlan('premium',
+        until: DateTime.now().add(const Duration(days: 30)));
   }
 
   void markLifetimePurchased() {
@@ -1217,23 +1450,34 @@ class AppController extends ChangeNotifier {
 
   void completeLearningStep(String id) {
     if (completedLearningStepIds.add(id)) {
-      _preferences?.setStringList('completedLearningSteps', completedLearningStepIds.toList());
+      _preferences?.setStringList(
+          'completedLearningSteps', completedLearningStepIds.toList());
       final match = RegExp(r'^path-(n5|n4|n3|n2|n1)-(\d+)$').firstMatch(id);
       if (match != null) {
         final level = match.group(1)!.toUpperCase();
         final chapter = int.tryParse(match.group(2)!) ?? 0;
-        final finalChapters = const {'N5':25,'N4':25,'N3':20,'N2':15,'N1':14};
+        final finalChapters = const {
+          'N5': 25,
+          'N4': 25,
+          'N3': 20,
+          'N2': 15,
+          'N1': 14
+        };
         if (chapter == finalChapters[level]) {
           completedLearningStepIds.add('level-${level.toLowerCase()}-final');
-          const order = ['N5','N4','N3','N2','N1'];
+          const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
           final index = order.indexOf(level);
-          if (index >= 0 && index < order.length - 1) unlockedLevels.add(order[index + 1]);
-          _preferences?.setStringList('unlockedLevels', unlockedLevels.toList());
-          _preferences?.setStringList('completedLearningSteps', completedLearningStepIds.toList());
+          if (index >= 0 && index < order.length - 1)
+            unlockedLevels.add(order[index + 1]);
+          _preferences?.setStringList(
+              'unlockedLevels', unlockedLevels.toList());
+          _preferences?.setStringList(
+              'completedLearningSteps', completedLearningStepIds.toList());
         }
       }
       recordStudy(xpGained: 10, notify: false);
-      if (id.startsWith('path-')) issueWeb3Credential('learning_step_complete', meta: {'stepId': id});
+      if (id.startsWith('path-'))
+        issueWeb3Credential('learning_step_complete', meta: {'stepId': id});
       notifyListeners();
     }
   }
@@ -1272,7 +1516,8 @@ class AppController extends ChangeNotifier {
 
   void recordQuiz({required int correct, required int total}) {
     if (total <= 0) return;
-    recordActivity('quiz', 'Kuis diselesaikan', meta: {'correct': correct, 'total': total});
+    recordActivity('quiz', 'Kuis diselesaikan',
+        meta: {'correct': correct, 'total': total});
     quizCorrect += correct;
     quizAnswered += total;
     _preferences?.setInt('quizCorrect', quizCorrect);
@@ -1325,7 +1570,8 @@ class AppController extends ChangeNotifier {
     _preferences?.setInt('xp', xp);
     _preferences?.setInt('dailyXp', dailyXp);
     recordActivity('study', 'Aktivitas belajar', meta: {'xp': xpGained});
-    unawaited(HomeWidgetService.instance.update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
+    unawaited(HomeWidgetService.instance
+        .update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
     if (notify) notifyListeners();
   }
 
@@ -1348,11 +1594,11 @@ class AppController extends ChangeNotifier {
         'googleLinked': googleLinked,
         'isPremium': isPremium,
         'membershipPlan': membershipPlan,
-      'membershipTier': membershipTier,
-      'unlockedLevels': unlockedLevels.toList(),
-      'placementBestScores': placementBestScores,
-      'isAuthenticated': isAuthenticated,
-      'isAdmin': isAdmin,
+        'membershipTier': membershipTier,
+        'unlockedLevels': unlockedLevels.toList(),
+        'placementBestScores': placementBestScores,
+        'isAuthenticated': isAuthenticated,
+        'isAdmin': isAdmin,
         'activeRoadmapStepId': activeRoadmapStepId,
         'hasUnreadNotifications': hasUnreadNotifications,
         'reviewReminderEnabled': reviewReminderEnabled,
@@ -1428,16 +1674,30 @@ class AppController extends ChangeNotifier {
       learningMode = (json['learningMode'] as String?) ?? learningMode;
       appLanguage = (json['appLanguage'] as String?) ?? appLanguage;
       ttsGender = (json['ttsGender'] as String?) ?? ttsGender;
-      reviewIntervalDays = ((json['reviewIntervalDays'] as num?) ?? reviewIntervalDays).toInt().clamp(1, 30).toInt();
+      reviewIntervalDays =
+          ((json['reviewIntervalDays'] as num?) ?? reviewIntervalDays)
+              .toInt()
+              .clamp(1, 30)
+              .toInt();
       googleLinked = json['googleLinked'] as bool? ?? googleLinked;
       isPremium = json['isPremium'] as bool? ?? isPremium;
-      membershipPlan = (json['membershipPlan'] as String?) ?? (json['membershipTier'] as String?) ?? (isPremium ? 'premium' : 'free');
-      if (!['free','premium','lifetime'].contains(membershipPlan)) membershipPlan = 'free';
+      membershipPlan = (json['membershipPlan'] as String?) ??
+          (json['membershipTier'] as String?) ??
+          (isPremium ? 'premium' : 'free');
+      if (!['free', 'premium', 'lifetime'].contains(membershipPlan))
+        membershipPlan = 'free';
       membershipTier = membershipPlan == 'free' ? 'free' : 'premium';
       isPremium = membershipPlan != 'free';
-      unlockedLevels..clear()..addAll((json['unlockedLevels'] as List<dynamic>? ?? const []).whereType<String>());
+      unlockedLevels
+        ..clear()
+        ..addAll((json['unlockedLevels'] as List<dynamic>? ?? const [])
+            .whereType<String>());
       if (!unlockedLevels.contains('N5')) unlockedLevels.add('N5');
-      placementBestScores..clear()..addAll((json['placementBestScores'] as Map?)?.map((k,v) => MapEntry(k.toString(), (v as num).toInt())) ?? {});
+      placementBestScores
+        ..clear()
+        ..addAll((json['placementBestScores'] as Map?)
+                ?.map((k, v) => MapEntry(k.toString(), (v as num).toInt())) ??
+            {});
       activeRoadmapStepId =
           (json['activeRoadmapStepId'] as String?) ?? activeRoadmapStepId;
       hasUnreadNotifications =
@@ -1485,18 +1745,32 @@ class AppController extends ChangeNotifier {
           json['calendarReminderEnabled'] as bool? ?? calendarReminderEnabled;
       glassTheme = json['glassTheme'] as bool? ?? glassTheme;
       todayKanjiMode = (json['todayKanjiMode'] as String?) ?? todayKanjiMode;
-      todayKanjiPinnedId = (json['todayKanjiPinnedId'] as num? ?? todayKanjiPinnedId).toInt();
+      todayKanjiPinnedId =
+          (json['todayKanjiPinnedId'] as num? ?? todayKanjiPinnedId).toInt();
       final importedFirstUsed = json['firstUsedAt'] as String?;
-      if (importedFirstUsed != null) firstUsedAt = DateTime.tryParse(importedFirstUsed);
-      totalActiveSeconds = (json['totalActiveSeconds'] as num? ?? totalActiveSeconds).toInt().clamp(0, 1 << 31).toInt();
-      sessionCount = (json['sessionCount'] as num? ?? sessionCount).toInt().clamp(0, 1000000).toInt();
+      if (importedFirstUsed != null)
+        firstUsedAt = DateTime.tryParse(importedFirstUsed);
+      totalActiveSeconds =
+          (json['totalActiveSeconds'] as num? ?? totalActiveSeconds)
+              .toInt()
+              .clamp(0, 1 << 31)
+              .toInt();
+      sessionCount = (json['sessionCount'] as num? ?? sessionCount)
+          .toInt()
+          .clamp(0, 1000000)
+          .toInt();
       activityJournal
         ..clear()
-        ..addAll((json['activityJournal'] as List<dynamic>? ?? const []).whereType<Map>().map((e) => Map<String, Object?>.from(e)).take(2000));
+        ..addAll((json['activityJournal'] as List<dynamic>? ?? const [])
+            .whereType<Map>()
+            .map((e) => Map<String, Object?>.from(e))
+            .take(2000));
       web3Credentials
         ..clear()
-        ..addAll((json['web3Credentials'] as List<dynamic>? ?? const []).whereType<String>());
-      latestWeb3Credential = (json['latestWeb3Credential'] as String?) ?? latestWeb3Credential;
+        ..addAll((json['web3Credentials'] as List<dynamic>? ?? const [])
+            .whereType<String>());
+      latestWeb3Credential =
+          (json['latestWeb3Credential'] as String?) ?? latestWeb3Credential;
       learnedKanjiIds
         ..clear()
         ..addAll(

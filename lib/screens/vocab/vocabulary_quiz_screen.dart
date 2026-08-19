@@ -7,7 +7,8 @@ import '../../services/vocabulary_examples_service.dart';
 import '../../state/app_controller.dart';
 
 class VocabularyQuizScreen extends StatefulWidget {
-  const VocabularyQuizScreen({super.key, this.level = 'Semua', this.sessionSize = 10});
+  const VocabularyQuizScreen(
+      {super.key, this.level = 'Semua', this.sessionSize = 10});
 
   final String level;
   final int sessionSize;
@@ -34,47 +35,88 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
     final source = widget.level == 'Semua'
         ? app.repository.vocabulary
         : app.repository.vocabularyForLevel(widget.level);
-    if (source.isEmpty) return;
+    if (source.length < 4) return;
     final pool = [...source]..shuffle(_rng);
     final count = widget.sessionSize.clamp(5, 20).toInt();
     final selected = pool.take(count).toList();
     for (var i = 0; i < selected.length; i++) {
       final item = selected[i];
-      final others = source.where((v) => v.id != item.id).toList()..shuffle(_rng);
+      final others = source.where((v) => v.id != item.id).toList()
+        ..shuffle(_rng);
       final forms = MorphologyService.forms(item);
-      final masu = forms.firstWhere((f) => f.label == 'Masu', orElse: () => forms.first).value;
+      final masu = forms.isNotEmpty
+          ? forms
+              .firstWhere((f) => f.label == 'Masu', orElse: () => forms.first)
+              .value
+          : item.word;
       final examples = VocabularyExamplesService.build(item);
-      final particle = examples.first.particle;
+      final particle = examples.isNotEmpty ? examples.first.particle : 'は';
+      final exampleJapanese =
+          examples.isNotEmpty ? examples.first.japanese : item.word;
       final mode = i % 4;
-      switch (mode) {
-        case 0:
-          _questions.add(_VocabularyQuestion(
-            'Apa arti 「${item.word}」?', item.meaning,
-            others.take(3).map((v) => v.meaning).toList(),
-          ));
-          break;
-        case 1:
-          _questions.add(_VocabularyQuestion(
-            'Bentuk ます yang benar dari 「${item.word}」?', masu,
-            forms.where((f) => f.label != 'Masu').take(3).map((f) => f.value).toList(),
-          ));
-          break;
-        case 2:
-          _questions.add(_VocabularyQuestion(
-            'Kotoba 「${item.word}」 dibaca bagaimana?', item.reading,
-            others.take(3).map((v) => v.reading).toList(),
-          ));
-          break;
-        default:
-          _questions.add(_VocabularyQuestion(
-            'Partikel pada contoh 「${examples.first.japanese}」?', particle,
-            ['は', 'が', 'を', 'に'].where((v) => v != particle).take(3).toList(),
-          ));
+
+      // Every question must have enough unique choices. If a dataset row is
+      // sparse, fall back to the safest meaning/reading format instead of
+      // indexing an empty list.
+      final meaningDistractors = _uniqueDistractors(
+        others.map((v) => v.meaning),
+        item.meaning,
+      );
+      final readingDistractors = _uniqueDistractors(
+        others.map((v) => v.reading),
+        item.reading,
+      );
+      final formDistractors = _uniqueDistractors(
+        forms.where((f) => f.label != 'Masu').map((f) => f.value),
+        masu,
+      );
+
+      if (mode == 1 && formDistractors.length == 3) {
+        _questions.add(_VocabularyQuestion(
+          'Bentuk ます yang benar dari 「${item.word}」?',
+          masu,
+          formDistractors,
+        ));
+      } else if (mode == 2 && readingDistractors.length == 3) {
+        _questions.add(_VocabularyQuestion(
+          'Kotoba 「${item.word}」 dibaca bagaimana?',
+          item.reading,
+          readingDistractors,
+        ));
+      } else if (mode == 3 && examples.isNotEmpty) {
+        _questions.add(_VocabularyQuestion(
+          'Partikel pada contoh 「$exampleJapanese」?',
+          particle,
+          ['は', 'が', 'を', 'に'].where((v) => v != particle).take(3).toList(),
+        ));
+      } else if (meaningDistractors.length == 3) {
+        _questions.add(_VocabularyQuestion(
+          'Apa arti 「${item.word}」?',
+          item.meaning,
+          meaningDistractors,
+        ));
+      } else if (readingDistractors.length == 3) {
+        _questions.add(_VocabularyQuestion(
+          'Kotoba 「${item.word}」 dibaca bagaimana?',
+          item.reading,
+          readingDistractors,
+        ));
       }
     }
     for (final q in _questions) {
-      q.options = {...q.distractors, q.answer}.toList()..shuffle(_rng);
+      q.options = [q.answer, ...q.distractors]..shuffle(_rng);
     }
+  }
+
+  List<String> _uniqueDistractors(Iterable<String> values, String answer) {
+    final seen = <String>{answer.trim()};
+    final result = <String>[];
+    for (final value in values) {
+      final normalized = value.trim();
+      if (normalized.isNotEmpty && seen.add(normalized)) result.add(value);
+      if (result.length == 3) break;
+    }
+    return result;
   }
 
   void _answer(String answer) {
@@ -86,7 +128,8 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
     Future.delayed(const Duration(milliseconds: 550), () {
       if (!mounted) return;
       if (_index == _questions.length - 1) {
-        AppScope.of(context).recordQuiz(correct: _correct, total: _questions.length);
+        AppScope.of(context)
+            .recordQuiz(correct: _correct, total: _questions.length);
         setState(() => _finished = true);
       } else {
         setState(() {
@@ -113,7 +156,12 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
     if (_questions.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Kuis Kosakata')),
-        body: const Center(child: Text('Data kosakata belum tersedia.')),
+        body: const Center(
+            child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                    'Soal kosakata belum siap. Kembali ke Pusat Quiz lalu coba lagi setelah data selesai dimuat.',
+                    textAlign: TextAlign.center))),
       );
     }
     if (_finished) {
@@ -126,12 +174,21 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(percent >= 80 ? Icons.emoji_events_rounded : Icons.replay_rounded, size: 78),
+                Icon(
+                    percent >= 80
+                        ? Icons.emoji_events_rounded
+                        : Icons.replay_rounded,
+                    size: 78),
                 const SizedBox(height: 14),
-                Text('$_correct/${_questions.length}', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900)),
+                Text('$_correct/${_questions.length}',
+                    style: const TextStyle(
+                        fontSize: 36, fontWeight: FontWeight.w900)),
                 Text('Akurasi $percent%'),
                 const SizedBox(height: 20),
-                FilledButton.icon(onPressed: _restart, icon: const Icon(Icons.refresh_rounded), label: const Text('Ulangi kuis')),
+                FilledButton.icon(
+                    onPressed: _restart,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Ulangi kuis')),
               ],
             ),
           ),
@@ -146,7 +203,9 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 14),
-            child: Center(child: Text('${_index + 1}/${_questions.length}', style: const TextStyle(fontWeight: FontWeight.w900))),
+            child: Center(
+                child: Text('${_index + 1}/${_questions.length}',
+                    style: const TextStyle(fontWeight: FontWeight.w900))),
           ),
         ],
       ),
@@ -155,7 +214,11 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
         children: [
           LinearProgressIndicator(value: (_index + 1) / _questions.length),
           const SizedBox(height: 22),
-          Text(q.prompt, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+          Text(q.prompt,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w900)),
           const SizedBox(height: 18),
           for (final option in q.options)
             Padding(
@@ -165,10 +228,17 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(58),
                   alignment: Alignment.centerLeft,
-                  side: _selected == null ? null : BorderSide(
-                    color: option == q.answer ? Colors.green : option == _selected ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.outline,
-                    width: option == q.answer || option == _selected ? 2 : 1,
-                  ),
+                  side: _selected == null
+                      ? null
+                      : BorderSide(
+                          color: option == q.answer
+                              ? Colors.green
+                              : option == _selected
+                                  ? Theme.of(context).colorScheme.error
+                                  : Theme.of(context).colorScheme.outline,
+                          width:
+                              option == q.answer || option == _selected ? 2 : 1,
+                        ),
                 ),
                 child: Text(option),
               ),
@@ -180,7 +250,8 @@ class _VocabularyQuizScreenState extends State<VocabularyQuizScreen> {
 }
 
 class _VocabularyQuestion {
-  _VocabularyQuestion(this.prompt, this.answer, this.distractors) : options = [];
+  _VocabularyQuestion(this.prompt, this.answer, this.distractors)
+      : options = [];
   final String prompt;
   final String answer;
   final List<String> distractors;

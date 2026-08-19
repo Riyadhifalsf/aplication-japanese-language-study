@@ -79,6 +79,15 @@ class AppTheme {
           ),
         ),
       ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _SmoothPageTransitionsBuilder(),
+          TargetPlatform.iOS: _SmoothPageTransitionsBuilder(),
+          TargetPlatform.linux: _SmoothPageTransitionsBuilder(),
+          TargetPlatform.macOS: _SmoothPageTransitionsBuilder(),
+          TargetPlatform.windows: _SmoothPageTransitionsBuilder(),
+        },
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 48),
@@ -105,6 +114,37 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant.withValues(alpha: .65),
+      ),
+    );
+  }
+}
+
+class _SmoothPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _SmoothPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(.018, 0),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
       ),
     );
   }

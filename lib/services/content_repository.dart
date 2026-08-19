@@ -37,8 +37,11 @@ class ContentRepository {
   Set<String> _cultureCategories = const {};
   Set<String> _readingCategories = const {};
   Set<String> _themes = const {};
+  Future<void>? _loadFuture;
 
-  Future<void> load() async {
+  Future<void> load() => _loadFuture ??= _load();
+
+  Future<void> _load() async {
     final results = await Future.wait([
       rootBundle.loadString('assets/data/kanji.json'),
       rootBundle.loadString('assets/data/vocabulary.json'),
@@ -75,9 +78,8 @@ class ContentRepository {
     };
     _kanjiByLevel = {
       for (final level in ['N5', 'N4', 'N3', 'N2', 'N1'])
-        level: kanji
-            .where((item) => item.level == level)
-            .toList(growable: false),
+        level:
+            kanji.where((item) => item.level == level).toList(growable: false),
     };
     _vocabularyByLevel = {
       for (final level in ['N5', 'N4', 'N3', 'N2', 'N1'])
@@ -86,8 +88,7 @@ class ContentRepository {
             .toList(growable: false),
     };
     _kanjiLevelCounts = {
-      for (final entry in _kanjiByLevel.entries)
-        entry.key: entry.value.length,
+      for (final entry in _kanjiByLevel.entries) entry.key: entry.value.length,
     };
     _vocabularyLevelCounts = {
       for (final entry in _vocabularyByLevel.entries)
@@ -105,8 +106,7 @@ class ContentRepository {
     };
     _vocabularySearchText = {
       for (final item in vocabulary)
-        item.id:
-            '${item.word} ${item.reading} ${item.meaning}'.toLowerCase(),
+        item.id: '${item.word} ${item.reading} ${item.meaning}'.toLowerCase(),
     };
     _grammarSearchText = {
       for (final item in grammar)
@@ -197,10 +197,8 @@ class ContentRepository {
     return output.take(limit).toList(growable: false);
   }
 
-  List<Kanji> relatedKanji(Kanji item) => item.relatedIds
-      .map(kanjiById)
-      .whereType<Kanji>()
-      .toList(growable: false);
+  List<Kanji> relatedKanji(Kanji item) =>
+      item.relatedIds.map(kanjiById).whereType<Kanji>().toList(growable: false);
 
   Set<String> get themes => _themes;
 
@@ -212,17 +210,14 @@ class ContentRepository {
 
   Set<String> get readingCategories => _readingCategories;
 
-
-  List<Kanji> kanjiForLevel(String level) =>
-      _kanjiByLevel[level] ?? const [];
+  List<Kanji> kanjiForLevel(String level) => _kanjiByLevel[level] ?? const [];
 
   List<Vocabulary> vocabularyForLevel(String level) =>
       _vocabularyByLevel[level] ?? const [];
 
   String kanjiSearchText(int id) => _kanjiSearchText[id] ?? '';
 
-  String vocabularySearchText(int id) =>
-      _vocabularySearchText[id] ?? '';
+  String vocabularySearchText(int id) => _vocabularySearchText[id] ?? '';
 
   String grammarSearchText(String id) => _grammarSearchText[id] ?? '';
 
@@ -236,6 +231,5 @@ class ContentRepository {
 
   int levelCount(String level) => _kanjiLevelCounts[level] ?? 0;
 
-  int vocabularyLevelCount(String level) =>
-      _vocabularyLevelCounts[level] ?? 0;
+  int vocabularyLevelCount(String level) => _vocabularyLevelCounts[level] ?? 0;
 }

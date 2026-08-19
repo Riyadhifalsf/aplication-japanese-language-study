@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
 import 'screens/app_shell.dart';
-import 'screens/auth/login_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/content_repository.dart';
@@ -19,8 +18,8 @@ Future<void> main() async {
     tts: TtsService(),
   );
   runApp(JapaneseStudyBootstrap(controller: controller));
-  unawaited(NotificationService.instance.initialize());
   unawaited(controller.load());
+  unawaited(NotificationService.instance.initialize());
 }
 
 class JapaneseStudyBootstrap extends StatelessWidget {
@@ -31,15 +30,14 @@ class JapaneseStudyBootstrap extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppScope(
         controller: controller,
-      child: AnimatedBuilder(
+        child: AnimatedBuilder(
           animation: controller.bootstrapRevision,
           builder: (context, _) => MaterialApp(
             title: 'Belajar Bahasa Jepang',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
-            themeMode:
-                controller.darkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: controller.darkMode ? ThemeMode.dark : ThemeMode.light,
             builder: (context, child) {
               final media = MediaQuery.of(context);
               final scale = media.textScaler
@@ -49,36 +47,74 @@ class JapaneseStudyBootstrap extends StatelessWidget {
                 child: child ?? const SizedBox.shrink(),
               );
             },
-            home: controller.ready
-                ? (controller.isAdmin
-                    ? const AdminDashboardScreen()
-                    : (controller.isAuthenticated && !controller.onboardingComplete ? const OnboardingScreen() : const AppShell()))
-                : const _LoadingScreen(),
+            home: const _BootstrapGate(),
           ),
         ),
       );
 }
 
-class _LoadingScreen extends StatelessWidget {
-  const _LoadingScreen();
+class _BootstrapGate extends StatelessWidget {
+  const _BootstrapGate();
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        body: Center(
+  Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
+    final Widget page;
+    final Key pageKey;
+
+    if (!controller.ready) {
+      page = const _StartupSplash();
+      pageKey = const ValueKey('startup-splash');
+    } else if (controller.isAdmin) {
+      page = const AdminDashboardScreen();
+      pageKey = const ValueKey('admin');
+    } else if (controller.isAuthenticated && !controller.onboardingComplete) {
+      page = const OnboardingScreen();
+      pageKey = const ValueKey('onboarding');
+    } else {
+      page = const AppShell();
+      pageKey = const ValueKey('app-shell');
+    }
+
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    return AnimatedSwitcher(
+      duration:
+          disableAnimations ? Duration.zero : const Duration(milliseconds: 260),
+      reverseDuration:
+          disableAnimations ? Duration.zero : const Duration(milliseconds: 180),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        child: child,
+      ),
+      child: KeyedSubtree(key: pageKey, child: page),
+    );
+  }
+}
+
+class _StartupSplash extends StatelessWidget {
+  const _StartupSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: Center(
+        child: Semantics(
+          label: 'Japanese Study sedang dibuka',
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 164,
-                height: 164,
-                padding: const EdgeInsets.all(10),
+                width: 140,
+                height: 140,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(36),
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(34),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: .08),
-                      blurRadius: 24,
+                      color: colors.primary.withValues(alpha: .14),
+                      blurRadius: 30,
                       offset: const Offset(0, 12),
                     ),
                   ],
@@ -86,12 +122,12 @@ class _LoadingScreen extends StatelessWidget {
                 child: Image.asset(
                   'assets/branding/japanese_study_logo.png',
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Center(
+                  errorBuilder: (context, error, stackTrace) => Center(
                     child: Text(
                       '日本語',
                       style: TextStyle(
-                        color: Color(0xFFB11226),
-                        fontSize: 28,
+                        color: colors.primary,
+                        fontSize: 30,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -99,10 +135,19 @@ class _LoadingScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const SizedBox(height: 12),
-              const Text('Membuka Japanese Study…', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text(
+                'Japanese Study',
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Menyiapkan pengalaman belajarmu…',
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
             ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }

@@ -73,9 +73,11 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
           sliver: SliverToBoxAdapter(
             child: FilledButton.icon(
-              onPressed: () => _start(context),
+              onPressed: app.contentReady ? () => _start(context) : null,
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(_kanjiMode ? 'Mulai tantangan kanji' : 'Mulai latihan kosakata'),
+              label: Text(app.contentReady
+                  ? (_kanjiMode ? 'Mulai tantangan kanji' : 'Mulai latihan kosakata')
+                  : 'Menyiapkan soal…'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(58),
                 textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
@@ -137,8 +139,9 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   jp: '音',
                   color: const Color(0xFF20A4F3),
                   onTap: () {
-                    app.tts.speak('かさ');
-                    _start(context, count: 10);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mode suara sementara dinonaktifkan. Gunakan latihan biasa.')),
+                    );
                   },
                 ),
                 _QuizModeData(
@@ -219,6 +222,13 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   }
 
   void _start(BuildContext context, {int? count}) {
+    final app = AppScope.of(context);
+    if (!app.contentReady) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data quiz sedang disiapkan. Coba lagi sebentar.')),
+      );
+      return;
+    }
     if (_kanjiMode) {
       _open(
         context,
