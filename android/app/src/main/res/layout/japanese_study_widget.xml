@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_container" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:gravity="center_vertical" android:background="#EAF7F7F7">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="日本語 Study" android:textStyle="bold" android:textSize="15sp" android:textColor="#B11226"/>
+    <TextView android:id="@+id/widget_kanji" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="日" android:textSize="34sp" android:textStyle="bold" android:textColor="#171717"/>
+    <TextView android:id="@+id/widget_streak" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔥 0 hari" android:textStyle="bold" android:textColor="#333333"/>
+    <TextView android:id="@+id/widget_xp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 XP" android:textColor="#555555"/>
+</LinearLayout>
