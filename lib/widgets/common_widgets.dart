@@ -10,14 +10,7 @@ class JlptBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = <String, Color>{
-      'N5': const Color(0xFF17A673),
-      'N4': const Color(0xFF3687FF),
-      'N3': const Color(0xFF8A63D2),
-      'N2': const Color(0xFFFF8A4C),
-      'N1': const Color(0xFFE64E64),
-    };
-    final color = colors[level] ?? Theme.of(context).colorScheme.primary;
+    final color = Theme.of(context).colorScheme.primary;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 8 : 10,
@@ -219,102 +212,110 @@ class FeatureCard extends StatelessWidget {
   final String? badge;
 
   @override
-  Widget build(BuildContext context) => Card(
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxHeight < 176 || constraints.maxWidth < 190;
-              return Padding(
-                padding: EdgeInsets.all(compact ? 13 : 15),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: compact ? 40 : 44,
-                          height: compact ? 40 : 44,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: .13),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Icon(icon, color: color, size: compact ? 21 : 24),
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact =
+                constraints.maxHeight < 176 || constraints.maxWidth < 190;
+            return Padding(
+              padding: EdgeInsets.all(compact ? 13 : 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: compact ? 40 : 44,
+                        height: compact ? 40 : 44,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: .13),
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: badge == null
-                                ? Icon(Icons.arrow_forward_rounded, color: color, size: 20)
-                                : Container(
-                                    constraints: const BoxConstraints(maxWidth: 118),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: color.withValues(alpha: .1),
-                                      borderRadius: BorderRadius.circular(99),
-                                    ),
-                                    child: Text(
-                                      badge!,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      textScaler: TextScaler.noScaling,
-                                      style: TextStyle(
-                                        color: color,
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                        child:
+                            Icon(icon, color: color, size: compact ? 21 : 24),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: badge == null
+                              ? Icon(Icons.arrow_forward_rounded,
+                                  color: color, size: 20)
+                              : Container(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 118),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: .1),
+                                    borderRadius: BorderRadius.circular(99),
+                                  ),
+                                  child: Text(
+                                    badge!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    textScaler: TextScaler.noScaling,
+                                    style: TextStyle(
+                                      color: color,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: compact ? 9 : 12),
-                    Text(
-                      title,
-                      maxLines: compact ? 1 : 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 4),
-                    Flexible(
-                      child: Text(
-                        subtitle,
-                        maxLines: compact ? 1 : 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                    if (progress != null) ...[
-                      SizedBox(height: compact ? 7 : 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(99),
-                        child: LinearProgressIndicator(
-                          value: progress!.clamp(0.0, 1.0).toDouble(),
-                          minHeight: 6,
-                          color: color,
-                          backgroundColor: color.withValues(alpha: .12),
+                                ),
                         ),
                       ),
                     ],
+                  ),
+                  SizedBox(height: compact ? 9 : 12),
+                  Text(
+                    title,
+                    maxLines: compact ? 1 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Text(
+                      subtitle,
+                      maxLines: compact ? 1 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  if (progress != null) ...[
+                    SizedBox(height: compact ? 7 : 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: LinearProgressIndicator(
+                        value: progress!.clamp(0.0, 1.0).toDouble(),
+                        minHeight: 6,
+                        color: color,
+                        backgroundColor: color.withValues(alpha: .12),
+                      ),
+                    ),
                   ],
-                ),
-              );
-            },
-          ),
+                ],
+              ),
+            );
+          },
         ),
-      );
+      ),
+    );
+  }
 }
 
 class StatTile extends StatelessWidget {
@@ -344,7 +345,8 @@ class StatTile extends StatelessWidget {
                 child: Icon(icon, size: 20),
               );
               final textWidget = Column(
-                crossAxisAlignment: stack ? CrossAxisAlignment.start : CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    stack ? CrossAxisAlignment.start : CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
@@ -371,7 +373,11 @@ class StatTile extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
-                  children: [iconWidget, const SizedBox(height: 10), textWidget],
+                  children: [
+                    iconWidget,
+                    const SizedBox(height: 10),
+                    textWidget
+                  ],
                 );
               }
               return Row(

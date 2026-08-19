@@ -81,16 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
       ),
       const SizedBox(height: 14),
-      OutlinedButton.icon(
-        onPressed: _busy ? null : () => Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const AppShell()), (_) => false),
-        icon: const Icon(Icons.explore_rounded),
-        label: const Text('Lanjut sebagai tamu'),
-        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-      ),
-      const SizedBox(height: 14),
       Card(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55), child: const Padding(padding: EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Akun demo', style: TextStyle(fontWeight: FontWeight.w900)), SizedBox(height: 4), Text('Admin\nadmin@example.com\nadmin123456', style: TextStyle(height: 1.45)), SizedBox(height: 8), Text('User Pertama\nuser@example.com\nuser123456', style: TextStyle(height: 1.45))]))),
       const SizedBox(height: 8),
       Text('Untuk produksi, ganti auth demo ini dengan Firebase Auth/backend agar password dan role tersimpan aman.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
     ])))));
 }
-

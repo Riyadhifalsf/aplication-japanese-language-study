@@ -6,7 +6,6 @@ import '../../models/kanji.dart';
 import '../../services/study_intelligence_service.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/liquid_glass.dart';
-import '../auth/login_screen.dart';
 import '../kanji/kanji_detail_screen.dart';
 import '../notifications/notification_center_screen.dart';
 import '../profile/study_stats_screen.dart';
@@ -78,35 +77,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
-        if (!app.isAuthenticated)
-          LiquidGlass(
-            padding: const EdgeInsets.all(16),
-            tint: Theme.of(context).colorScheme.primaryContainer,
-            child: Row(
-              children: [
-                const Icon(Icons.lock_open_rounded),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Mode tamu aktif. Progres tersimpan di perangkat ini.',
-                    style: TextStyle(fontWeight: FontWeight.w700, height: 1.35),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const LoginScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text('Login'),
-                ),
-              ],
-            ),
-          ),
         const SizedBox(height: 14),
         _StreakCard(app: app),
         const SizedBox(height: 16),

@@ -65,7 +65,8 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
               secondsPerQuestion: _secondsPerQuestion,
               onLevelChanged: (value) => setState(() => _level = value),
               onCountChanged: (value) => setState(() => _questionCount = value),
-              onSecondsChanged: (value) => setState(() => _secondsPerQuestion = value),
+              onSecondsChanged: (value) =>
+                  setState(() => _secondsPerQuestion = value),
             ),
           ),
         ),
@@ -76,11 +77,14 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
               onPressed: app.contentReady ? () => _start(context) : null,
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(app.contentReady
-                  ? (_kanjiMode ? 'Mulai tantangan kanji' : 'Mulai latihan kosakata')
+                  ? (_kanjiMode
+                      ? 'Mulai tantangan kanji'
+                      : 'Mulai latihan kosakata')
                   : 'Menyiapkan soal…'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(58),
-                textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+                textStyle:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -90,7 +94,8 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           sliver: SliverToBoxAdapter(
             child: _ExamSimulatorBanner(
               onJlpt: () => _open(context, const ExamHubScreen()),
-              onJft: () => _open(context, const ExamHubScreen(initialType: ExamType.jft)),
+              onJft: () => _open(
+                  context, const ExamHubScreen(initialType: ExamType.jft)),
             ),
           ),
         ),
@@ -99,7 +104,8 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           sliver: const SliverToBoxAdapter(
             child: SectionTitle(
               title: 'Pilih gaya latihan',
-              subtitle: 'Terinspirasi dari aplikasi belajar, tapi tampilannya dibuat beda.',
+              subtitle:
+                  'Terinspirasi dari aplikasi belajar, tapi tampilannya dibuat beda.',
             ),
           ),
         ),
@@ -121,15 +127,16 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   subtitle: 'A2 kerja dan choukai',
                   icon: Icons.badge_rounded,
                   jp: '職',
-                  color: const Color(0xFF17A673),
-                  onTap: () => _open(context, const ExamHubScreen(initialType: ExamType.jft)),
+                  color: AppTheme.seed,
+                  onTap: () => _open(
+                      context, const ExamHubScreen(initialType: ExamType.jft)),
                 ),
                 _QuizModeData(
                   title: 'Pemanasan 10 Soal',
                   subtitle: 'Cepat untuk awal latihan',
                   icon: Icons.timer_rounded,
                   jp: '速',
-                  color: const Color(0xFFFFA62B),
+                  color: AppTheme.seed,
                   onTap: () => _start(context, count: 10),
                 ),
                 _QuizModeData(
@@ -137,10 +144,12 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   subtitle: 'Dengar lalu pilih arti',
                   icon: Icons.hearing_rounded,
                   jp: '音',
-                  color: const Color(0xFF20A4F3),
+                  color: AppTheme.seed,
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Mode suara sementara dinonaktifkan. Gunakan latihan biasa.')),
+                      const SnackBar(
+                          content: Text(
+                              'Mode suara sementara dinonaktifkan. Gunakan latihan biasa.')),
                     );
                   },
                 ),
@@ -149,7 +158,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   subtitle: 'Lihat kanji pilih bacaan',
                   icon: Icons.category_rounded,
                   jp: '家',
-                  color: const Color(0xFFE64E64),
+                  color: AppTheme.seed,
                   onTap: () => _open(context, const KanjiHiraganaQuizScreen()),
                 ),
                 _QuizModeData(
@@ -157,7 +166,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   subtitle: 'Bedakan bentuk serupa',
                   icon: Icons.blur_on_rounded,
                   jp: '似',
-                  color: const Color(0xFF7C3AED),
+                  color: AppTheme.seed,
                   onTap: () => _open(context, const KanjiSimilarQuizScreen()),
                 ),
                 _QuizModeData(
@@ -165,7 +174,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   subtitle: 'Kartu yang harus diulang',
                   icon: Icons.notifications_active_rounded,
                   jp: '復',
-                  color: const Color(0xFF8A63D2),
+                  color: AppTheme.seed,
                   onTap: () => _open(context, const KanjiReviewScreen()),
                 ),
                 _QuizModeData(
@@ -173,7 +182,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   subtitle: 'Hiragana & katakana',
                   icon: Icons.grid_view_rounded,
                   jp: 'あ',
-                  color: const Color(0xFF17A673),
+                  color: AppTheme.seed,
                   onTap: () => _open(context, const KanaScreen()),
                 ),
               ],
@@ -204,7 +213,9 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                               fontSize: 12,
                             ),
                           ),
@@ -225,7 +236,8 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     final app = AppScope.of(context);
     if (!app.contentReady) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data quiz sedang disiapkan. Coba lagi sebentar.')),
+        const SnackBar(
+            content: Text('Data quiz sedang disiapkan. Coba lagi sebentar.')),
       );
       return;
     }
@@ -238,7 +250,10 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
         ),
       );
     } else {
-      _open(context, VocabularyQuizScreen(level: _level, sessionSize: count ?? _questionCount));
+      _open(
+          context,
+          VocabularyQuizScreen(
+              level: _level, sessionSize: count ?? _questionCount));
     }
   }
 
@@ -246,8 +261,6 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 }
-
-
 
 class _QuizHeader extends StatelessWidget {
   const _QuizHeader();
@@ -258,7 +271,7 @@ class _QuizHeader extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
           gradient: const LinearGradient(
-            colors: [Color(0xFF2F2C44), Color(0xFF635BFF)],
+            colors: [AppTheme.primaryDark, AppTheme.seed],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -275,7 +288,10 @@ class _QuizHeader extends StatelessWidget {
               alignment: Alignment.center,
               child: const Text(
                 '問',
-                style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900),
               ),
             ),
             const SizedBox(width: 14),
@@ -287,14 +303,18 @@ class _QuizHeader extends StatelessWidget {
                     'Kuis',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900),
                   ),
                   SizedBox(height: 4),
                   Text(
                     'Pilih jenis latihan. Tanpa tombol suara tambahan.',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        color: Colors.white70, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -321,7 +341,8 @@ class _ExamSimulatorBanner extends StatelessWidget {
               Theme.of(context).colorScheme.tertiary.withValues(alpha: .10),
             ],
           ),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -347,16 +368,25 @@ class _ExamSimulatorBanner extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   'Paket 30 soal dengan dokkai, choukai, bunpou, dan poin hasil simulasi.',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 14),
                 if (constraints.maxWidth < 430)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [buttons[0], const SizedBox(height: 8), buttons[1]],
+                    children: [
+                      buttons[0],
+                      const SizedBox(height: 8),
+                      buttons[1]
+                    ],
                   )
                 else
-                  Row(children: [Expanded(child: buttons[0]), const SizedBox(width: 10), Expanded(child: buttons[1])]),
+                  Row(children: [
+                    Expanded(child: buttons[0]),
+                    const SizedBox(width: 10),
+                    Expanded(child: buttons[1])
+                  ]),
               ],
             );
           },
@@ -381,7 +411,7 @@ class _QuizHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = kanjiMode ? AppTheme.seed : const Color(0xFFE64E64);
+    const color = AppTheme.seed;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -389,7 +419,7 @@ class _QuizHero extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             color.withValues(alpha: .92),
-            const Color(0xFF25233A),
+            AppTheme.primaryDark,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -440,7 +470,8 @@ class _QuizHero extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '$level · $count soal · $seconds detik/soal',
-                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                          color: Colors.white70, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -450,11 +481,13 @@ class _QuizHero extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              _MiniQuizStat(label: 'Jenis', value: kanjiMode ? 'Kanji' : 'Kosakata'),
+              _MiniQuizStat(
+                  label: 'Jenis', value: kanjiMode ? 'Kanji' : 'Kosakata'),
               const SizedBox(width: 10),
               _MiniQuizStat(label: 'Tingkat', value: level),
               const SizedBox(width: 10),
-              _MiniQuizStat(label: 'Akurasi', value: '${(accuracy * 100).round()}%'),
+              _MiniQuizStat(
+                  label: 'Akurasi', value: '${(accuracy * 100).round()}%'),
             ],
           ),
         ],
@@ -480,13 +513,15 @@ class _MiniQuizStat extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              Text(label,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
               const SizedBox(height: 3),
               Text(
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w900),
               ),
             ],
           ),
@@ -504,7 +539,10 @@ class _ModeSwitch extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55),
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withValues(alpha: .55),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
@@ -551,7 +589,9 @@ class _ModePill extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+            color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
@@ -560,13 +600,15 @@ class _ModePill extends StatelessWidget {
               Icon(
                 icon,
                 size: 19,
-                color: selected ? Theme.of(context).colorScheme.onPrimary : null,
+                color:
+                    selected ? Theme.of(context).colorScheme.onPrimary : null,
               ),
               const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  color: selected ? Theme.of(context).colorScheme.onPrimary : null,
+                  color:
+                      selected ? Theme.of(context).colorScheme.onPrimary : null,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -597,7 +639,7 @@ class _SetupPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = kanjiMode ? AppTheme.seed : const Color(0xFFE64E64);
+    const color = AppTheme.seed;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -610,7 +652,8 @@ class _SetupPanel extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   kanjiMode ? 'Racik soal kanji' : 'Racik soal kosakata',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900, fontSize: 18),
                 ),
               ],
             ),
@@ -682,12 +725,17 @@ class _SliderSetting extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                child: Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .8),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: .8),
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
@@ -734,15 +782,20 @@ class _QuizModeGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          final columns = responsiveColumns(constraints.maxWidth, compact: 2, medium: 2, large: 3, extraLarge: 4);
+          final columns = responsiveColumns(constraints.maxWidth,
+              compact: 2, medium: 2, large: 3, extraLarge: 4);
           final spacing = 12.0;
-          final width = (constraints.maxWidth - (columns - 1) * spacing) / columns;
+          final width =
+              (constraints.maxWidth - (columns - 1) * spacing) / columns;
           return Wrap(
             spacing: spacing,
             runSpacing: spacing,
             children: [
               for (final mode in modes)
-                SizedBox(width: width, height: constraints.maxWidth < 390 ? 148 : 162, child: _QuizModeCard(data: mode)),
+                SizedBox(
+                    width: width,
+                    height: constraints.maxWidth < 390 ? 148 : 162,
+                    child: _QuizModeCard(data: mode)),
             ],
           );
         },
@@ -761,7 +814,8 @@ class _QuizModeCard extends StatelessWidget {
           onTap: data.onTap,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final compact = constraints.maxWidth < 180 || constraints.maxHeight < 155;
+              final compact =
+                  constraints.maxWidth < 180 || constraints.maxHeight < 155;
               return Stack(
                 children: [
                   Positioned(
@@ -784,7 +838,8 @@ class _QuizModeCard extends StatelessWidget {
                               height: compact ? 42 : 52,
                               decoration: BoxDecoration(
                                 color: data.color,
-                                borderRadius: BorderRadius.circular(compact ? 15 : 18),
+                                borderRadius:
+                                    BorderRadius.circular(compact ? 15 : 18),
                               ),
                               alignment: Alignment.center,
                               child: Text(
@@ -797,7 +852,8 @@ class _QuizModeCard extends StatelessWidget {
                               ),
                             ),
                             const Spacer(),
-                            Icon(data.icon, color: data.color, size: compact ? 20 : 24),
+                            Icon(data.icon,
+                                color: data.color, size: compact ? 20 : 24),
                           ],
                         ),
                         const Spacer(),
@@ -816,7 +872,8 @@ class _QuizModeCard extends StatelessWidget {
                           maxLines: compact ? 1 : 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 11.5,
                             height: 1.18,
                           ),

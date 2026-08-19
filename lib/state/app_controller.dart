@@ -94,7 +94,6 @@ class AppController extends ChangeNotifier {
   final List<Map<String, Object?>> activityJournal = [];
   final List<String> web3Credentials = [];
   String latestWeb3Credential = '';
-  bool guestDismissedLoginPrompt = false;
   final Set<int> learnedKanjiIds = {};
   final Set<int> masteredKanjiIds = {};
   final Map<int, int> kanjiMasteryStreaks = {};

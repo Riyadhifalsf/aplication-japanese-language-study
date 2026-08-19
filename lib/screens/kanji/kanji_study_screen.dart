@@ -24,9 +24,8 @@ class KanjiStudyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final target = app.selectedStudyLevel;
-    final targetLevel = const {'N5', 'N4', 'N3', 'N2', 'N1'}.contains(target)
-        ? target
-        : 'N5';
+    final targetLevel =
+        const {'N5', 'N4', 'N3', 'N2', 'N1'}.contains(target) ? target : 'N5';
     final total = app.repository.levelCount(targetLevel);
     final mastered = app.repository
         .kanjiForLevel(targetLevel)
@@ -67,28 +66,31 @@ class KanjiStudyScreen extends StatelessWidget {
                   '5.000 kanji',
                   Icons.translate_rounded,
                   AppTheme.seed,
-                  () => _open(context, KanjiLibraryScreen(initialLevel: targetLevel)),
+                  () => _open(
+                      context, KanjiLibraryScreen(initialLevel: targetLevel)),
                 ),
                 _ActionData(
                   'Review Hari Ini',
                   '${app.dueKanjiReviewCount} kartu',
                   Icons.notifications_active_rounded,
-                  const Color(0xFFFFA62B),
+                  AppTheme.seed,
                   () => _open(context, const KanjiReviewScreen()),
                 ),
                 _ActionData(
                   'Mastery Quiz',
                   '3 benar beruntun',
                   Icons.workspace_premium_rounded,
-                  const Color(0xFF7C3AED),
-                  () => _open(context, KanjiMasteryQuizScreen(level: targetLevel)),
+                  AppTheme.seed,
+                  () => _open(
+                      context, KanjiMasteryQuizScreen(level: targetLevel)),
                 ),
                 _ActionData(
                   'Cari & Jelajah',
                   'Kanji + arti + bacaan',
                   Icons.search_rounded,
-                  const Color(0xFF20A4F3),
-                  () => _open(context, KanjiLibraryScreen(initialLevel: 'Semua')),
+                  AppTheme.seed,
+                  () =>
+                      _open(context, KanjiLibraryScreen(initialLevel: 'Semua')),
                 ),
               ],
             ),
@@ -118,7 +120,8 @@ class KanjiStudyScreen extends StatelessWidget {
             const SizedBox(height: 14),
             _SectionTitle(
               title: 'Mode Latihan',
-              subtitle: 'Variasikan latihan supaya kanji tidak cuma hafal bentuk.',
+              subtitle:
+                  'Variasikan latihan supaya kanji tidak cuma hafal bentuk.',
             ),
             const SizedBox(height: 12),
             _ModeCard(
@@ -129,13 +132,15 @@ class KanjiStudyScreen extends StatelessWidget {
             ),
             _ModeCard(
               title: 'Kuis Tema',
-              subtitle: 'Belajar berdasarkan tema seperti alam, waktu, dan kehidupan.',
+              subtitle:
+                  'Belajar berdasarkan tema seperti alam, waktu, dan kehidupan.',
               icon: Icons.category_rounded,
               onTap: () => _open(context, const KanjiThemeQuizScreen()),
             ),
             _ModeCard(
               title: 'Kanji Mirip',
-              subtitle: 'Latihan membedakan karakter yang bentuknya hampir sama.',
+              subtitle:
+                  'Latihan membedakan karakter yang bentuknya hampir sama.',
               icon: Icons.blur_on_rounded,
               onTap: () => _open(context, const KanjiSimilarQuizScreen()),
             ),
@@ -163,7 +168,7 @@ class _Header extends StatelessWidget {
             height: 58,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF1FB6FF), Color(0xFF7C3AED)],
+                colors: [AppTheme.seed, AppTheme.primaryDark],
               ),
               borderRadius: BorderRadius.circular(20),
             ),
@@ -243,12 +248,12 @@ class _HeroCard extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF1FB6FF), Color(0xFF4F6BFF), Color(0xFF7C3AED)],
+              colors: [AppTheme.seed, AppTheme.accent, AppTheme.primaryDark],
             ),
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF4F6BFF).withValues(alpha: .22),
+                color: AppTheme.seed.withValues(alpha: .22),
                 blurRadius: 24,
                 offset: const Offset(0, 13),
               ),
@@ -387,7 +392,10 @@ class _StatCard extends StatelessWidget {
         height: 94,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .45),
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withValues(alpha: .45),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant,
@@ -518,7 +526,10 @@ class _LevelTile extends StatelessWidget {
     final progress = total == 0 ? 0.0 : mastered / total;
     return Card(
       color: selected
-          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .55)
+          ? Theme.of(context)
+              .colorScheme
+              .primaryContainer
+              .withValues(alpha: .55)
           : null,
       child: InkWell(
         onTap: onTap,
@@ -531,7 +542,10 @@ class _LevelTile extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 alignment: Alignment.center,
@@ -598,7 +612,8 @@ class _ModeCard extends StatelessWidget {
           child: ListTile(
             onTap: onTap,
             leading: CircleAvatar(child: Icon(icon)),
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+            title: Text(title,
+                style: const TextStyle(fontWeight: FontWeight.w900)),
             subtitle: Text(subtitle),
             trailing: const Icon(Icons.chevron_right_rounded),
           ),
@@ -613,7 +628,10 @@ class _ReviewBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .55),
+        color: Theme.of(context)
+            .colorScheme
+            .primaryContainer
+            .withValues(alpha: .55),
         child: ListTile(
           onTap: onTap,
           leading: const CircleAvatar(child: Icon(Icons.replay_rounded)),

@@ -7,7 +7,6 @@ import 'profile/profile_screen.dart';
 import 'quiz/quiz_center_screen.dart';
 import 'study/study_hub_screen.dart';
 import 'kanji/kanji_study_screen.dart';
-import 'auth/login_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -67,9 +66,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               ],
             ));
   }
-
-  void _openLogin() => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => const LoginScreen()));
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -195,12 +191,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               label: 'Profil'),
         ],
       ),
-      floatingActionButton: !app.isAuthenticated
-          ? FloatingActionButton.extended(
-              onPressed: _openLogin,
-              icon: const Icon(Icons.login_rounded),
-              label: const Text('Login'))
-          : null,
     );
   }
 }
