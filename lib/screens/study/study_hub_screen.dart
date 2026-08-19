@@ -20,7 +20,6 @@ import '../kanji/kanji_review_screen.dart';
 import '../kanji/kanji_similar_quiz_screen.dart';
 import '../kanji/kanji_theme_quiz_screen.dart';
 import '../phrases/phrase_screen.dart';
-import '../quiz/quiz_setup_screen.dart';
 import '../readings/reading_screen.dart';
 import '../sentences/sentence_screen.dart';
 import '../vocab/vocabulary_screen.dart';
@@ -50,7 +49,6 @@ class StudyHubScreen extends StatelessWidget {
         const SizedBox(height: 22),
         _StudyShelf(title: 'Akses cepat', subtitle: 'Materi yang sering kamu gunakan.', cards: [
           _StudyCardData(title:'Kanji',subtitle:'Belajar, flashcard, quiz, dan review',icon:Icons.translate_rounded,color:const Color(0xFFFFA62B),badge:'${app.masteredKanjiIds.length} dikuasai',progress:app.masteredKanjiIds.length/5000,screen:const KanjiStudyScreen()),
-          _StudyCardData(title:'Pusat Kuis',subtitle:'Semua quiz dan uji penguasaan',icon:Icons.quiz_rounded,color:const Color(0xFF635BFF),badge:'Quiz',screen:QuizSetupScreen()),
         ]),
         const SizedBox(height:22),
         _StudyShelf(
@@ -123,7 +121,6 @@ class StudyHubScreen extends StatelessWidget {
         const SizedBox(height: 16),
         _StudyShelf(title: 'Jalur level', subtitle: 'Mulai dari N5 atau buktikan kemampuanmu lewat placement quiz.', cards: [
           _StudyCardData(title: 'Placement Quiz', subtitle: 'Tes untuk membantu membuka N4–N1', icon: Icons.assignment_turned_in_rounded, color: const Color(0xFF635BFF), badge: '80%+', screen: const LearningPathScreen()),
-          _StudyCardData(title: 'Pusat Kuis', subtitle: 'Latihan harian & uji penguasaan', icon: Icons.rocket_launch_rounded, color: const Color(0xFF2F2C44), badge: 'Quiz', screen: QuizSetupScreen()),
         ]),
         const SizedBox(height: 24),
         _StudyShelf(

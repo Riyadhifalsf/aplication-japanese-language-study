@@ -29,6 +29,7 @@ class AppController extends ChangeNotifier {
   SharedPreferences? _preferences;
   Timer? _reviewSaveTimer;
   bool ready = false;
+  bool contentReady = false;
   bool darkMode = false;
   bool furiganaVisible = true;
   String profileName = 'Riyadhifal';
@@ -128,7 +129,6 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    await repository.load();
     _preferences = await SharedPreferences.getInstance();
     final prefs = _preferences!;
     final savedAccounts = prefs.getStringList('localAccounts_v1') ?? const [];
@@ -275,8 +275,18 @@ class AppController extends ChangeNotifier {
       prefs.getStringList('completedCulture') ?? const [],
     );
     _refreshDailyCounter();
+
+    // Tampilkan shell aplikasi segera setelah state lokal siap. Dataset besar
+    // dimuat setelah frame pertama agar cold start tidak menunggu JSON.
     ready = true;
     startSession();
+    bootstrapRevision.value++;
+    notifyListeners();
+
+    await repository.load();
+    contentReady = true;
+    bootstrapRevision.value++;
+    notifyListeners();
     unawaited(HomeWidgetService.instance.update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
     unawaited(NotificationService.instance.syncReviewSchedule(
       enabled: reviewReminderEnabled,
@@ -285,8 +295,6 @@ class AppController extends ChangeNotifier {
       weekdays: reviewReminderWeekdays,
       dueCount: dueKanjiReviewCount,
     ));
-    bootstrapRevision.value++;
-    notifyListeners();
   }
 
   int get level => xp ~/ 500 + 1;

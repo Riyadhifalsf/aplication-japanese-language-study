@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
@@ -12,13 +14,13 @@ import 'state/app_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.instance.initialize();
   final controller = AppController(
     repository: ContentRepository(),
     tts: TtsService(),
   );
   runApp(JapaneseStudyBootstrap(controller: controller));
-  await controller.load();
+  unawaited(NotificationService.instance.initialize());
+  unawaited(controller.load());
 }
 
 class JapaneseStudyBootstrap extends StatelessWidget {
@@ -97,9 +99,8 @@ class _LoadingScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const CircularProgressIndicator(),
               const SizedBox(height: 12),
-              const Text('Menyiapkan 5.000 kanji dan 10.000 kotoba…'),
+              const Text('Membuka Japanese Study…', style: TextStyle(fontWeight: FontWeight.w700)),
             ],
           ),
         ),

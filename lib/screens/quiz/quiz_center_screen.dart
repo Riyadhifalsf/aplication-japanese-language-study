@@ -23,6 +23,23 @@ class QuizCenterScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
+    if (!app.contentReady) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.quiz_rounded, size: 48),
+              SizedBox(height: 12),
+              Text('Menyiapkan soal quiz…', style: TextStyle(fontWeight: FontWeight.w800)),
+              SizedBox(height: 10),
+              SizedBox(width: 120, child: LinearProgressIndicator()),
+            ],
+          ),
+        ),
+      );
+    }
     final level = app.selectedStudyLevel == 'JFT' ? 'N5' : app.selectedStudyLevel;
     final examLocked = !app.canAccessFeature('exam_simulation');
     final speakingEnabled = app.speakingEnabled;
