@@ -1,8 +1,0 @@
-{
-  "name": "japanese-study-backend",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {"start":"node src/server.js", "dev":"node --watch src/server.js"},
-  "dependencies": {"@fastify/cors":"^10.1.0","dotenv":"^16.6.1","fastify":"^5.5.0","pg":"^8.16.3"}
-}

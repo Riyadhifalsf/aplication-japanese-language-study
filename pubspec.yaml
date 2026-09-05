@@ -21,6 +21,7 @@ dependencies:
   timezone: ^0.10.1
   url_launcher: ^6.3.2
   google_mobile_ads: ^9.1.0
+  fl_chart: ^0.70.2
 
 dev_dependencies:
   flutter_test:

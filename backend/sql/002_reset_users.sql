@@ -1,6 +1,0 @@
--- RESET TOTAL USER UNTUK INSTALASI BARU.
--- Jalankan SEKALI sebelum membuat akun baru.
-BEGIN;
-TRUNCATE TABLE api_audit_logs RESTART IDENTITY;
-TRUNCATE TABLE app_users CASCADE;
-COMMIT;

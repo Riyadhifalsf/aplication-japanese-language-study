@@ -25,10 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _emailLogin() async {
     setState(() { _busy = true; _error = ''; });
-    final ok = await AppScope.of(context).loginWithEmail(_email.text, _password.text);
+    final error = await AppScope.of(context).loginWithEmail(_email.text, _password.text);
     if (!mounted) return;
     setState(() => _busy = false);
-    if (!ok) { setState(() => _error = 'Email/password minimal 6 karakter.'); return; }
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
     _goNext();
   }
 
@@ -61,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 24),
       const Text('Masuk ke Japanese Study', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
       const SizedBox(height: 8),
-      Text('Simpan progress, buka path sesuai level, dan gunakan akun Google untuk login cepat.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45)),
+      Text('Akses akunmu untuk sinkronisasi progress ke server secara aman.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45)),
       const SizedBox(height: 24),
       FilledButton.icon(onPressed: _busy ? null : _googleLogin, icon: const Icon(Icons.account_circle_rounded), label: const Text('Lanjut dengan Google'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54))),
       const SizedBox(height: 20),
@@ -80,9 +83,5 @@ class _LoginScreenState extends State<LoginScreen> {
         label: const Text('Buat akun baru'),
         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
       ),
-      const SizedBox(height: 14),
-      Card(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .55), child: const Padding(padding: EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Akun demo', style: TextStyle(fontWeight: FontWeight.w900)), SizedBox(height: 4), Text('Admin\nadmin@example.com\nadmin123456', style: TextStyle(height: 1.45)), SizedBox(height: 8), Text('User Pertama\nuser@example.com\nuser123456', style: TextStyle(height: 1.45))]))),
-      const SizedBox(height: 8),
-      Text('Untuk produksi, ganti auth demo ini dengan Firebase Auth/backend agar password dan role tersimpan aman.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
     ])))));
 }

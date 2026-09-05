@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/exam_question.dart';
+import '../services/api_service.dart';
 import '../services/content_repository.dart';
 import '../services/google_drive_backup_service.dart';
 import '../services/notification_service.dart';
@@ -22,6 +23,7 @@ class AppController extends ChangeNotifier {
 
   final ContentRepository repository;
   final TtsService tts;
+  final ApiService _api = ApiService();
   final GoogleDriveBackupService driveBackup;
   final ValueNotifier<int> bootstrapRevision = ValueNotifier(0);
 
@@ -155,7 +157,6 @@ class AppController extends ChangeNotifier {
             parts[2].trim().isEmpty ? email.split('@').first : parts[2].trim();
       }
     }
-    await _ensureDemoAccounts(prefs);
     darkMode = prefs.getBool('darkMode') ?? false;
     furiganaVisible = prefs.getBool('furiganaVisible') ?? true;
     profileName = prefs.getString('profileName') ?? 'Riyadhifal';
@@ -930,21 +931,6 @@ class AppController extends ChangeNotifier {
   String _hashPassword(String password) =>
       sha256.convert(utf8.encode(password)).toString();
 
-  Future<void> _ensureDemoAccounts(SharedPreferences prefs) async {
-    var changed = false;
-    final seed = <String, List<String>>{
-      'user@example.com': [_hashPassword('user123456'), 'User Pertama'],
-    };
-    for (final entry in seed.entries) {
-      if (!_localAccounts.containsKey(entry.key)) {
-        _localAccounts[entry.key] = entry.value[0];
-        _localAccountNames[entry.key] = entry.value[1];
-        changed = true;
-      }
-    }
-    if (changed) await _persistLocalAccounts(prefs);
-  }
-
   Future<void> _persistLocalAccounts(SharedPreferences prefs) async {
     final emails = _localAccounts.keys.toList()..sort();
     final values = [
@@ -968,40 +954,87 @@ class AppController extends ChangeNotifier {
     if (normalizedName.length < 2) return 'Nama minimal 2 karakter.';
     if (!normalizedEmail.contains('@') || !normalizedEmail.contains('.'))
       return 'Format email tidak valid.';
-    if (password.length < 6) return 'Password minimal 6 karakter.';
-    if (_localAccounts.containsKey(normalizedEmail) ||
-        normalizedEmail == 'admin@example.com') {
-      return 'Email sudah terdaftar.';
+    if (password.length < 8) return 'Password minimal 8 karakter.';
+
+    try {
+      final result = await _api.register(
+        name: normalizedName,
+        email: normalizedEmail,
+        password: password,
+      );
+      final user = Map<String, dynamic>.from(result['user'] as Map? ?? const {});
+      isAuthenticated = true;
+      isAdmin = (user['role'] ?? 'user').toString() == 'admin';
+      authProvider = 'email';
+      profileEmail = (user['email'] ?? normalizedEmail).toString();
+      profileName = (user['display_name'] ?? normalizedName).toString();
+      await _saveAuthPrefs();
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      return e.message.isNotEmpty ? e.message : 'Pendaftaran gagal.';
+    } catch (_) {
+      // Server tidak terjangkau: daftar di penyimpanan lokal (offline).
+      if (_localAccounts.containsKey(normalizedEmail)) {
+        return 'Email sudah terdaftar.';
+      }
+      _localAccounts[normalizedEmail] = _hashPassword(password);
+      _localAccountNames[normalizedEmail] = normalizedName;
+      final prefs = _preferences ?? await SharedPreferences.getInstance();
+      _preferences ??= prefs;
+      await _persistLocalAccounts(prefs);
+      return null;
     }
-    _localAccounts[normalizedEmail] = _hashPassword(password);
-    _localAccountNames[normalizedEmail] = normalizedName;
-    final prefs = _preferences ?? await SharedPreferences.getInstance();
-    _preferences ??= prefs;
-    await _persistLocalAccounts(prefs);
-    return null;
   }
 
-  Future<bool> loginWithEmail(String email, String password) async {
+  Future<String?> loginWithEmail(String email, String password) async {
     final normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail.isEmpty || password.length < 6) return false;
-    final isKnownAdmin = normalizedEmail == 'admin@example.com' &&
-        _hashPassword(password) == _hashPassword('admin123456');
-    final registeredPassword = _localAccounts[normalizedEmail];
-    final passwordHash = _hashPassword(password);
-    if (!isKnownAdmin &&
-        (registeredPassword == null || registeredPassword != passwordHash)) {
-      return false;
+    if (normalizedEmail.isEmpty || password.isEmpty)
+      return 'Email dan password wajib diisi.';
+
+    try {
+      final result = await _api.login(
+        email: normalizedEmail,
+        password: password,
+      );
+      final user = Map<String, dynamic>.from(result['user'] as Map? ?? const {});
+      isAuthenticated = true;
+      isAdmin = (user['role'] ?? 'user').toString() == 'admin';
+      authProvider = 'email';
+      googleLinked = false;
+      profileEmail = (user['email'] ?? normalizedEmail).toString();
+      profileName = (user['display_name'] ?? user['email'] ?? normalizedEmail)
+          .toString();
+      await _saveAuthPrefs();
+      notifyListeners();
+      return null;
+    } on ApiException catch (e) {
+      // Server merespons: pesan dari server bersifat otoritatif.
+      return e.message.isNotEmpty ? e.message : 'Login gagal.';
+    } catch (_) {
+      // Server tidak terjangkau: verifikasi akun lokal (mode offline).
+      final registeredPassword = _localAccounts[normalizedEmail];
+      final passwordHash = _hashPassword(password);
+      if (registeredPassword == null || registeredPassword != passwordHash) {
+        return 'Email atau password salah. (mode offline)';
+      }
+      isAuthenticated = true;
+      isAdmin = false;
+      authProvider = 'email';
+      googleLinked = false;
+      profileEmail = normalizedEmail;
+      profileName = _localAccountNames[normalizedEmail] ??
+          normalizedEmail.split('@').first;
+      await _saveAuthPrefs();
+      notifyListeners();
+      return null;
     }
-    isAuthenticated = true;
-    isAdmin = isKnownAdmin;
-    authProvider = 'email';
-    profileEmail = normalizedEmail;
-    profileName = isAdmin
-        ? 'Administrator'
-        : (_localAccountNames[normalizedEmail] ??
-            normalizedEmail.split('@').first);
+  }
+
+  Future<void> _saveAuthPrefs() async {
     await Future.wait([
-      _preferences?.setBool('isAuthenticated', true) ?? Future.value(false),
+      _preferences?.setBool('isAuthenticated', isAuthenticated) ??
+          Future.value(false),
       _preferences?.setBool('isAdmin', isAdmin) ?? Future.value(false),
       _preferences?.setString('authProvider', authProvider) ??
           Future.value(false),
@@ -1009,25 +1042,18 @@ class AppController extends ChangeNotifier {
           Future.value(false),
       _preferences?.setString('profileName', profileName) ??
           Future.value(false),
+      _preferences?.setBool('googleLinked', googleLinked) ??
+          Future.value(false),
     ]);
-    notifyListeners();
-    return true;
   }
 
   Future<bool> loginWithGoogle() async {
     final ok = await signInWithGoogle();
     if (!ok) return false;
     isAuthenticated = true;
-    isAdmin = profileEmail.trim().toLowerCase() == 'admin@example.com';
+    isAdmin = false;
     authProvider = 'google';
-    await Future.wait([
-      _preferences?.setBool('isAuthenticated', true) ?? Future.value(false),
-      _preferences?.setBool('isAdmin', isAdmin) ?? Future.value(false),
-      _preferences?.setString('authProvider', authProvider) ??
-          Future.value(false),
-      _preferences?.setString('profileEmail', profileEmail) ??
-          Future.value(false),
-    ]);
+    await _saveAuthPrefs();
     notifyListeners();
     return true;
   }

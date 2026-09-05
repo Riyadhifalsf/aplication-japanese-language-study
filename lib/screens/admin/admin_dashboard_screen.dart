@@ -1,328 +1,400 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../models/admin_models.dart';
-import '../../services/admin_data_service.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../../services/admin_analytics_service.dart';
 import '../../state/app_controller.dart';
 import '../auth/login_screen.dart';
 import '../exams/exam_hub_screen.dart';
 import '../study/learning_path_screen.dart';
-import 'admin_studio_screen.dart';
-import 'admin_vocabulary_screen.dart';
 import '../app_shell.dart';
 import '../../services/feature_flags_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
-  @override State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  final data = AdminDataService();
+  final analytics = AdminAnalyticsService();
   Timer? timer;
   bool loading = true;
   int tab = 0;
+  AdminAnalyticsData _ad = AdminAnalyticsData.empty();
 
-  @override void initState() { super.initState(); _init(); }
-  Future<void> _init() async { await data.load(); if (!mounted) return; setState(() => loading = false); timer = Timer.periodic(const Duration(seconds: 7), (_) { if (mounted) setState(() {}); }); }
-  @override void dispose() { timer?.cancel(); super.dispose(); }
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
 
-  @override Widget build(BuildContext context) {
+  Future<void> _init() async {
+    await _loadAnalytics();
+    if (!mounted) return;
+    setState(() => loading = false);
+    timer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) _loadAnalytics();
+    });
+  }
+
+  Future<void> _loadAnalytics() async {
+    final result = await analytics.fetchAnalytics();
+    if (!mounted) return;
+    setState(() => _ad = result);
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    final pages = [_overview(context, app), _users(context), _community(context), _content(context, app), _adminMore(context, app)];
-    final labels = ['Overview','Users','Community','Content','Lainnya'];
-    final icons = [Icons.dashboard_outlined,Icons.people_outline,Icons.forum_outlined,Icons.library_books_outlined,Icons.more_horiz_rounded];
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final pages = [
+      _overview(context, app),
+      _contentTab(context, app),
+      _settingsTab(context, app),
+    ];
+    final labels = ['Overview', 'Content', 'Settings'];
+    final icons = [
+      Icons.dashboard_outlined,
+      Icons.library_books_outlined,
+      Icons.settings_outlined,
+    ];
     final wide = MediaQuery.sizeOf(context).width >= 920;
-    final content = Scaffold(appBar: AppBar(title: Text(labels[tab]), actions: [IconButton(tooltip:'Refresh', onPressed: () => setState(() {}), icon: const Icon(Icons.refresh_rounded)), PopupMenuButton<String>(onSelected: (v) { if (v=='logout') _logout(context, app); }, itemBuilder: (_) => const [PopupMenuItem(value:'logout', child: Text('Keluar'))])]), body: pages[tab]);
-    if (wide) return Scaffold(body: Row(children:[NavigationRail(selectedIndex:tab, extended:MediaQuery.sizeOf(context).width>=1180,onDestinationSelected:(i)=>setState(()=>tab=i),leading:Padding(padding:const EdgeInsets.all(12),child:Image.asset('assets/branding/japanese_study_logo.png',width:48,height:48)),destinations:[for(var i=0;i<labels.length;i++)NavigationRailDestination(icon:Icon(icons[i]),selectedIcon:Icon(icons[i]),label:Text(labels[i]))]),const VerticalDivider(width:1),Expanded(child:content)]));
-    return Scaffold(body:content, bottomNavigationBar:NavigationBar(selectedIndex:tab > 4 ? 4 : tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:const[NavigationDestination(icon:Icon(Icons.dashboard_outlined),label:'Overview'),NavigationDestination(icon:Icon(Icons.people_outline),label:'Users'),NavigationDestination(icon:Icon(Icons.forum_outlined),label:'Community'),NavigationDestination(icon:Icon(Icons.library_books_outlined),label:'Content'),NavigationDestination(icon:Icon(Icons.more_horiz_rounded),label:'Lainnya')]));
+    final content = Scaffold(
+      appBar: AppBar(
+        title: Text(labels[tab]),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: () => _loadAnalytics(),
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+          PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'logout') _logout(context, app);
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'logout', child: Text('Keluar')),
+            ],
+          ),
+        ],
+      ),
+      body: pages[tab],
+    );
+    if (wide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: tab,
+              extended: MediaQuery.sizeOf(context).width >= 1180,
+              onDestinationSelected: (i) => setState(() => tab = i),
+              leading: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Image.asset('assets/branding/japanese_study_logo.png', width: 48, height: 48),
+              ),
+              destinations: [
+                for (var i = 0; i < labels.length; i++)
+                  NavigationRailDestination(icon: Icon(icons[i]), selectedIcon: Icon(icons[i]), label: Text(labels[i])),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: content),
+          ],
+        ),
+      );
+    }
+    return Scaffold(
+      body: content,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: tab > 2 ? 2 : tab,
+        onDestinationSelected: (i) => setState(() => tab = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Overview'),
+          NavigationDestination(icon: Icon(Icons.library_books_outlined), label: 'Content'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+        ],
+      ),
+    );
   }
 
   Widget _overview(BuildContext context, AppController app) {
     final cs = Theme.of(context).colorScheme;
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(borderRadius: BorderRadius.circular(28), gradient: LinearGradient(colors: [cs.primary, cs.secondary])), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children:[Text('ADMIN CONTROL CENTER', style: TextStyle(color:Colors.white70,fontWeight:FontWeight.w900,letterSpacing:1.1)), SizedBox(height:8), Text('Kelola Japanese Study', style: TextStyle(color:Colors.white,fontSize:28,fontWeight:FontWeight.w900)), SizedBox(height:6), Text('Pantau pengguna, konten, komunitas, laporan, dan aktivitas aplikasi dari satu dashboard.', style: TextStyle(color:Colors.white70,height:1.4))])),
-      const SizedBox(height:16),
-      LayoutBuilder(builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 1050 ? 4 : constraints.maxWidth >= 620 ? 2 : 1;
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: 4,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            mainAxisExtent: columns == 1 ? 104 : 96,
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(colors: [cs.primary, cs.secondary]),
           ),
-          itemBuilder: (_, index) => [
-            _metric('Total user','${data.totalUsers}', Icons.people_rounded),
-            _metric('Online','${data.onlineUsers}', Icons.wifi_rounded, live:true),
-            _metric('Aktif','${data.activeUsers}', Icons.insights_rounded),
-            _metric('Laporan terbuka','${data.openReports}', Icons.report_problem_rounded, danger:data.openReports>0),
-          ][index],
-        );
-      }),
-      const SizedBox(height:16),
-      LayoutBuilder(builder: (context, constraints) {
-        final charts = [
-          _miniChart(context, 'Aktivitas 7 hari', [18,24,20,35,32,48,42]),
-          _miniChart(context, 'Konten', [12,18,8,24,17,30,28]),
-        ];
-        if (constraints.maxWidth < 560) {
-          return Column(children: [charts[0], const SizedBox(height: 10), charts[1]]);
-        }
-        return Row(children: [Expanded(child: charts[0]), const SizedBox(width: 10), Expanded(child: charts[1])]);
-      }),
-      const SizedBox(height:16),
-      _card(title:'Quick actions', child: Wrap(spacing:8, runSpacing:8, children:[_action('Tambah user', Icons.person_add_rounded, () => _userDialog(context)), _action('Posting komunitas', Icons.post_add_rounded, () => _postDialog(context)), _action('Lihat ujian', Icons.assignment_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamHubScreen()))), _action('Aplikasi utama', Icons.open_in_new_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppShell()))), _action('Fitur Beta', Icons.science_rounded, () => _featureDialog(context, app)), _action('Pengumuman', Icons.campaign_rounded, () => _openAux(context, _announcements(context), 'Announcements'))])),
-      const SizedBox(height:16),
-      _card(
-        title: 'Aktivitas terbaru',
-        child: Column(
-          children: data.activities.take(8).map((a) {
-            return ListTile(
-              dense: true,
-              leading: CircleAvatar(
-                radius: 16,
-                child: Icon(_activityIcon(a.type), size: 17),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('ADMIN ANALYTICS', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+              const SizedBox(height: 8),
+              const Text('Dashboard Overview', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              Text(
+                'Pantau pengguna, konten, dan aktivitas aplikasi secara real-time dari server.',
+                style: TextStyle(color: Colors.white70, height: 1.4),
               ),
-              title: Text(a.label),
-              subtitle: Text(_when(a.createdAt)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 1050 ? 4 : constraints.maxWidth >= 620 ? 2 : 1;
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 4,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                mainAxisExtent: columns == 1 ? 104 : 96,
+              ),
+              itemBuilder: (_, index) => [
+                _metric('Total users', '${_ad.totalUsers}', Icons.people_rounded),
+                _metric('Total admins', '${_ad.totalAdmins}', Icons.admin_panel_settings_rounded),
+                _metric('Total content', '${_ad.totalContent}', Icons.library_books_rounded),
+                _metric('Open reports', '${_ad.openReports}', Icons.report_problem_rounded, danger: _ad.openReports > 0),
+              ][index],
             );
-          }).toList(),
+          },
         ),
-      ),
-      const SizedBox(height:16),
-      _card(title:'System health', child: Column(children:[_health('Content repository','Normal',true),_health('Local analytics','Aktif',true),_health('Realtime layer','Prototype lokal — siap diganti WebSocket/Firebase',true),_health('Moderation','${data.openReports} laporan perlu ditinjau',data.openReports==0)])),
-      const SizedBox(height:20),
-      Text('Konten tersedia: ${app.repository.kanji.length} kanji • ${app.repository.vocabulary.length} kotoba • ${app.repository.grammar.length} bunpou • ${app.repository.readings.length} bacaan', style: TextStyle(color:Theme.of(context).colorScheme.onSurfaceVariant)),
-    ]);
-  }
-
-  Widget _adminMore(BuildContext context, AppController app) => ListView(padding:const EdgeInsets.all(16),children:[
-    _card(title:'Kontrol fitur',child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      const Text('Fitur beta default nonaktif sampai siap diuji.',style:TextStyle(height:1.4)),
-      const SizedBox(height:12),
-      FilledButton.icon(onPressed:()=>_featureDialog(context,app),icon:const Icon(Icons.tune_rounded),label:const Text('Kelola feature flags')),
-    ])),
-    const SizedBox(height:12),
-    _card(title:'Akses cepat',child:Wrap(spacing:8,runSpacing:8,children:[
-      _action('Reports',Icons.report_problem_outlined,()=>_openAux(context,_reports(context),'Reports')),
-      _action('Content',Icons.library_books_outlined,()=>_openAux(context,_content(context,app),'Content')),
-      _action('Announcements',Icons.campaign_outlined,()=>_openAux(context,_announcements(context),'Announcements')),
-      _action('Studio',Icons.tune_rounded,()=>_openAux(context,const AdminStudioScreen(),'Studio')), _action('Edit Kotoba',Icons.edit_note_rounded,()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AdminVocabularyScreen()))),
-      _action('Aplikasi utama',Icons.open_in_new_rounded,()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AppShell()))),
-    ])),
-  ]);
-
-  Widget _moreMenu(BuildContext context, AppController app) => SafeArea(child: ListView(shrinkWrap:true, children:[
-    ListTile(leading:const Icon(Icons.science_rounded),title:const Text('Fitur Beta',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:const Text('Aktif/nonaktifkan fitur eksperimen'),onTap:(){Navigator.pop(context);_featureDialog(context,app);}),
-    ListTile(leading:const Icon(Icons.report_problem_outlined),title:const Text('Reports'),onTap:(){Navigator.pop(context);_openAux(context,_reports(context),'Reports');}),
-    ListTile(leading:const Icon(Icons.library_books_outlined),title:const Text('Content'),onTap:(){Navigator.pop(context);_openAux(context,_content(context,app),'Content');}),
-    ListTile(leading:const Icon(Icons.campaign_outlined),title:const Text('Announcements'),onTap:(){Navigator.pop(context);_openAux(context,_announcements(context),'Announcements');}),
-    ListTile(leading:const Icon(Icons.tune_rounded),title:const Text('Studio'),onTap:(){Navigator.pop(context);_openAux(context,const AdminStudioScreen(),'Studio');}),
-    const Divider(),
-    ListTile(leading:const Icon(Icons.open_in_new_rounded),title:const Text('Buka aplikasi utama'),subtitle:const Text('Admin tetap bisa melihat sisi pengguna.'),onTap:(){Navigator.pop(context);Navigator.push(context,MaterialPageRoute(builder:(_)=>const AppShell()));}),
-  ]));
-
-  void _openAux(BuildContext context, Widget page, String title) => Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(appBar:AppBar(title:Text(title)), body:page)));
-
-  Future<void> _featureDialog(BuildContext context, AppController app) async {
-    await showModalBottomSheet<void>(context:context,isScrollControlled:true,showDragHandle:true,builder:(sheet)=>StatefulBuilder(builder:(context,setSheetState){
-      final defs=FeatureFlagsService.definitions;
-      return SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(18,8,18,24),child:ConstrainedBox(constraints:BoxConstraints(maxHeight:MediaQuery.sizeOf(context).height*0.82),child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-        const Text('Feature control',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),
-        const SizedBox(height:4),
-        const Text('Fitur beta default OFF dan baru boleh dinyalakan saat siap diuji.',style:TextStyle(height:1.4)),
-        const SizedBox(height:12),
-        ...defs.map((f)=>SwitchListTile(contentPadding:EdgeInsets.zero,value:app.featureEnabled(f.key),onChanged:(value)async{
-          await app.setFeatureFlag(f.key,value);
-          if (!context.mounted) return;
-          setSheetState((){});
-          if (mounted) setState((){});
-        },title:Row(children:[Expanded(child:Text(f.name,style:const TextStyle(fontWeight:FontWeight.w900))),if(f.beta)Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:3),decoration:BoxDecoration(color:Theme.of(context).colorScheme.tertiaryContainer,borderRadius:BorderRadius.circular(99)),child:Text('BETA',style:TextStyle(fontSize:9,fontWeight:FontWeight.w900,color:Theme.of(context).colorScheme.onTertiaryContainer)))]),subtitle:Text(f.description))),
-      ])))));
-    }));
-    if (!mounted) return;
-    await app.reloadFeatureFlags();
-  }
-
-  Widget _users(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text('User management', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            ),
-            FilledButton.icon(
-              onPressed: () => _userDialog(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Tambah'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        const TextField(
-          decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Cari nama atau email'),
-        ),
-        const SizedBox(height: 12),
-        ...data.users.map((u) {
-          return Card(
-            child: ListTile(
-              leading: CircleAvatar(
-                child: Text(u.name.isEmpty ? '?' : u.name.substring(0, 1).toUpperCase()),
-              ),
-              title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text('${u.email} • ${u.role.toUpperCase()} • ${u.level}'),
-              trailing: Wrap(
-                spacing: 4,
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: u.online ? Colors.green : Colors.grey,
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (v) => _userAction(context, u, v),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      PopupMenuItem(value: 'online', child: Text('Toggle online')),
-                      PopupMenuItem(value: 'delete', child: Text('Hapus')),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ],
-    );
-  }
-
-  Widget _community(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text('Community moderation', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            ),
-            FilledButton.icon(
-              onPressed: () => _postDialog(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Post'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ...data.posts.map((p) {
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 18,
-                        child: Text(p.author.isEmpty ? '?' : p.author.substring(0, 1)),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(p.author, style: const TextStyle(fontWeight: FontWeight.w900)),
-                            Text(
-                              '${p.status} • ${_when(p.createdAt)}',
-                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        onSelected: (v) => _postAction(context, p, v),
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          PopupMenuItem(value: 'delete', child: Text('Hapus')),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(p.text, style: const TextStyle(fontSize: 16, height: 1.4)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.favorite_border, size: 18),
-                      Text(' ${p.likes}'),
-                      const SizedBox(width: 18),
-                      const Icon(Icons.comment_outlined, size: 18),
-                      Text(' ${p.comments}'),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () => _commentDialog(context, p),
-                        icon: const Icon(Icons.add_comment_outlined),
-                        label: const Text('Komentar'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
         const SizedBox(height: 16),
         _card(
-          title: 'Komentar terbaru',
-          child: Column(
-            children: data.comments.take(8).map((c) {
-              return ListTile(
-                leading: const Icon(Icons.chat_bubble_outline),
-                title: Text(c.text),
-                subtitle: Text('${c.author} • ${_when(c.createdAt)}'),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (v) => _commentAction(context, c, v),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'delete', child: Text('Hapus')),
-                    PopupMenuItem(value: 'hide', child: Text('Sembunyikan')),
-                  ],
+          title: 'Registrations (14 hari)',
+          child: _ad.registrations.isEmpty
+              ? const SizedBox(height: 120, child: Center(child: Text('Belum ada data')))
+              : SizedBox(height: 180, child: _lineChart(_ad.registrations)),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Logins (14 hari)',
+          child: _ad.logins.isEmpty
+              ? const SizedBox(height: 120, child: Center(child: Text('Belum ada data')))
+              : SizedBox(height: 180, child: _lineChart(_ad.logins, color: Colors.teal)),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'User Roles',
+          child: _ad.roles.isEmpty
+              ? const SizedBox(height: 100, child: Center(child: Text('Belum ada data')))
+              : SizedBox(height: 140, child: _pieChart(_ad.roles)),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Recent Activity',
+          child: _ad.recentActivities.isEmpty
+              ? const Text('Belum ada aktivitas.')
+              : Column(
+                  children: _ad.recentActivities.take(6).map((a) {
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(radius: 16, child: Icon(_activityIcon(a.type), size: 17)),
+                      title: Text(a.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(_when(a.createdAt)),
+                    );
+                  }).toList(),
                 ),
-              );
-            }).toList(),
+        ),
+        const SizedBox(height: 16),
+        _card(
+          title: 'Quick Actions',
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _action('Learning Path', Icons.route_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LearningPathScreen()))),
+              _action('Exam Hub', Icons.assignment_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamHubScreen()))),
+              _action('App Preview', Icons.open_in_new_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppShell()))),
+              _action('Feature Flags', Icons.science_rounded, () => _featureDialog(context, app)),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _reports(BuildContext context) => ListView(padding:const EdgeInsets.all(16),children:[Row(children:[const Expanded(child:Text('Complaint & reports',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900))),Text('${data.openReports} open',style:const TextStyle(fontWeight:FontWeight.w900))]),const SizedBox(height:12), ...data.reports.map((r)=>Card(child:ListTile(leading:CircleAvatar(backgroundColor:r.status=='open'?Colors.orange.shade100:Colors.green.shade100,child:Icon(r.status=='open'?Icons.priority_high:Icons.check,color:r.status=='open'?Colors.orange:Colors.green)),title:Text(r.category,style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${r.reporter}\n${r.message}',maxLines:3),isThreeLine:true,trailing:PopupMenuButton<String>(onSelected:(v)=>_reportAction(context,r,v),itemBuilder:(_)=>const[PopupMenuItem(value:'resolve',child:Text('Tandai selesai')),PopupMenuItem(value:'reopen',child:Text('Buka lagi')),PopupMenuItem(value:'delete',child:Text('Hapus'))])))).toList(),const SizedBox(height:16),FilledButton.tonalIcon(onPressed:()=>_reportDialog(context),icon:const Icon(Icons.add_alert),label:const Text('Buat laporan simulasi'))]);
-
-  Widget _content(BuildContext context, AppController app) => ListView(padding:const EdgeInsets.all(16),children:[const Text('Content management',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900)),const SizedBox(height:8),_crudCard('Learning Path','Bab N5–N1 dan struktur course',Icons.route_rounded,()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const LearningPathScreen()))),_crudCard('Kanji','${app.repository.kanji.length} kanji',Icons.translate_rounded,()=>_toast(context,'CRUD Kanji siap dihubungkan ke backend repository.')),_crudCard('Kotoba','${app.repository.vocabulary.length} kata',Icons.abc_rounded,()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const AdminVocabularyScreen()))),_crudCard('Bunpou','${app.repository.grammar.length} grammar',Icons.menu_book_rounded,()=>_toast(context,'CRUD Bunpou siap dihubungkan ke backend repository.')),_crudCard('JLPT / JFT','50 paket per track',Icons.assignment_turned_in_rounded,()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>const ExamHubScreen())))]);
-
-  Widget _announcements(BuildContext context) {
-    return ListView(padding:const EdgeInsets.all(16),children:[
-      Row(children:[const Expanded(child:Text('Announcements & Ads',style:TextStyle(fontSize:22,fontWeight:FontWeight.w900))),FilledButton.icon(onPressed:()=>_announcementDialog(context),icon:const Icon(Icons.add),label:const Text('Tambah'))]),
-      const SizedBox(height:8),
-      const Text('Kelola pengumuman, banner, dan iklan. Iklan dapat dibatasi untuk pengguna Free.'),
-      const SizedBox(height:14),
-      if(data.announcements.isEmpty)_card(title:'Belum ada konten',child:const Text('Buat pengumuman atau iklan pertama.')),
-      ...data.announcements.map((a)=>Card(child:ListTile(leading:CircleAvatar(child:Icon(a.type=='ad'?Icons.ads_click_rounded:a.type=='banner'?Icons.view_carousel_rounded:Icons.notifications_active_rounded)),title:Text(a.title,style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${a.type.toUpperCase()} • ${a.active?'AKTIF':'NONAKTIF'} • ${a.freeOnly?'FREE SAJA':'SEMUA USER'}\n${a.body}',maxLines:3,overflow:TextOverflow.ellipsis),isThreeLine:true,trailing:PopupMenuButton<String>(onSelected:(v)async{if(v=='edit')await _announcementDialog(context,a);if(v=='toggle'){a.active=!a.active;await data.updateAnnouncement(a);}if(v=='delete')await data.deleteAnnouncement(a.id);if(mounted)setState((){});},itemBuilder:(_)=>const[PopupMenuItem(value:'edit',child:Text('Edit')),PopupMenuItem(value:'toggle',child:Text('Aktif / Nonaktif')),PopupMenuItem(value:'delete',child:Text('Hapus'))])))),
-    ]);
+  Widget _contentTab(BuildContext context, AppController app) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text('Content Summary', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Content by Type',
+          child: _ad.totalContent == 0
+              ? const Text('Belum ada data konten dari server.')
+              : Column(
+                  children: [
+                    _contentRow('Kanji', _ad.kanji, Icons.translate_rounded),
+                    _contentRow('Vocabulary', _ad.vocabularyContent, Icons.abc_rounded),
+                    _contentRow('Grammar', _ad.grammar, Icons.menu_book_rounded),
+                    _contentRow('Phrases', _ad.phrases, Icons.chat_rounded),
+                    _contentRow('Sentences', _ad.sentences, Icons.short_text_rounded),
+                    _contentRow('Culture', _ad.culture, Icons.language_rounded),
+                    _contentRow('Readings', _ad.readings, Icons.auto_stories_rounded),
+                  ],
+                ),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Content by Level',
+          child: _ad.contentByLevel.isEmpty
+              ? const SizedBox(height: 120, child: Center(child: Text('Belum ada data')))
+              : SizedBox(height: 220, child: _barChart(_ad.contentByLevel)),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Database Content',
+          child: Column(
+            children: [
+              _contentRow('Vocabularies (catalog)', _ad.totalVocabularies, Icons.book_rounded),
+              _contentRow('Posts', _ad.totalPosts, Icons.forum_rounded),
+              _contentRow('Comments', _ad.totalComments, Icons.comment_rounded),
+              _contentRow('Announcements', _ad.totalAnnouncements, Icons.campaign_rounded),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Server Health',
+          child: Column(
+            children: [
+              _health('Backend API', analytics.configured ? 'Connected' : 'Not configured', analytics.configured),
+              _health('Analytics endpoint', _ad.totalUsers > 0 ? 'OK' : 'Awaiting data', _ad.totalUsers > 0),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
-  Future<void> _announcementDialog(BuildContext context,[AdminAnnouncement? existing])async{
-    final title=TextEditingController(text:existing?.title??'');final body=TextEditingController(text:existing?.body??'');final cta=TextEditingController(text:existing?.ctaLabel??'');String type=existing?.type??'announcement';bool active=existing?.active??true;bool freeOnly=existing?.freeOnly??false;
-    final ok=await showDialog<bool>(context:context,builder:(_)=>StatefulBuilder(builder:(c,set)=>AlertDialog(title:Text(existing==null?'Buat pengumuman / iklan':'Edit pengumuman / iklan'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[TextField(controller:title,decoration:const InputDecoration(labelText:'Judul')),TextField(controller:body,maxLines:4,decoration:const InputDecoration(labelText:'Isi / pesan')),DropdownButtonFormField<String>(value:type,items:const['announcement','banner','ad'].map((x)=>DropdownMenuItem(value:x,child:Text(x=='announcement'?'Pengumuman':x=='banner'?'Banner':'Iklan'))).toList(),onChanged:(v)=>set(()=>type=v??type),decoration:const InputDecoration(labelText:'Tipe')),TextField(controller:cta,decoration:const InputDecoration(labelText:'Tombol (opsional)')),SwitchListTile(value:active,onChanged:(v)=>set(()=>active=v),title:const Text('Aktif')),SwitchListTile(value:freeOnly,onChanged:(v)=>set(()=>freeOnly=v),title:const Text('Khusus Free'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Simpan'))])));
-    if(ok!=true)return;final item=AdminAnnouncement(id:existing?.id??DateTime.now().microsecondsSinceEpoch.toString(),title:title.text.trim(),body:body.text.trim(),type:type,active:active,freeOnly:freeOnly,ctaLabel:cta.text.trim(),createdAt:existing?.createdAt??DateTime.now());if(existing==null)await data.addAnnouncement(item);else await data.updateAnnouncement(item);if(mounted)setState((){});
+  Widget _settingsTab(BuildContext context, AppController app) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _card(
+          title: 'Feature Control',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Kelola fitur beta aplikasi.', style: TextStyle(height: 1.4)),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () => _featureDialog(context, app),
+                icon: const Icon(Icons.tune_rounded),
+                label: const Text('Kelola feature flags'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Akses Cepat',
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _action('Learning Path', Icons.route_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LearningPathScreen()))),
+              _action('Exam Hub', Icons.assignment_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ExamHubScreen()))),
+              _action('App Preview', Icons.open_in_new_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AppShell()))),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _card(
+          title: 'Dashboard Users',
+          child: _ad.dashboardUsers.isEmpty
+              ? const Text('Tidak ada data user.')
+              : Column(
+                  children: _ad.dashboardUsers.take(8).map((u) {
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(child: Text(u.name.isEmpty ? '?' : u.name.substring(0, 1).toUpperCase())),
+                      title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                      subtitle: Text('${u.email} • ${u.role.toUpperCase()}'),
+                      trailing: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: u.online ? Colors.green : Colors.grey),
+                      ),
+                    );
+                  }).toList(),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _featureDialog(BuildContext context, AppController app) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheet) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final defs = FeatureFlagsService.definitions;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.82),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Feature Control', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      const Text('Fitur beta default OFF.', style: TextStyle(height: 1.4)),
+                      const SizedBox(height: 12),
+                      ...defs.map((f) => SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: app.featureEnabled(f.key),
+                        onChanged: (value) async {
+                          await app.setFeatureFlag(f.key, value);
+                          if (!context.mounted) return;
+                          setSheetState(() {});
+                          if (mounted) setState(() {});
+                        },
+                        title: Row(children: [
+                          Expanded(child: Text(f.name, style: const TextStyle(fontWeight: FontWeight.w900))),
+                          if (f.beta)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.tertiaryContainer,
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                              child: Text('BETA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onTertiaryContainer)),
+                            ),
+                        ]),
+                        subtitle: Text(f.description),
+                      )),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (!mounted) return;
+    await app.reloadFeatureFlags();
   }
 
   Widget _metric(String label, String value, IconData icon, {bool live = false, bool danger = false}) {
@@ -333,15 +405,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 20,
-              color: danger
-                  ? Colors.red
-                  : live
-                      ? Colors.green
-                      : null,
-            ),
+            Icon(icon, size: 20, color: danger ? Colors.red : live ? Colors.green : null),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -352,27 +416,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      value,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        height: 1.0,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    child: Text(value, maxLines: 1, style: const TextStyle(fontSize: 24, height: 1.0, fontWeight: FontWeight.w900)),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      height: 1.0,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, height: 1.0, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -381,86 +428,207 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     );
   }
-  Widget _miniChart(BuildContext context,String title,List<int> values)=>Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:12),SizedBox(height:65,child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:values.map((v)=>Expanded(child:Padding(padding:const EdgeInsets.symmetric(horizontal:2),child:FractionallySizedBox(heightFactor:v/50,alignment:Alignment.bottomCenter,child:DecoratedBox(decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary,borderRadius:BorderRadius.circular(4))))))).toList()))])));
-  Widget _card({required String title,required Widget child})=>Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w900)),const SizedBox(height:10),child])));
-  Widget _action(String t,IconData i,VoidCallback onTap)=>ActionChip(avatar:Icon(i,size:17),label:Text(t),onPressed:onTap);
-  Widget _health(String a,String b,bool good)=>ListTile(dense:true,leading:Icon(good?Icons.check_circle:Icons.warning_amber_rounded,color:good?Colors.green:Colors.orange),title:Text(a),subtitle:Text(b));
-  Widget _crudCard(String title,String sub,IconData icon,VoidCallback onTap)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.symmetric(horizontal:16,vertical:12),child:Row(children:[CircleAvatar(child:Icon(icon)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisSize:MainAxisSize.min,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(sub,maxLines:2,overflow:TextOverflow.ellipsis)])),const SizedBox(width:8),const Icon(Icons.chevron_right)]))));
-  IconData _activityIcon(String t)=>switch(t){'user'=>Icons.person,'community'=>Icons.forum,'comment'=>Icons.comment,'report'=>Icons.report,'system'=>Icons.settings,_=>Icons.bolt};
-  String _when(DateTime? d){if(d==null)return '-';final x=DateTime.now().difference(d);if(x.inSeconds<60)return 'baru saja';if(x.inMinutes<60)return '${x.inMinutes}m lalu';if(x.inHours<24)return '${x.inHours}j lalu';return '${x.inDays}h lalu';}
-  void _toast(BuildContext c, String s) {
-    if (!c.mounted) return;
-    ScaffoldMessenger.maybeOf(c)?.showSnackBar(SnackBar(content: Text(s)));
+
+  Widget _card({required String title, required Widget child}) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
+      ),
+    );
   }
 
-  Future<void> _userDialog(BuildContext context,[AdminUser? existing]) async {final name=TextEditingController(text:existing?.name??'');final email=TextEditingController(text:existing?.email??'');String level=existing?.level??'N5';String role=existing?.role??'user';final ok=await showDialog<bool>(context:context,builder:(_)=>StatefulBuilder(builder:(c,set)=>AlertDialog(title:Text(existing==null?'Tambah user':'Edit user'),content:SingleChildScrollView(child:Column(children:[TextField(controller:name,decoration:const InputDecoration(labelText:'Nama')),TextField(controller:email,decoration:const InputDecoration(labelText:'Email')),DropdownButtonFormField<String>(value:role,items:const['user','moderator','admin'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>set(()=>role=v??'user'),decoration:const InputDecoration(labelText:'Role')),DropdownButtonFormField<String>(value:level,items:const['N5','N4','N3','N2','N1'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>set(()=>level=v??'N5'),decoration:const InputDecoration(labelText:'Level'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Simpan'))])));if(ok!=true)return;final u=AdminUser(id:existing?.id??DateTime.now().microsecondsSinceEpoch.toString(),name:name.text.trim(),email:email.text.trim(),role:role,level:level,online:existing?.online??false,createdAt:existing?.createdAt??DateTime.now()); if(existing==null)await data.addUser(u);else await data.updateUser(u);if(mounted)setState((){});}
-  Future<void> _postDialog(BuildContext context,[CommunityPost? existing]) async {final author=TextEditingController(text:existing?.author??'Admin');final text=TextEditingController(text:existing?.text??'');final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:Text(existing==null?'Buat posting':'Edit posting'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[TextField(controller:author,decoration:const InputDecoration(labelText:'Penulis')),TextField(controller:text,maxLines:5,decoration:const InputDecoration(labelText:'Isi'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Simpan'))]));if(ok!=true)return;final p=CommunityPost(id:existing?.id??DateTime.now().microsecondsSinceEpoch.toString(),author:author.text.trim(),text:text.text.trim(),likes:existing?.likes??0,comments:existing?.comments??0,status:'published',createdAt:existing?.createdAt??DateTime.now());if(existing==null)await data.addPost(p);else await data.updatePost(p);if(mounted)setState((){});}
-  Future<void> _commentDialog(BuildContext context, CommunityPost p) async {
-    final author = TextEditingController(text: 'Admin');
-    final text = TextEditingController();
+  Widget _action(String t, IconData i, VoidCallback onTap) => ActionChip(avatar: Icon(i, size: 17), label: Text(t), onPressed: onTap);
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Tambah komentar'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: author,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Penulis'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: text,
-                minLines: 2,
-                maxLines: 6,
-                textInputAction: TextInputAction.newline,
-                decoration: const InputDecoration(labelText: 'Komentar'),
-              ),
-            ],
-          ),
+  Widget _health(String a, String b, bool good) => ListTile(
+    dense: true,
+    leading: Icon(good ? Icons.check_circle : Icons.warning_amber_rounded, color: good ? Colors.green : Colors.orange),
+    title: Text(a),
+    subtitle: Text(b),
+  );
+
+  Widget _contentRow(String label, int count, IconData icon) {
+    return ListTile(
+      dense: true,
+      leading: Icon(icon, size: 20),
+      title: Text(label),
+      trailing: Text('$count', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+    );
+  }
+
+  Widget _lineChart(List<ChartPoint> points, {Color color = Colors.blue}) {
+    if (points.isEmpty) return const SizedBox.shrink();
+    final spots = <FlSpot>[];
+    for (var i = 0; i < points.length; i++) {
+      spots.add(FlSpot(i.toDouble(), points[i].count.toDouble()));
+    }
+    final maxY = points.map((p) => p.count).fold<int>(0, (a, b) => a > b ? a : b).toDouble();
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, getTitlesWidget: (v, _) => Text('${v.toInt()}', style: const TextStyle(fontSize: 10)))),
+          bottomTitles: AxisTitles(sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 22,
+            getTitlesWidget: (v, _) {
+              final i = v.toInt();
+              if (i < 0 || i >= points.length) return const SizedBox.shrink();
+              final label = points[i].day;
+              if (label.length < 10) return Text(label, style: const TextStyle(fontSize: 9));
+              return Text(label.substring(5), style: const TextStyle(fontSize: 9));
+            },
+          )),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Kirim'),
+        borderData: FlBorderData(show: false),
+        minX: 0,
+        maxX: (points.length - 1).toDouble(),
+        minY: 0,
+        maxY: maxY < 1 ? 5 : (maxY * 1.2).toDouble(),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: color,
+            barWidth: 2.5,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: color.withValues(alpha: 0.15),
+            ),
           ),
         ],
       ),
     );
+  }
 
-    if (ok != true) {
-      author.dispose();
-      text.dispose();
-      return;
-    }
+  Widget _pieChart(List<RoleCount> roles) {
+    final colors = [Colors.blue, Colors.teal, Colors.orange, Colors.purple, Colors.red];
+    final total = roles.fold<int>(0, (s, r) => s + r.count);
+    if (total == 0) return const SizedBox.shrink();
+    return Row(
+      children: [
+        Expanded(
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 28,
+              sections: roles.asMap().entries.map((entry) {
+                final i = entry.key;
+                final r = entry.value;
+                final pct = (r.count / total * 100).toStringAsFixed(0);
+                return PieChartSectionData(
+                  value: r.count.toDouble(),
+                  title: '$pct%',
+                  color: colors[i % colors.length],
+                  radius: 36,
+                  titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.white),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: roles.asMap().entries.map((entry) {
+            final i = entry.key;
+            final r = entry.value;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: colors[i % colors.length])),
+                  const SizedBox(width: 6),
+                  Text('${r.role} (${r.count})', style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
 
-    await data.addComment(
-      AdminComment(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        postId: p.id,
-        author: author.text.trim(),
-        text: text.text.trim(),
-        createdAt: DateTime.now(),
+  Widget _barChart(List<LevelCount> levels) {
+    final colors = [Colors.blue, Colors.teal, Colors.orange, Colors.purple, Colors.red];
+    final maxY = levels.map((l) => l.total).fold<int>(0, (a, b) => a > b ? a : b).toDouble();
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxY < 1 ? 5 : (maxY * 1.2).toDouble(),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, getTitlesWidget: (v, _) => Text('${v.toInt()}', style: const TextStyle(fontSize: 10)))),
+          bottomTitles: AxisTitles(sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 22,
+            getTitlesWidget: (v, _) {
+              final i = v.toInt();
+              if (i < 0 || i >= levels.length) return const SizedBox.shrink();
+              return Text(levels[i].level, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700));
+            },
+          )),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        barGroups: levels.asMap().entries.map((entry) {
+          final i = entry.key;
+          final l = entry.value;
+          return BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: l.total.toDouble(),
+                color: colors[i % colors.length],
+                width: 20,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          );
+        }).toList(),
       ),
     );
-
-    author.dispose();
-    text.dispose();
-    if (mounted) setState(() {});
   }
-  Future<void> _reportDialog(BuildContext context) async {final reporter=TextEditingController(text:'user@example.com');final message=TextEditingController();String cat='Bug';final ok=await showDialog<bool>(context:context,builder:(c)=>StatefulBuilder(builder:(c,set)=>AlertDialog(title:const Text('Buat laporan'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[TextField(controller:reporter,decoration:const InputDecoration(labelText:'Pelapor')),DropdownButtonFormField<String>(value:cat,items:const['Bug','Konten','Pembayaran','Akun','Pelanggaran','Lainnya'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>set(()=>cat=v??cat)),TextField(controller:message,maxLines:4,decoration:const InputDecoration(labelText:'Pesan'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Batal')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('Kirim'))])));if(ok!=true)return;await data.addReport(ComplaintReport(id:DateTime.now().microsecondsSinceEpoch.toString(),reporter:reporter.text.trim(),category:cat,message:message.text.trim(),createdAt:DateTime.now()));if(mounted)setState((){});}
 
-  Future<void> _userAction(BuildContext c,AdminUser u,String v)async{if(v=='edit')return _userDialog(c,u);if(v=='online')await data.setUserOnline(u.id,!u.online);if(v=='delete')await data.deleteUser(u.id);if(mounted)setState((){});}
-  Future<void> _postAction(BuildContext c,CommunityPost p,String v)async{if(v=='edit')return _postDialog(c,p);if(v=='delete')await data.deletePost(p.id);if(mounted)setState((){});}
-  Future<void> _commentAction(BuildContext c,AdminComment x,String v)async{if(v=='delete')await data.deleteComment(x.id);if(v=='hide'){x.status='hidden';await data.updateComment(x);}if(mounted)setState((){});}
-  Future<void> _reportAction(BuildContext c,ComplaintReport r,String v)async{if(v=='delete')await data.deleteReport(r.id);if(v=='resolve'){r.status='resolved';await data.updateReport(r);}if(v=='reopen'){r.status='open';await data.updateReport(r);}if(mounted)setState((){});}
-  Future<void> _logout(BuildContext context,AppController app) async {await app.logout();if(context.mounted)Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder:(_)=>const LoginScreen()),(_)=>false);}
+  IconData _activityIcon(String t) => switch (t) {
+    'user' => Icons.person,
+    'community' => Icons.forum,
+    'comment' => Icons.comment,
+    'report' => Icons.report,
+    'system' => Icons.settings,
+    _ => Icons.bolt,
+  };
+
+  String _when(DateTime? d) {
+    if (d == null) return '-';
+    final x = DateTime.now().difference(d);
+    if (x.inSeconds < 60) return 'baru saja';
+    if (x.inMinutes < 60) return '${x.inMinutes}m lalu';
+    if (x.inHours < 24) return '${x.inHours}j lalu';
+    return '${x.inDays}h lalu';
+  }
+
+  Future<void> _logout(BuildContext context, AppController app) async {
+    await app.logout();
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (_) => false,
+      );
+    }
+  }
 }

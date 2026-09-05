@@ -54,13 +54,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
       return;
     }
-    final ok = await app.loginWithEmail(_email.text, _password.text);
-    if (!mounted) return;
-    setState(() => _busy = false);
-    if (!ok) {
-      setState(() => _error = 'Akun berhasil dibuat, tetapi gagal masuk.');
-      return;
+    if (!app.isAuthenticated) {
+      final loginError = await app.loginWithEmail(_email.text, _password.text);
+      if (!mounted) return;
+      if (loginError != null) {
+        setState(() {
+          _busy = false;
+          _error = loginError;
+        });
+        return;
+      }
     }
+    setState(() => _busy = false);
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => app.onboardingComplete ? const AppShell() : const OnboardingScreen(),
@@ -87,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 12),
                   TextField(controller: _email, keyboardType: TextInputType.emailAddress, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined))),
                   const SizedBox(height: 12),
-                  TextField(controller: _password, obscureText: _obscure, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: 'Password', helperText: 'Minimal 6 karakter', prefixIcon: const Icon(Icons.lock_outline_rounded), suffixIcon: IconButton(onPressed: () => setState(() => _obscure = !_obscure), icon: Icon(_obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded)))),
+                  TextField(controller: _password, obscureText: _obscure, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: 'Password', helperText: 'Minimal 8 karakter', prefixIcon: const Icon(Icons.lock_outline_rounded), suffixIcon: IconButton(onPressed: () => setState(() => _obscure = !_obscure), icon: Icon(_obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded)))),
                   const SizedBox(height: 12),
                   TextField(controller: _confirmPassword, obscureText: _obscureConfirm, textInputAction: TextInputAction.done, onSubmitted: (_) => _busy ? null : _register(), decoration: InputDecoration(labelText: 'Konfirmasi password', prefixIcon: const Icon(Icons.lock_person_outlined), suffixIcon: IconButton(onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm), icon: Icon(_obscureConfirm ? Icons.visibility_rounded : Icons.visibility_off_rounded)))),
                   const SizedBox(height: 14),

@@ -1,0 +1,146 @@
+[
+  {
+    "id": "cu-001",
+    "category": "Etika harian",
+    "title": "Membungkuk saat menyapa",
+    "summary": "Ojigi adalah cara memberi salam, hormat, dan terima kasih.",
+    "detail": "Dalam situasi santai cukup menunduk ringan. Di sekolah, kantor, atau acara resmi, membungkuk lebih rapi menunjukkan rasa hormat.",
+    "example": "おはようございます sambil menunduk ringan kepada guru atau rekan kerja.",
+    "tips": [
+      "Jangan menatap terlalu tajam saat membungkuk.",
+      "Untuk teman dekat, anggukan kecil biasanya cukup."
+    ]
+  },
+  {
+    "id": "cu-002",
+    "category": "Bahasa sopan",
+    "title": "さん, くん, ちゃん, 先生",
+    "summary": "Akhiran nama membantu menunjukkan hubungan dan tingkat sopan santun.",
+    "detail": "さん aman untuk kebanyakan orang. くん sering untuk laki-laki muda/teman kerja junior. ちゃん untuk anak kecil atau orang dekat. 先生 untuk guru, dokter, atau ahli.",
+    "example": "田中さん、山田先生",
+    "tips": [
+      "Gunakan さん kalau ragu.",
+      "Jangan memakai ちゃん ke orang yang belum dekat."
+    ]
+  },
+  {
+    "id": "cu-003",
+    "category": "Makan",
+    "title": "いただきます dan ごちそうさま",
+    "summary": "Dua ungkapan penting sebelum dan sesudah makan.",
+    "detail": "いただきます diucapkan sebelum makan sebagai rasa syukur. ごちそうさまでした diucapkan setelah makan untuk menghargai makanan dan orang yang menyiapkannya.",
+    "example": "いただきます。ごちそうさまでした。",
+    "tips": [
+      "Ucapkan pelan juga tidak masalah.",
+      "Di rumah makan kecil, mengucapkan setelah makan terdengar sopan."
+    ]
+  },
+  {
+    "id": "cu-004",
+    "category": "Transportasi",
+    "title": "Diam di kereta",
+    "summary": "Kereta Jepang biasanya tenang dan tertib.",
+    "detail": "Orang biasanya menghindari telepon keras, musik tanpa earphone, dan percakapan terlalu keras di transportasi umum.",
+    "example": "マナーモード berarti mode senyap di ponsel.",
+    "tips": [
+      "Gunakan earphone.",
+      "Antre di garis yang tersedia di peron."
+    ]
+  },
+  {
+    "id": "cu-005",
+    "category": "Konbini",
+    "title": "Konbini sangat praktis",
+    "summary": "Minimarket Jepang menyediakan makanan, ATM, pembayaran tagihan, dan fotokopi.",
+    "detail": "Konbini seperti 7-Eleven, FamilyMart, dan Lawson sering menjadi tempat penting untuk kehidupan harian.",
+    "example": "袋はいりますか berarti Apakah perlu kantong?",
+    "tips": [
+      "Siapkan jawaban はい atau いりません.",
+      "Banyak makanan bisa dipanaskan oleh kasir."
+    ]
+  },
+  {
+    "id": "cu-006",
+    "category": "Kerja",
+    "title": "お疲れ様です",
+    "summary": "Salam kerja yang sangat sering dipakai.",
+    "detail": "Ungkapan ini menghargai usaha orang lain. Dipakai saat bertemu rekan kerja, mulai chat kantor, atau setelah pekerjaan selesai.",
+    "example": "お疲れ様です。確認します。",
+    "tips": [
+      "Aman dipakai di lingkungan kerja.",
+      "Jangan ganti dengan ご苦労様です ke atasan."
+    ]
+  },
+  {
+    "id": "cu-007",
+    "category": "Rumah",
+    "title": "Masuk rumah melepas sepatu",
+    "summary": "Sepatu dilepas di genkan sebelum masuk rumah.",
+    "detail": "Area masuk rumah disebut genkan. Biasanya ada sandal rumah yang dipakai setelah melepas sepatu.",
+    "example": "お邪魔します diucapkan saat masuk rumah orang lain.",
+    "tips": [
+      "Rapikan posisi sepatu.",
+      "Jangan menginjak area dalam dengan sepatu luar."
+    ]
+  },
+  {
+    "id": "cu-008",
+    "category": "Musim",
+    "title": "Empat musim memengaruhi bahasa",
+    "summary": "Banyak kosakata Jepang berkaitan dengan musim.",
+    "detail": "Musim semi identik dengan sakura, musim panas dengan matsuri, musim gugur dengan momiji, dan musim dingin dengan salju/onsen.",
+    "example": "桜、祭り、紅葉、雪",
+    "tips": [
+      "Belajar kosakata per musim membuat hafalan lebih mudah.",
+      "Perhatikan salam musiman di surat atau email formal."
+    ]
+  },
+  {
+    "id": "cu-009",
+    "category": "Sekolah",
+    "title": "Senpai dan kouhai",
+    "summary": "Hubungan senior-junior penting di sekolah dan organisasi.",
+    "detail": "先輩 adalah senior, 後輩 adalah junior. Bahasa dan sikap bisa berubah tergantung hubungan ini.",
+    "example": "先輩、おはようございます。",
+    "tips": [
+      "Gunakan bahasa sopan ke senior.",
+      "Amati budaya kelompok sebelum terlalu santai."
+    ]
+  },
+  {
+    "id": "cu-010",
+    "category": "Perjalanan",
+    "title": "Omiyage",
+    "summary": "Oleh-oleh sering dibawa setelah bepergian.",
+    "detail": "お土産 bukan hanya suvenir, tapi juga cara menjaga hubungan sosial di keluarga, sekolah, atau kantor.",
+    "example": "これは京都のお土産です。",
+    "tips": [
+      "Makanan kecil yang bisa dibagi biasanya cocok.",
+      "Berikan dengan dua tangan agar terlihat sopan."
+    ]
+  },
+  {
+    "id": "cu-011",
+    "category": "Uang",
+    "title": "Memberi dan menerima dengan dua tangan",
+    "summary": "Dua tangan memberi kesan sopan saat memberi uang, kartu, atau dokumen.",
+    "detail": "Di toko ada nampan kecil untuk uang. Di situ kamu meletakkan uang, bukan langsung ke tangan kasir.",
+    "example": "お願いします sambil menyerahkan dokumen.",
+    "tips": [
+      "Jangan melempar uang ke meja.",
+      "Terima kartu nama/dokumen dengan perhatian."
+    ]
+  },
+  {
+    "id": "cu-012",
+    "category": "Komunikasi",
+    "title": "Aizuchi saat mendengar",
+    "summary": "相づち adalah respons pendek seperti はい, そうですね, なるほど.",
+    "detail": "Dalam percakapan Jepang, respons kecil menunjukkan bahwa kamu mendengarkan. Namun jangan terlalu sering sampai mengganggu.",
+    "example": "はい。そうですね。なるほど。",
+    "tips": [
+      "Gunakan saat lawan bicara menjelaskan.",
+      "Untuk situasi formal, はい aman digunakan."
+    ]
+  }
+]
