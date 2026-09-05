@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/server_config.dart';
+import 'api_service.dart';
 
 class AdminAnalyticsData {
   final int totalUsers;
@@ -175,15 +176,23 @@ class AdminAnalyticsService {
     return Uri.parse('$root/$path');
   }
 
-  Map<String, String> get _headers => {
-    'Accept': 'application/json',
-    if (token.trim().isNotEmpty) 'Authorization': 'Bearer ${token.trim()}',
-  };
+  /// Gunakan statis API_ADMIN_TOKEN bila diatur saat build; bila tidak,
+  /// pakai JWT dari akun admin yang sedang login (dibaca dari secure storage).
+  Future<Map<String, String>> _headers() async {
+    final staticToken = token.trim();
+    var auth = staticToken.isNotEmpty ? staticToken : null;
+    auth ??= await ApiService().token;
+    return {
+      'Accept': 'application/json',
+      if (auth != null && auth.isNotEmpty) 'Authorization': 'Bearer $auth',
+    };
+  }
 
   Future<AdminAnalyticsData> fetchAnalytics() async {
     if (!configured) return AdminAnalyticsData.empty();
     try {
-      final r = await _client.get(_uri('/api/admin/analytics'), headers: _headers)
+      final headers = await _headers();
+      final r = await _client.get(_uri('/api/admin/analytics'), headers: headers)
           .timeout(const Duration(seconds: 8));
       if (r.statusCode != 200) return AdminAnalyticsData.empty();
       final body = jsonDecode(r.body);
