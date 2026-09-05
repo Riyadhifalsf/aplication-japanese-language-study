@@ -3,7 +3,6 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -56,6 +55,9 @@ android {
 
     buildTypes {
         release {
+            // APK lebih kecil + load native lib lebih cepat saat cold start.
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

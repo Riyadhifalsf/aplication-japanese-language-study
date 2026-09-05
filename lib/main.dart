@@ -98,8 +98,22 @@ class _BootstrapGate extends StatelessWidget {
   }
 }
 
-class _StartupSplash extends StatelessWidget {
+class _StartupSplash extends StatefulWidget {
   const _StartupSplash();
+
+  @override
+  State<_StartupSplash> createState() => _StartupSplashState();
+}
+
+class _StartupSplashState extends State<_StartupSplash> {
+  static const _logo = AssetImage('assets/branding/japanese_study_logo.png');
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-cache sekali agar logo langsung tampil tanpa kedip saat cold start.
+    precacheImage(_logo, context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,34 +122,41 @@ class _StartupSplash extends StatelessWidget {
       body: Center(
         child: Semantics(
           label: 'Japanese Study sedang dibuka',
+          image: true,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 140,
-                height: 140,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(34),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.primary.withValues(alpha: .14),
-                      blurRadius: 30,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Image.asset(
-                  'assets/branding/japanese_study_logo.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Center(
-                    child: Text(
-                      '日本語',
-                      style: TextStyle(
-                        color: colors.primary,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
+              RepaintBoundary(
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(34),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.primary.withValues(alpha: .14),
+                        blurRadius: 30,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    _logo.assetName,
+                    fit: BoxFit.contain,
+                    cacheWidth: 280,
+                    gaplessPlayback: true,
+                    filterQuality: FilterQuality.medium,
+                    semanticLabel: 'Logo Japanese Study',
+                    errorBuilder: (context, error, stackTrace) => Center(
+                      child: Text(
+                        '日本語',
+                        style: TextStyle(
+                          color: colors.primary,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                   ),

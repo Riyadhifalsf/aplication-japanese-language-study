@@ -50,6 +50,22 @@ class ApiService {
     return data;
   }
 
+  Future<Map<String, dynamic>> loginWithGoogle({
+    required String idToken,
+  }) async {
+    final r = await _client.post(_uri('/api/auth/google'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'idToken': idToken}));
+    final data = _decode(r);
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw ApiException(
+          data['message']?.toString() ?? 'Login Google gagal.');
+    }
+    final token = data['token']?.toString();
+    if (token != null && token.isNotEmpty) await _saveToken(token);
+    return data;
+  }
+
   Future<Map<String, dynamic>> me() async {
     final t=await token;
     if(t==null) throw ApiException('Belum login.');

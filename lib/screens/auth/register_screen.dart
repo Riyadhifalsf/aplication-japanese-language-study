@@ -30,6 +30,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _googleSignUp() async {
+    setState(() {
+      _busy = true;
+      _error = '';
+    });
+    try {
+      final ok = await AppScope.of(context).loginWithGoogle();
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (!ok) {
+        setState(() => _error = 'Login Google dibatalkan atau gagal.');
+        return;
+      }
+      final app = AppScope.of(context);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => app.onboardingComplete
+              ? const AppShell()
+              : const OnboardingScreen(),
+        ),
+        (_) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Google Login belum dikonfigurasi pada project ini.';
+      });
+    }
+  }
+
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
     if (_password.text != _confirmPassword.text) {
@@ -88,6 +119,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 8),
                   Text('Akunmu akan menyimpan progress belajar, streak, level, dan hasil quiz.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45)),
                   const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _googleSignUp,
+                    icon: const Icon(Icons.account_circle_rounded),
+                    label: const Text('Daftar dengan Google'),
+                    style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(54)),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(children: [
+                    Expanded(
+                        child: Divider(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant)),
+                    const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('atau daftar dengan email')),
+                    Expanded(
+                        child: Divider(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .outlineVariant)),
+                  ]),
+                  const SizedBox(height: 18),
                   TextField(controller: _name, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Nama', prefixIcon: Icon(Icons.person_outline_rounded))),
                   const SizedBox(height: 12),
                   TextField(controller: _email, keyboardType: TextInputType.emailAddress, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined))),

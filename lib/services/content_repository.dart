@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -59,17 +60,29 @@ class ContentRepository {
   Future<Map<String, List<dynamic>>?> _fetchServerData() async {
     final client = http.Client();
     try {
-      final out = <String, List<dynamic>>{};
-      for (final type in _contentTypes) {
-        final uri = Uri.parse('$serverBaseUrl/content/$type?limit=20000');
-        final response =
-            await client.get(uri).timeout(const Duration(seconds: 4));
-        if (response.statusCode != 200) return null;
-        final body = jsonDecode(response.body);
-        if (body is! Map || body['data'] is! List) return null;
-        out[type] = body['data'] as List<dynamic>;
+      Future<List<dynamic>?> fetchOne(String type) async {
+        try {
+          final uri = Uri.parse('$serverBaseUrl/content/$type?limit=20000');
+          final response =
+              await client.get(uri).timeout(const Duration(seconds: 3));
+          if (response.statusCode != 200) return null;
+          final body = jsonDecode(response.body);
+          if (body is! Map || body['data'] is! List) return null;
+          return body['data'] as List<dynamic>;
+        } catch (_) {
+          return null;
+        }
       }
-      return out;
+      // Paralel (bukan sekuensial) agar total tunggu ~3 detik, bukan ~28 detik.
+      final results =
+          await Future.wait([for (final type in _contentTypes) fetchOne(type)]);
+      for (final result in results) {
+        if (result == null) return null;
+      }
+      return {
+        for (var i = 0; i < _contentTypes.length; i++)
+          _contentTypes[i]: results[i]!,
+      };
     } catch (_) {
       return null;
     } finally {
@@ -82,10 +95,12 @@ class ContentRepository {
     return jsonDecode(bundled![index]) as List<dynamic>;
   }
 
+  /// Dipanggil saat refresh server di background selesai.
+  void Function()? onRefreshed;
+
   Future<void> _load() async {
-    final serverData = await _fetchServerData();
-    final results =
-        serverData != null ? null : await Future.wait([
+    // Bundled lokal dulu (cepat, offline) — urutan layar tidak berubah.
+    final results = await Future.wait([
       rootBundle.loadString('assets/data/kanji.json'),
       rootBundle.loadString('assets/data/vocabulary.json'),
       rootBundle.loadString('assets/data/grammar.json'),
@@ -94,6 +109,22 @@ class ContentRepository {
       rootBundle.loadString('assets/data/culture.json'),
       rootBundle.loadString('assets/data/readings.json'),
     ]);
+    await _buildFromRaw(null, results);
+    // Server menyusul diam-diam di background tanpa menahan UI.
+    unawaited(_refreshFromServer());
+  }
+
+  Future<void> _refreshFromServer() async {
+    final serverData = await _fetchServerData();
+    if (serverData == null) return;
+    await _buildFromRaw(serverData, null);
+    onRefreshed?.call();
+  }
+
+  Future<void> _buildFromRaw(
+    Map<String, List<dynamic>>? serverData,
+    List<String>? results,
+  ) async {
     kanji = _rawAt(serverData, results, 0)
         .map((e) => Kanji.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);

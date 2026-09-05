@@ -8,10 +8,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/exam_question.dart';
 import '../services/api_service.dart';
 import '../services/content_repository.dart';
+import '../services/firebase_auth_service.dart';
 import '../services/google_drive_backup_service.dart';
 import '../services/notification_service.dart';
 import '../services/home_widget_service.dart';
 import '../services/feature_flags_service.dart';
+import '../services/progress_sync_service.dart';
 import '../services/tts_service.dart';
 
 class AppController extends ChangeNotifier {
@@ -25,7 +27,31 @@ class AppController extends ChangeNotifier {
   final TtsService tts;
   final ApiService _api = ApiService();
   final GoogleDriveBackupService driveBackup;
+  // Lazy agar konstruksi controller tidak crash saat Firebase belum
+  // dikonfigurasi (tes, mode offline). Akses pertama yang butuh Firebase
+  // tetap aman karena seluruh pemakaian dibungkus try/catch.
+  FirebaseAuthService? _firebaseAuth;
+  ProgressSyncService? _syncService;
+
+  FirebaseAuthService get firebaseAuth =>
+      _firebaseAuth ??= FirebaseAuthService();
+  set firebaseAuth(FirebaseAuthService value) => _firebaseAuth = value;
+
+  ProgressSyncService get syncService => _syncService ??= ProgressSyncService();
+  set syncService(ProgressSyncService value) => _syncService = value;
+
   final ValueNotifier<int> bootstrapRevision = ValueNotifier(0);
+
+  /// UID cloud aktif (Firebase uid). Null = hanya lokal/offline.
+  String? cloudUid;
+
+  /// Status sinkronisasi untuk UI: idle/syncing/offline/error.
+  String syncStatus = 'idle';
+  DateTime? lastSyncAt;
+  String? lastSyncError;
+
+  /// Waktu update per field (epoch-ms) untuk merge LWW yang adil.
+  final Map<String, int> _fieldUpdatedAt = {};
 
   SharedPreferences? _preferences;
   Timer? _reviewSaveTimer;
@@ -121,6 +147,8 @@ class AppController extends ChangeNotifier {
   void dispose() {
     _reviewSaveTimer?.cancel();
     driveBackup.dispose();
+    final sync = _syncService;
+    if (sync != null) unawaited(sync.dispose());
     unawaited(tts.stop());
     bootstrapRevision.dispose();
     super.dispose();
@@ -185,6 +213,16 @@ class AppController extends ChangeNotifier {
     isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
     isAdmin = prefs.getBool('isAdmin') ?? false;
     authProvider = prefs.getString('authProvider') ?? '';
+    final savedUid = prefs.getString('cloudUid');
+    if (savedUid != null && savedUid.isNotEmpty) cloudUid = savedUid;
+    try {
+      final times = jsonDecode(
+          prefs.getString('progressFieldUpdatedAt') ?? '{}') as Map;
+      _fieldUpdatedAt
+        ..clear()
+        ..addAll(times.map((k, v) =>
+            MapEntry('$k', (v as num?)?.toInt() ?? 0)));
+    } catch (_) {}
     isPremium = prefs.getBool('isPremium') ?? false;
     membershipPlan =
         prefs.getString('membershipPlan') ?? (isPremium ? 'premium' : 'free');
@@ -307,6 +345,10 @@ class AppController extends ChangeNotifier {
     bootstrapRevision.value++;
     notifyListeners();
 
+    repository.onRefreshed = () {
+      bootstrapRevision.value++;
+      notifyListeners();
+    };
     await repository.load();
     contentReady = true;
     bootstrapRevision.value++;
@@ -852,28 +894,72 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Login Google via Firebase (benerin auth). Fallback ke profil Drive
+  /// lokal bila Firebase belum dikonfigurasi agar tetap bisa offline.
   Future<bool> signInWithGoogle() async {
-    final profile = await driveBackup.signIn();
-    if (profile == null) return false;
-    googleLinked = true;
-    profileName =
-        profile.name.trim().isEmpty ? profileName : profile.name.trim();
-    profileEmail = profile.email.trim();
-    profilePhotoUrl = profile.photoUrl.trim();
-    await Future.wait([
-      _preferences?.setBool('googleLinked', true) ?? Future.value(false),
-      _preferences?.setString('profileName', profileName) ??
-          Future.value(false),
-      _preferences?.setString('profileEmail', profileEmail) ??
-          Future.value(false),
-      _preferences?.setString('profilePhotoUrl', profilePhotoUrl) ??
-          Future.value(false),
-    ]);
-    notifyListeners();
-    return true;
+    try {
+      final result = await firebaseAuth.signInWithGoogle();
+      cloudUid = result.uid;
+      googleLinked = true;
+      profileName = result.displayName.trim().isEmpty
+          ? profileName
+          : result.displayName.trim();
+      profileEmail = result.email.trim();
+      profilePhotoUrl = result.photoUrl.trim();
+      // Tukar Firebase idToken jadi JWT backend (kalau server terjangkau).
+      try {
+        if (result.idToken.isNotEmpty) {
+          await _api.loginWithGoogle(idToken: result.idToken);
+        }
+      } catch (_) {
+        // Offline / server mati: sesi Firebase lokal tetap valid.
+      }
+      await Future.wait([
+        _preferences?.setBool('googleLinked', true) ?? Future.value(false),
+        _preferences?.setString('profileName', profileName) ??
+            Future.value(false),
+        _preferences?.setString('profileEmail', profileEmail) ??
+            Future.value(false),
+        _preferences?.setString('profilePhotoUrl', profilePhotoUrl) ??
+            Future.value(false),
+        _preferences?.setString('cloudUid', cloudUid ?? '') ??
+            Future.value(false),
+      ]);
+      notifyListeners();
+      unawaited(syncNow());
+      return true;
+    } catch (_) {
+      // Fallback lama: hanya profil Drive lokal (offline).
+      try {
+        final profile = await driveBackup.signIn();
+        if (profile == null) return false;
+        googleLinked = true;
+        profileName = profile.name.trim().isEmpty
+            ? profileName
+            : profile.name.trim();
+        profileEmail = profile.email.trim();
+        profilePhotoUrl = profile.photoUrl.trim();
+        await Future.wait([
+          _preferences?.setBool('googleLinked', true) ?? Future.value(false),
+          _preferences?.setString('profileName', profileName) ??
+              Future.value(false),
+          _preferences?.setString('profileEmail', profileEmail) ??
+              Future.value(false),
+          _preferences?.setString('profilePhotoUrl', profilePhotoUrl) ??
+              Future.value(false),
+        ]);
+        notifyListeners();
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
   }
 
   Future<void> disconnectGoogleProfile() async {
+    try {
+      await firebaseAuth.signOut();
+    } catch (_) {}
     await driveBackup.signOut();
     googleLinked = false;
     _preferences?.setBool('googleLinked', false);
@@ -895,6 +981,7 @@ class AppController extends ChangeNotifier {
     if (['N5', 'N4', 'N3', 'N2', 'N1'].contains(level)) {
       unlockedLevels.add(level);
       _preferences?.setStringList('unlockedLevels', unlockedLevels.toList());
+      markProgressDirty(const ['unlockedLevels']);
       notifyListeners();
     }
   }
@@ -925,6 +1012,7 @@ class AppController extends ChangeNotifier {
     _preferences?.setStringList('unlockedLevels', unlockedLevels.toList());
     _preferences?.setString(
         'placementBestScores', jsonEncode(placementBestScores));
+    markProgressDirty(const ['unlockedLevels', 'placementBestScores']);
     notifyListeners();
   }
 
@@ -1055,11 +1143,24 @@ class AppController extends ChangeNotifier {
     authProvider = 'google';
     await _saveAuthPrefs();
     notifyListeners();
+    // Tarik + gabung progress cloud agar HP baru langsung dapat data lama.
+    unawaited(syncNow());
     return true;
   }
 
   Future<void> logout() async {
     if (googleLinked) await disconnectGoogleProfile();
+    try {
+      await firebaseAuth.signOut();
+    } catch (_) {}
+    try {
+      await syncService.dispose();
+    } catch (_) {}
+    try {
+      await _api.logout();
+    } catch (_) {}
+    cloudUid = null;
+    syncStatus = 'idle';
     isAuthenticated = false;
     isAdmin = false;
     authProvider = '';
@@ -1067,8 +1168,131 @@ class AppController extends ChangeNotifier {
       _preferences?.setBool('isAuthenticated', false) ?? Future.value(false),
       _preferences?.setBool('isAdmin', false) ?? Future.value(false),
       _preferences?.remove('authProvider') ?? Future.value(false),
+      _preferences?.remove('cloudUid') ?? Future.value(false),
     ]);
     notifyListeners();
+  }
+
+  // ---------- Cloud sync offline-online (Firestore, merge per-field) ----------
+
+  /// Snapshot progress lokal dalam format sync (tanpa foto besar).
+  Map<String, dynamic> toSyncMap() {
+    final raw = jsonDecode(exportProgress()) as Map<String, dynamic>;
+    raw.remove('profilePhotoData');
+    raw.remove('format');
+    raw.remove('exportedAt');
+    raw.remove('isAuthenticated');
+    raw.remove('isAdmin');
+    return raw;
+  }
+
+  /// Terapkan hasil merge remote ke state + tulis ke SharedPreferences.
+  Future<void> applyMergedMap(Map<String, dynamic> merged) async {
+    final wrapped = Map<String, dynamic>.from(merged)
+      ..['format'] = 'japanese-study-progress-v1';
+    await importProgress(jsonEncode(wrapped));
+  }
+
+  void _touchFields(Iterable<String> keys) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final k in keys) {
+      _fieldUpdatedAt[k] = now;
+    }
+    _preferences?.setString('progressFieldUpdatedAt', jsonEncode(_fieldUpdatedAt));
+  }
+
+  /// Tandai progress kotor lalu jadwalkan push (dipanggil tiap ada perubahan).
+  void markProgressDirty([Iterable<String> keys = const ['xp']]) {
+    _touchFields(keys);
+    final uid = cloudUid ?? _currentUidOrNull();
+    if (uid == null || uid.isEmpty) {
+      syncStatus = 'offline';
+      notifyListeners();
+      return;
+    }
+    cloudUid = uid;
+    syncStatus = 'syncing';
+    notifyListeners();
+    syncService.schedulePush(() async {
+      await syncNow();
+    });
+  }
+
+  bool get _syncAvailable {
+    try {
+      return syncService.isAvailable;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? _currentUidOrNull() {
+    if (cloudUid != null && cloudUid!.isNotEmpty) return cloudUid;
+    try {
+      return firebaseAuth.currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Sinkronisasi sekarang: pull remote -> merge -> push balik.
+  /// Aman offline: gagal jaringan hanya tandai pending.
+  Future<bool> syncNow() async {
+    final uid = _currentUidOrNull();
+    if (uid == null || uid.isEmpty) {
+      syncStatus = 'offline';
+      notifyListeners();
+      return false;
+    }
+    cloudUid = uid;
+    try {
+      if (!_syncAvailable) {
+        syncStatus = 'offline';
+        lastSyncError = 'Firebase belum dikonfigurasi.';
+        notifyListeners();
+        return false;
+      }
+      syncStatus = 'syncing';
+      notifyListeners();
+      final remoteDoc = await syncService.pullRemote(uid);
+      final remoteData = (remoteDoc?['data'] as Map?)
+              ?.map((k, v) => MapEntry('$k', v)) ??
+          {};
+      final remoteTimes = (remoteDoc?['fieldUpdatedAt'] as Map?)
+              ?.map((k, v) => MapEntry('$k', (v as num?)?.toInt() ?? 0)) ??
+          {};
+      final merged = ProgressSyncService.merge(
+        toSyncMap(),
+        Map<String, dynamic>.from(remoteData),
+        localUpdatedAt: Map<String, int>.from(_fieldUpdatedAt),
+        remoteUpdatedAt: Map<String, int>.from(remoteTimes),
+      );
+      await applyMergedMap(merged);
+      await syncService.pushLocal(uid, merged,
+          fieldUpdatedAt: Map<String, int>.from(_fieldUpdatedAt));
+      lastSyncAt = DateTime.now();
+      syncStatus = syncService.syncPending ? 'offline' : 'idle';
+      lastSyncError = syncService.lastError;
+      await _preferences?.setString(
+          'lastCloudSyncAt', lastSyncAt!.toIso8601String());
+      notifyListeners();
+      // Dengarkan perubahan dari HP lain selama sesi ini.
+      syncService.listenRemote(uid, (remote) async {
+        final fresh = ProgressSyncService.merge(
+          toSyncMap(),
+          remote,
+          localUpdatedAt: Map<String, int>.from(_fieldUpdatedAt),
+          remoteUpdatedAt: Map<String, int>.from(remoteTimes),
+        );
+        await applyMergedMap(fresh);
+      });
+      return true;
+    } catch (e) {
+      syncStatus = 'error';
+      lastSyncError = e.toString();
+      notifyListeners();
+      return false;
+    }
   }
 
   void setPremiumForTesting(bool enabled) {
@@ -1568,6 +1792,14 @@ class AppController extends ChangeNotifier {
     recordActivity('study', 'Aktivitas belajar', meta: {'xp': xpGained});
     unawaited(HomeWidgetService.instance
         .update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
+    markProgressDirty(const [
+      'xp',
+      'dailyXp',
+      'streak',
+      'lastStudyDate',
+      'studyDateKeys',
+      'activityJournal',
+    ]);
     if (notify) notifyListeners();
   }
 
@@ -1578,6 +1810,7 @@ class AppController extends ChangeNotifier {
     _preferences?.setInt('xp', xp);
     _preferences?.setInt('dailyXp', dailyXp);
     recordActivity('reward', 'Bonus iklan', meta: {'xp': amount});
+    markProgressDirty(const ['xp', 'dailyXp', 'activityJournal']);
     notifyListeners();
   }
 
@@ -2038,6 +2271,7 @@ class AppController extends ChangeNotifier {
 
   void _saveStringIntMap(String key, Map<String, int> values) {
     _preferences?.setString(key, jsonEncode(values));
+    markProgressDirty([key]);
   }
 
   Set<int> _readIntSet(String key) =>
@@ -2081,6 +2315,7 @@ class AppController extends ChangeNotifier {
       key,
       values.map((e) => '$e').toList(growable: false),
     );
+    markProgressDirty([key]);
   }
 
   void _saveIntMap(String key, Map<int, int> values) {
@@ -2090,6 +2325,7 @@ class AppController extends ChangeNotifier {
         for (final entry in values.entries) '${entry.key}': entry.value,
       }),
     );
+    markProgressDirty([key]);
   }
 
   void _scheduleReviewSave() {
@@ -2110,6 +2346,14 @@ class AppController extends ChangeNotifier {
     _reviewSaveTimer?.cancel();
     _saveIntMap('kanjiReviewSteps', kanjiReviewSteps);
     _saveIntMap('kanjiNextReviewDays', kanjiNextReviewDays);
+    markProgressDirty(const [
+      'kanjiMasteryStreaks',
+      'kanjiReviewSteps',
+      'kanjiNextReviewDays',
+      'learnedKanji',
+      'masteredKanji',
+      'xp',
+    ]);
   }
 
   void _refreshDailyCounter() {

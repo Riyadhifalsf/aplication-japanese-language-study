@@ -72,7 +72,7 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             IconButton(
-                              tooltip: 'Sunting profil',
+                              tooltip: 'Pengaturan profil',
                               onPressed: () {
                                 Navigator.push(
                                   context,
@@ -82,7 +82,7 @@ class ProfileScreen extends StatelessWidget {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.edit_rounded),
+                              icon: const Icon(Icons.settings_rounded),
                             ),
                           ],
                         ),

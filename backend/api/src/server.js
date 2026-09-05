@@ -1,4 +1,5 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -124,6 +125,110 @@ app.post('/api/auth/login', authLimiter, asyncHandler(async (req, res) => {
     return res.status(401).json({ message: 'Email atau password salah.' });
   await pool.query('UPDATE app_users SET last_login_at=now() WHERE id=$1', [u.id]);
   await audit(u.id, 'login', req);
+  res.json({ token: issueToken(u), user: publicUser(u), progress: u.progress || {} });
+}));
+
+// ---------- verifikasi Google/Firebase ID token (tanpa dep baru) ----------
+const GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || '').trim();
+const cachedCerts = { keys: null, fetchedAt: 0 };
+
+const base64UrlToBuffer = (s) =>
+  Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+
+async function getGoogleCerts() {
+  if (cachedCerts.keys && Date.now() - cachedCerts.fetchedAt < 3600 * 1000) {
+    return cachedCerts.keys;
+  }
+  const r = await fetch(GOOGLE_CERTS_URL);
+  if (!r.ok) throw new Error('certs');
+  const jwks = await r.json();
+  cachedCerts.keys = jwks.keys || [];
+  cachedCerts.fetchedAt = Date.now();
+  return cachedCerts.keys;
+}
+
+async function verifyGoogleIdTokenLocal(idToken) {
+  const parts = String(idToken).split('.');
+  if (parts.length !== 3) throw new Error('format');
+  const header = JSON.parse(base64UrlToBuffer(parts[0]).toString('utf8'));
+  if (header.alg !== 'RS256' || !header.kid) throw new Error('alg');
+  const keys = await getGoogleCerts();
+  const jwk = keys.find((k) => k.kid === header.kid);
+  if (!jwk) throw new Error('kid');
+  const verifier = crypto.createVerify('RSA-SHA256');
+  verifier.update(`${parts[0]}.${parts[1]}`);
+  verifier.end();
+  const keyObject = crypto.createPublicKey({ key: jwk, format: 'jwk' });
+  if (!verifier.verify(keyObject, base64UrlToBuffer(parts[2]))) {
+    throw new Error('sig');
+  }
+  const payload = JSON.parse(base64UrlToBuffer(parts[1]).toString('utf8'));
+  const now = Math.floor(Date.now() / 1000);
+  if (!payload.sub || !payload.exp || payload.exp < now - 30) {
+    throw new Error('exp');
+  }
+  const issOk = payload.iss === 'https://accounts.google.com' ||
+    payload.iss === 'accounts.google.com';
+  if (!issOk) throw new Error('iss');
+  if (FIREBASE_PROJECT_ID && payload.aud !== FIREBASE_PROJECT_ID) {
+    throw new Error('aud');
+  }
+  return payload;
+}
+
+async function verifyGoogleIdToken(idToken) {
+  // 1. Verifikasi lokal: tanda tangan RS256 + exp + iss + aud (cepat, tahan rate-limit).
+  try {
+    const p = await verifyGoogleIdTokenLocal(idToken);
+    return { sub: p.sub, email: p.email, name: p.name, picture: p.picture };
+  } catch (_) {
+    // Lanjut ke fallback di bawah.
+  }
+  // 2. Fallback tokeninfo Google.
+  try {
+    const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+    if (!r.ok) throw new HttpError(401, 'Token Google tidak valid.');
+    const info = await r.json();
+    if (FIREBASE_PROJECT_ID && info.aud && info.aud !== FIREBASE_PROJECT_ID) {
+      throw new HttpError(401, 'Token Google tidak valid.');
+    }
+    return info;
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    throw new HttpError(502, 'Gagal verifikasi token Google.');
+  }
+}
+
+app.post('/api/auth/google', authLimiter, asyncHandler(async (req, res) => {
+  const idToken = String(req.body.idToken || req.body.id_token || '').trim();
+  if (!idToken) return res.status(400).json({ message: 'idToken wajib diisi.' });
+  const info = await verifyGoogleIdToken(idToken);
+  const subject = String(info.sub || '').trim();
+  const email = cleanEmail(info.email);
+  const name = String(info.name || email.split('@')[0] || 'Google User').slice(0, 80);
+  if (!subject || !email) return res.status(401).json({ message: 'Token Google tidak valid.' });
+  let r = await pool.query('SELECT * FROM app_users WHERE google_subject=$1', [subject]);
+  if (!r.rowCount) {
+    const byEmail = await pool.query('SELECT * FROM app_users WHERE email=$1', [email]);
+    if (byEmail.rowCount) {
+      r = await pool.query(
+        'UPDATE app_users SET google_subject=$2, display_name=COALESCE(display_name,$3), last_login_at=now() WHERE id=$1 RETURNING *',
+        [byEmail.rows[0].id, subject, name]
+      );
+    } else {
+      r = await pool.query(
+        `INSERT INTO app_users(email,display_name,role,google_subject,profile)
+         VALUES($1,$2,'user',$3,$4) RETURNING *`,
+        [email, name, subject, JSON.stringify({ photoUrl: info.picture || '' })]
+      );
+    }
+  } else {
+    await pool.query('UPDATE app_users SET last_login_at=now() WHERE id=$1', [r.rows[0].id]);
+  }
+  const u = r.rows[0];
+  if (!u.is_active) return res.status(403).json({ message: 'Akun dinonaktifkan. Hubungi admin.' });
+  await audit(u.id, 'login_google', req);
   res.json({ token: issueToken(u), user: publicUser(u), progress: u.progress || {} });
 }));
 
