@@ -66,10 +66,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Local documentation / setup notes
-*.md
+# Local setup notes
 setup_flutter.sh
 setup_flutter.bat
+
+# Internal notes
+API_MIGRATION.md
+firebase-setup.md
 
 # Payment backend secrets
 payment_api/.env
