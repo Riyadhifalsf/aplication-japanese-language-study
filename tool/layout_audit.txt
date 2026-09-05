@@ -1,0 +1,27 @@
+AUDIT STATIS APLIKASI JAPANESE STUDY
+
+Total file Dart: 99
+Flutter/Dart SDK tersedia di lingkungan audit: TIDAK
+Catatan: pemeriksaan ini bersifat statis; flutter analyze/flutter test belum dapat dijalankan tanpa SDK.
+
+Titik responsif yang diperiksa:
+- GridView dengan jumlah kolom tetap.
+- Row yang berpotensi menyempit pada layar kecil.
+- Dialog yang berpotensi overflow ketika keyboard terbuka.
+- Timer yang berpotensi memanggil setState setelah widget dibuang.
+- Dimensi widget tetap yang berpotensi terlalu kecil.
+
+lib/screens/admin/admin_dashboard_screen.dart: Row=10, Grid=1, Spacer=1, Dialog=5, Timer=1, setState=16
+lib/screens/admin/admin_studio_screen.dart: Row=0, Grid=0, Spacer=0, Dialog=0, Timer=0, setState=4
+lib/screens/admin/admin_vocabulary_screen.dart: Row=2, Grid=0, Spacer=0, Dialog=2, Timer=0, setState=6
+lib/screens/speaking/speaking_practice_screen.dart: Row=1, Grid=0, Spacer=0, Dialog=0, Timer=0, setState=2
+lib/screens/streak/streak_screen.dart: Row=2, Grid=1, Spacer=0, Dialog=0, Timer=0, setState=0
+
+Perbaikan diterapkan pada versi ini:
+- Statistik Admin memakai GridView adaptif 1/2/4 kolom dengan tinggi minimum aman.
+- Grafik Admin menumpuk vertikal pada layar sempit.
+- Dialog Admin Post/Komentar/Laporan menggunakan SingleChildScrollView.
+- Editor Kotoba membatasi lebar dialog 280..520dp dan aksi memakai Wrap.
+- Speaking menggunakan Wrap pada layar <420dp dan Expanded pada layar lebih lebar.
+- Kartu Streak berubah menjadi tata letak vertikal pada lebar <300dp.
+- Akses substring identitas Web3 dibuat aman untuk string pendek.

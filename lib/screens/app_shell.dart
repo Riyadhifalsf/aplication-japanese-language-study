@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../services/ads_service.dart';
 import '../state/app_controller.dart';
+import '../widgets/admob_banner_slot.dart';
 import '../widgets/common_widgets.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
@@ -48,6 +52,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       return;
     }
     setState(() => _index = value);
+    if (!app.isPremium) unawaited(AdsService.instance.onTabChange());
   }
 
   void _lock(BuildContext context, String feature, int xp) {
@@ -160,12 +165,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           const VerticalDivider(width: 1),
           Expanded(child: body),
         ]),
+        bottomNavigationBar: AdmobBannerSlot(hidden: app.isPremium),
       );
     }
     return Scaffold(
       body: body,
       appBar: null,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AdmobBannerSlot(hidden: app.isPremium),
+          NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _select,
         destinations: const [
@@ -189,6 +199,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               icon: Icon(Icons.person_outline_rounded),
               selectedIcon: Icon(Icons.person_rounded),
               label: 'Profil'),
+        ],
+      ),
         ],
       ),
     );

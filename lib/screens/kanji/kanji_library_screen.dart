@@ -203,7 +203,7 @@ class _KanjiLibraryScreenState extends State<KanjiLibraryScreen> {
                       child: Icon(Icons.verified_rounded),
                     ),
                     title: Text(
-                      'Uji penguasaan $quizLevel',
+                      'Latihan Kanji $quizLevel',
                       style: const TextStyle(fontWeight: FontWeight.w900),
                     ),
                     subtitle: const Text(
@@ -280,7 +280,7 @@ class _KanjiLibraryScreenState extends State<KanjiLibraryScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openMasteryQuiz(quizLevel),
         icon: const Icon(Icons.psychology_alt_rounded),
-        label: Text('Uji $quizLevel'),
+        label: Text('Latihan $quizLevel'),
       ),
     );
   }

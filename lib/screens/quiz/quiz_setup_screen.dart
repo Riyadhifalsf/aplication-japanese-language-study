@@ -78,7 +78,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(app.contentReady
                   ? (_kanjiMode
-                      ? 'Mulai tantangan kanji'
+                      ? 'Mulai latihan kanji'
                       : 'Mulai latihan kosakata')
                   : 'Menyiapkan soal…'),
               style: FilledButton.styleFrom(

@@ -56,7 +56,7 @@ class KanjiStudyScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _SectionTitle(
               title: 'Belajar Kanji',
-              subtitle: 'Mulai dari materi, review, lalu uji penguasaan.',
+              subtitle: 'Mulai dari materi, review, lalu latihan arti kanji.',
             ),
             const SizedBox(height: 12),
             _ActionGrid(
@@ -77,8 +77,8 @@ class KanjiStudyScreen extends StatelessWidget {
                   () => _open(context, const KanjiReviewScreen()),
                 ),
                 _ActionData(
-                  'Mastery Quiz',
-                  '3 benar beruntun',
+                  'Latihan Kanji',
+                  'Arti Indonesia + detail',
                   Icons.workspace_premium_rounded,
                   AppTheme.seed,
                   () => _open(

@@ -15,16 +15,26 @@ class StreakScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(30), gradient: const LinearGradient(colors: [Color(0xFFFF7A45), Color(0xFF635BFF)])),
-          child: Row(children: [
-            const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 46),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child: LayoutBuilder(builder: (context, constraints) {
+            final details = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${app.streak} hari', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
-              Text(app.streakTierName, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
+              Text(app.streakTierName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text('XP total ${app.xp} · level ${app.level}', style: const TextStyle(color: Colors.white70)),
-            ])),
-          ]),
+              Text('XP total ${app.xp} · level ${app.level}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70)),
+            ]);
+            if (constraints.maxWidth < 300) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 40),
+                const SizedBox(height: 8),
+                details,
+              ]);
+            }
+            return Row(children: [
+              const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 46),
+              const SizedBox(width: 12),
+              Expanded(child: details),
+            ]);
+          }),
         ),
         const SizedBox(height: 18),
         Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

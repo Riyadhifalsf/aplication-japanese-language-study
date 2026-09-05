@@ -1,14 +1,14 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../models/kanji.dart';
+import '../../models/vocabulary.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/common_widgets.dart';
+import 'kanji_detail_screen.dart';
 
-enum KanjiMasteryMode { meaning, reading, character }
 
 class KanjiMasteryQuizScreen extends StatefulWidget {
   const KanjiMasteryQuizScreen({
@@ -28,17 +28,10 @@ class KanjiMasteryQuizScreen extends StatefulWidget {
 class _KanjiMasteryQuizScreenState
     extends State<KanjiMasteryQuizScreen> {
   final _random = math.Random();
-  Timer? _autoNextTimer;
   final List<Kanji> _queue = [];
   List<Kanji> _targets = const [];
   List<Kanji> _choices = const [];
-  List<KanjiMasteryMode> _sessionModes = const [
-    KanjiMasteryMode.meaning,
-    KanjiMasteryMode.reading,
-    KanjiMasteryMode.character,
-  ];
   Kanji? _current;
-  KanjiMasteryMode _mode = KanjiMasteryMode.meaning;
   KanjiMasteryResult? _lastResult;
   int? _selectedId;
   int _questionNumber = 0;
@@ -49,12 +42,6 @@ class _KanjiMasteryQuizScreenState
   bool _initialized = false;
   bool _finished = false;
   bool _allLevelMastered = false;
-
-  @override
-  void dispose() {
-    _autoNextTimer?.cancel();
-    super.dispose();
-  }
 
   @override
   void didChangeDependencies() {
@@ -82,7 +69,7 @@ class _KanjiMasteryQuizScreenState
         .length;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Uji Penguasaan ${widget.level}'),
+        title: Text('Latihan Kanji ${widget.level}'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 14),
@@ -104,9 +91,9 @@ class _KanjiMasteryQuizScreenState
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Jawab kanji yang sama 3× berturut-turut dengan benar. '
-                      'Jika salah, progres kanji itu kembali ke 0 dan akan '
-                      'muncul lagi.',
+                      'Ini mode latihan, bukan ujian resmi. Pilih arti Bahasa Indonesia, '
+                      'lalu pelajari detail lengkap kanji setelah menjawab. Progres penguasaan '
+                      'tetap dicatat agar latihan N5–N1 bisa berkelanjutan.',
                       style: TextStyle(height: 1.45),
                     ),
                   ),
@@ -120,7 +107,7 @@ class _KanjiMasteryQuizScreenState
               Expanded(
                 child: _QuizStat(
                   value: '$masteredInSession/${_targets.length}',
-                  label: 'Lulus sesi',
+                  label: 'Tuntas sesi',
                   color: AppTheme.success,
                 ),
               ),
@@ -155,73 +142,42 @@ class _KanjiMasteryQuizScreenState
           const SizedBox(height: 22),
           Card(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 26),
               child: Column(
                 children: [
                   Text(
-                    _prompt,
+                    'Pilih arti Bahasa Indonesia',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      _questionText(current),
+                      current.character,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: _mode == KanjiMasteryMode.character ? 34 : 78,
-                        height: 1.1,
+                      style: const TextStyle(
+                        fontSize: 86,
+                        height: 1.05,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  if (_mode != KanjiMasteryMode.character)
-                    IconButton.filledTonal(
-                      tooltip: 'Dengarkan bacaan',
-                      onPressed: () =>
-                          app.tts.speak(current.preferredReading),
-                      icon: const Icon(Icons.volume_up_rounded),
-                    ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 18),
                   Text(
-                    'Progres kanji ini',
+                    'Latihan ${_questionNumber + 1}',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 7),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (var index = 0;
-                          index < AppController.kanjiMasteryThreshold;
-                          index++)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          width: 44,
-                          height: 8,
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          decoration: BoxDecoration(
-                            color: index < currentStreak
-                                ? AppTheme.success
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .outlineVariant,
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 6),
                   Text(
-                    '$currentStreak/${AppController.kanjiMasteryThreshold} benar berturut-turut',
+                    '$currentStreak/${AppController.kanjiMasteryThreshold} penguasaan',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -237,7 +193,6 @@ class _KanjiMasteryQuizScreenState
               padding: const EdgeInsets.only(bottom: 10),
               child: _MasteryAnswerButton(
                 text: _answerText(choice),
-                characterMode: _mode == KanjiMasteryMode.character,
                 selected: _selectedId == choice.id,
                 reveal: _selectedId != null,
                 correct: choice.id == current.id,
@@ -267,7 +222,7 @@ class _KanjiMasteryQuizScreenState
                           ? AppTheme.success
                           : Theme.of(context).colorScheme.error,
                     ),
-                    const SizedBox(width: 10),
+                            const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _feedback(current),
@@ -282,53 +237,47 @@ class _KanjiMasteryQuizScreenState
               ),
             ),
             const SizedBox(height: 10),
-            if (_lastResult!.correct)
-              const _AutoNextIndicator()
-            else
-              FilledButton.icon(
+            _KanjiRevealCard(
+              item: current,
+              examples: app.repository.studyVocabulary(current, limit: 3),
+              onSound: () => app.tts.speak(current.preferredReading),
+              onOpenDetail: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => KanjiDetailScreen(initialId: current.id),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
                 onPressed: _nextQuestion,
                 icon: const Icon(Icons.arrow_forward_rounded),
-                label: const Text('Saya sudah paham, lanjutkan'),
+                label: Text(
+                  _queue.isEmpty ? 'Lihat hasil latihan' : 'Lanjutkan latihan',
+                ),
               ),
+            ),
           ],
         ],
       ),
     );
   }
 
-  String get _prompt => switch (_mode) {
-        KanjiMasteryMode.meaning => 'Pilih arti kanji yang benar',
-        KanjiMasteryMode.reading => 'Pilih bacaan kanji yang benar',
-        KanjiMasteryMode.character => 'Pilih kanji yang sesuai dengan arti',
-      };
-
-  String _questionText(Kanji item) =>
-      _mode == KanjiMasteryMode.character
-          ? item.meaning
-          : item.character;
-
-  String _answerText(Kanji item) => switch (_mode) {
-        KanjiMasteryMode.meaning => item.meaning,
-        KanjiMasteryMode.reading => item.preferredReading,
-        KanjiMasteryMode.character => item.character,
-      };
+  String _answerText(Kanji item) => item.meaning;
 
   String _feedback(Kanji current) {
     final result = _lastResult!;
-    if (result.justMastered) {
-      return 'Benar! ${current.character} resmi dikuasai. '
-          'Kartunya sekarang diberi warna gelap di daftar kanji.';
-    }
     if (result.correct) {
-      return 'Benar! Progres ${current.character} menjadi '
-          '${result.streak}/${AppController.kanjiMasteryThreshold}.';
+      return result.justMastered
+          ? 'Benar! ${current.character} sudah mencapai target penguasaan latihan.'
+          : 'Benar! Simpan detail di bawah sebagai referensi sebelum lanjut.';
     }
-    return 'Belum tepat. Jawabannya ${_answerText(current)}. '
-        'Progres ${current.character} direset ke 0 dan akan ditanyakan lagi.';
+    return 'Belum tepat. Jawaban yang benar adalah “${_answerText(current)}”. Pelajari detailnya di bawah, lalu lanjutkan.';
   }
 
   void _startSession(AppController app) {
-    _autoNextTimer?.cancel();
     final eligible = app.repository
         .kanjiForLevel(widget.level)
         .where(
@@ -357,12 +306,6 @@ class _KanjiMasteryQuizScreenState
     _selectedId = null;
     _lastResult = null;
     _targets = candidates.take(widget.sessionSize).toList(growable: false);
-    _sessionModes = KanjiMasteryMode.values
-        .where((mode) => _distinctAnswerCount(eligible, mode) >= 4)
-        .toList(growable: false);
-    if (_sessionModes.isEmpty) {
-      _sessionModes = const [KanjiMasteryMode.character];
-    }
     _queue
       ..clear()
       ..addAll(_targets);
@@ -377,21 +320,8 @@ class _KanjiMasteryQuizScreenState
       return;
     }
     _current = _queue.removeAt(0);
-    _mode = _sessionModes[_questionNumber % _sessionModes.length];
     _choices = _buildChoices(app, _current!);
   }
-
-  int _distinctAnswerCount(
-    List<Kanji> items,
-    KanjiMasteryMode mode,
-  ) =>
-      items.map((item) {
-        return switch (mode) {
-          KanjiMasteryMode.meaning => item.meaning,
-          KanjiMasteryMode.reading => item.preferredReading,
-          KanjiMasteryMode.character => item.character,
-        };
-      }).toSet().length;
 
   List<Kanji> _buildChoices(AppController app, Kanji correct) {
     final pool = app.repository
@@ -403,7 +333,7 @@ class _KanjiMasteryQuizScreenState
         )
         .toList(growable: false);
     final stableRandom =
-        math.Random(correct.id * 97 + _questionNumber * 31 + _mode.index);
+        math.Random(correct.id * 97 + _questionNumber * 31);
     final output = <Kanji>[correct];
     final usedAnswers = <String>{_answerText(correct)};
     if (pool.isNotEmpty) {
@@ -434,7 +364,6 @@ class _KanjiMasteryQuizScreenState
       kanjiId: current.id,
       correct: correct,
     );
-    app.tts.speak(current.preferredReading);
     setState(() {
       _selectedId = choice.id;
       _lastResult = result;
@@ -451,16 +380,9 @@ class _KanjiMasteryQuizScreenState
         _queue.insert(math.min(spacing, _queue.length), current);
       }
     });
-    if (correct) {
-      _autoNextTimer?.cancel();
-      _autoNextTimer = Timer(const Duration(milliseconds: 850), () {
-        if (mounted) _nextQuestion();
-      });
-    }
   }
 
   void _nextQuestion() {
-    _autoNextTimer?.cancel();
     final app = AppScope.of(context);
     setState(() {
       _questionNumber++;
@@ -479,7 +401,7 @@ class _KanjiMasteryQuizScreenState
         )
         .length;
     return Scaffold(
-      appBar: AppBar(title: Text('Hasil Penguasaan ${widget.level}')),
+      appBar: AppBar(title: Text('Hasil Latihan ${widget.level}')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -493,7 +415,7 @@ class _KanjiMasteryQuizScreenState
               ),
               const SizedBox(height: 22),
               Text(
-                '${_targets.length} kanji dikuasai!',
+                'Latihan ${widget.level} selesai',
                 textAlign: TextAlign.center,
                 style: Theme.of(context)
                     .textTheme
@@ -518,7 +440,7 @@ class _KanjiMasteryQuizScreenState
                       Row(
                         children: [
                           Text(
-                            'Total penguasaan ${widget.level}',
+                            'Penguasaan ${widget.level}',
                             style:
                                 const TextStyle(fontWeight: FontWeight.w900),
                           ),
@@ -604,6 +526,135 @@ class _KanjiMasteryQuizScreenState
       );
 }
 
+class _KanjiRevealCard extends StatelessWidget {
+  const _KanjiRevealCard({
+    required this.item,
+    required this.examples,
+    required this.onSound,
+    required this.onOpenDetail,
+  });
+
+  final Kanji item;
+  final List<Vocabulary> examples;
+  final VoidCallback onSound;
+  final VoidCallback onOpenDetail;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppTheme.seed.withValues(alpha: .08),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Text(
+                    item.character,
+                    style: const TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Detail setelah menjawab', style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 4),
+                      Text(item.meaning, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 2),
+                      Text(item.preferredReading, style: TextStyle(color: muted, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                IconButton.filledTonal(
+                  tooltip: 'Dengarkan bacaan',
+                  onPressed: onSound,
+                  icon: const Icon(Icons.volume_up_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _DetailLine(label: 'On’yomi', value: item.onyomi.isEmpty ? '—' : item.onyomi),
+            _DetailLine(label: 'Kun’yomi', value: item.kunyomi.isEmpty ? '—' : item.kunyomi),
+            _DetailLine(label: 'Radikal', value: item.radical.isEmpty ? '—' : '${item.radical} ${item.radicalName.isEmpty ? '' : '· ${item.radicalName}'}'.trim()),
+            _DetailLine(label: 'Jumlah goresan', value: '${item.strokes}'),
+            if (examples.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text('Kosakata terkait', style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              ...examples.map((word) => Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Text(
+                      '${word.word}（${word.reading}）— ${word.meaning}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                  )),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onOpenDetail,
+                icon: const Icon(Icons.open_in_new_rounded),
+                label: const Text('Buka detail kanji lengkap'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  const _DetailLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 92,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
 class _QuizStat extends StatelessWidget {
   const _QuizStat({
     required this.value,
@@ -646,34 +697,9 @@ class _QuizStat extends StatelessWidget {
       );
 }
 
-class _AutoNextIndicator extends StatelessWidget {
-  const _AutoNextIndicator();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 17,
-              height: 17,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-            SizedBox(width: 10),
-            Text(
-              'Benar — lanjut otomatis…',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      );
-}
-
 class _MasteryAnswerButton extends StatelessWidget {
   const _MasteryAnswerButton({
     required this.text,
-    required this.characterMode,
     required this.selected,
     required this.reveal,
     required this.correct,
@@ -681,7 +707,6 @@ class _MasteryAnswerButton extends StatelessWidget {
   });
 
   final String text;
-  final bool characterMode;
   final bool selected;
   final bool reveal;
   final bool correct;
@@ -707,7 +732,7 @@ class _MasteryAnswerButton extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         style: TextStyle(
-          fontSize: characterMode ? 29 : 16,
+          fontSize: 16,
           fontWeight: FontWeight.w900,
         ),
       ),

@@ -1,0 +1,25 @@
+GITHUB PUSH CHECKLIST
+
+Safe to push
+- Flutter source: lib/, test/, assets/, web/, android/ (except generated cache).
+- Package definitions: pubspec.yaml and pubspec.lock.
+- Deployment templates: Dockerfile, docker-compose.yml, deployment/, and
+  deployment.env.example. The example must contain placeholders only.
+- Backend source and schema: backend/node_api/src/, package.json, schema.sql,
+  and Dockerfile. Never include a real .env file.
+- Automation without secrets: tool/deploy_proxmox.py and CI configuration.
+
+Never push
+- .env, .env.*, API keys, admin tokens, passwords, cookies, SSH private keys,
+  keystores (*.jks, *.keystore), Google service files, or production backups.
+- Generated folders: build/, .dart_tool/, .gradle-user-home/, android/.gradle/,
+  android/.kotlin/, node_modules/, and coverage/.
+- Logs, APK/AAB files, database dumps, or files copied from /opt on the server.
+
+Before each push, run:
+  git status --short
+  git diff --check
+  git grep -n -I -E "(OPENAI_API_KEY|password=|ADMIN_TOKEN|BEGIN.*PRIVATE KEY)"
+
+Review every line in `git status --short` before `git add`. Do not use
+`git add .` when there are unfamiliar or generated files.

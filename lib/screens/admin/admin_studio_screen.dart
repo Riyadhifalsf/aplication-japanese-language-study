@@ -16,7 +16,5 @@ class _AdminStudioScreenState extends State<AdminStudioScreen>{
     Card(child:ListTile(leading:const Icon(Icons.storage_rounded),title:const Text('Content control plane',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${app.repository.kanji.length} kanji · ${app.repository.vocabulary.length} kotoba · ${app.repository.grammar.length} bunpou · ${app.repository.readings.length} bacaan'),trailing:const Icon(Icons.chevron_right_rounded))),
     const SizedBox(height:10),
     Card(child:ListTile(leading:const Icon(Icons.timeline_rounded),title:const Text('Telemetry',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${app.activityJournal.length} event · ${app.sessionCount} sesi · ${app.totalActiveMinutes} menit aktif'))),
-    const SizedBox(height:10),
-    Card(child:ListTile(leading:const Icon(Icons.badge_rounded),title:const Text('Web3 layer',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('${app.web3CredentialCount} credential · ${app.web3Identity.substring(0,12)}…'))),
   ]); }
 }

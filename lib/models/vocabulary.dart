@@ -17,6 +17,14 @@ class Vocabulary {
   final String meaning;
   final String level;
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'word': word,
+        'reading': reading,
+        'meaning': meaning,
+        'level': level,
+      };
+
   /// Japanese does not have grammatical gender for ordinary nouns.
   /// This describes gender/register nuance when the word has one.
   VocabularyGenderUse get genderUse {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -6,18 +7,24 @@ import 'core/app_theme.dart';
 import 'screens/app_shell.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'services/api_security.dart';
+import 'services/ads_service.dart';
 import 'services/content_repository.dart';
+import 'services/firebase_bootstrap.dart';
 import 'services/notification_service.dart';
 import 'services/tts_service.dart';
 import 'state/app_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = LocalServerHttpOverrides();
   final controller = AppController(
     repository: ContentRepository(),
     tts: TtsService(),
   );
   runApp(JapaneseStudyBootstrap(controller: controller));
+  unawaited(FirebaseBootstrap.initialize());
+  unawaited(AdsService.instance.ensureInitialized());
   unawaited(controller.load());
   unawaited(NotificationService.instance.initialize());
 }

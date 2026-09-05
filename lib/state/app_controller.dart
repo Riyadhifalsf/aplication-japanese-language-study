@@ -9,7 +9,6 @@ import '../models/exam_question.dart';
 import '../services/content_repository.dart';
 import '../services/google_drive_backup_service.dart';
 import '../services/notification_service.dart';
-import '../services/web3_passport_service.dart';
 import '../services/home_widget_service.dart';
 import '../services/feature_flags_service.dart';
 import '../services/tts_service.dart';
@@ -92,8 +91,6 @@ class AppController extends ChangeNotifier {
   int totalActiveSeconds = 0;
   int sessionCount = 0;
   final List<Map<String, Object?>> activityJournal = [];
-  final List<String> web3Credentials = [];
-  String latestWeb3Credential = '';
   final Set<int> learnedKanjiIds = {};
   final Set<int> masteredKanjiIds = {};
   final Map<int, int> kanjiMasteryStreaks = {};
@@ -261,8 +258,6 @@ class AppController extends ChangeNotifier {
         }
       } catch (_) {}
     }
-    web3Credentials.addAll(prefs.getStringList('web3Credentials') ?? const []);
-    latestWeb3Credential = prefs.getString('latestWeb3Credential') ?? '';
     learnedKanjiIds.addAll(_readIntSet('learnedKanji'));
     masteredKanjiIds.addAll(_readIntSet('masteredKanji'));
     kanjiMasteryStreaks.addAll(_readIntMap('kanjiMasteryStreaks'));
@@ -365,12 +360,9 @@ class AppController extends ChangeNotifier {
   }
 
   bool featureEnabled(String key) => featureFlags[key] ?? false;
-  bool get paymentsEnabled => featureEnabled(FeatureFlagsService.payment);
   bool get communityEnabled => featureEnabled(FeatureFlagsService.community);
   bool get followersEnabled => featureEnabled(FeatureFlagsService.followers);
   bool get commentsEnabled => featureEnabled(FeatureFlagsService.comments);
-  bool get web3PassportEnabled =>
-      featureEnabled(FeatureFlagsService.web3Passport);
   bool get aiCoachEnabled => featureEnabled(FeatureFlagsService.aiCoach);
   bool get speakingEnabled => featureEnabled(FeatureFlagsService.speaking);
 
@@ -518,9 +510,6 @@ class AppController extends ChangeNotifier {
     return out;
   }
 
-  String get web3Identity => Web3PassportService.instance.identityFrom(
-      profileEmail.isNotEmpty ? profileEmail : _installIdentitySeed);
-  int get web3CredentialCount => web3Credentials.length;
   int get activeDays => studyDateKeys.length;
   int get totalActiveMinutes => totalActiveSeconds ~/ 60;
   String _installIdentitySeed = '';
@@ -704,21 +693,6 @@ class AppController extends ChangeNotifier {
       activityJournal.removeRange(0, activityJournal.length - 2000);
     }
     _preferences?.setString('activityJournal_v1', jsonEncode(activityJournal));
-  }
-
-  void issueWeb3Credential(String event,
-      {Map<String, Object?> meta = const {}}) {
-    final now = DateTime.now();
-    final credential = Web3PassportService.instance
-        .credentialId(identity: web3Identity, event: event, issuedAt: now);
-    web3Credentials.add(credential);
-    latestWeb3Credential = credential;
-    if (web3Credentials.length > 100)
-      web3Credentials.removeRange(0, web3Credentials.length - 100);
-    _preferences?.setStringList('web3Credentials', web3Credentials);
-    _preferences?.setString('latestWeb3Credential', latestWeb3Credential);
-    recordActivity('web3_credential', 'Credential Web3 diterbitkan',
-        meta: {'event': event, ...meta});
   }
 
   void markFeatureRelease(String title, String details) {
@@ -1370,7 +1344,6 @@ class AppController extends ChangeNotifier {
     }
 
     if (justMastered) {
-      issueWeb3Credential('kanji_mastery', meta: {'kanjiId': kanjiId});
       kanjiReviewSteps.remove(kanjiId);
       kanjiNextReviewDays[kanjiId] =
           _epochDay(DateTime.now()) + kanjiReviewIntervals.first;
@@ -1475,8 +1448,6 @@ class AppController extends ChangeNotifier {
         }
       }
       recordStudy(xpGained: 10, notify: false);
-      if (id.startsWith('path-'))
-        issueWeb3Credential('learning_step_complete', meta: {'stepId': id});
       notifyListeners();
     }
   }
@@ -1574,6 +1545,16 @@ class AppController extends ChangeNotifier {
     if (notify) notifyListeners();
   }
 
+  Future<void> addBonusXp(int amount) async {
+    if (amount <= 0) return;
+    xp += amount;
+    dailyXp += amount;
+    _preferences?.setInt('xp', xp);
+    _preferences?.setInt('dailyXp', dailyXp);
+    recordActivity('reward', 'Bonus iklan', meta: {'xp': amount});
+    notifyListeners();
+  }
+
   String exportProgress() => const JsonEncoder.withIndent('  ').convert({
         'format': 'japanese-study-progress-v1',
         'exportedAt': DateTime.now().toIso8601String(),
@@ -1618,8 +1599,6 @@ class AppController extends ChangeNotifier {
         'totalActiveSeconds': totalActiveSeconds,
         'sessionCount': sessionCount,
         'activityJournal': activityJournal,
-        'web3Credentials': web3Credentials,
-        'latestWeb3Credential': latestWeb3Credential,
         'quizCorrect': quizCorrect,
         'quizAnswered': quizAnswered,
         'examPoints': examPoints,
@@ -1764,12 +1743,6 @@ class AppController extends ChangeNotifier {
             .whereType<Map>()
             .map((e) => Map<String, Object?>.from(e))
             .take(2000));
-      web3Credentials
-        ..clear()
-        ..addAll((json['web3Credentials'] as List<dynamic>? ?? const [])
-            .whereType<String>());
-      latestWeb3Credential =
-          (json['latestWeb3Credential'] as String?) ?? latestWeb3Credential;
       learnedKanjiIds
         ..clear()
         ..addAll(

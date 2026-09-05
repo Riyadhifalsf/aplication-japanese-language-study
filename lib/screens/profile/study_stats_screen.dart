@@ -7,7 +7,7 @@ class StudyStatsScreen extends StatelessWidget { const StudyStatsScreen({super.k
   const SizedBox(height:12),
   Row(children:[Expanded(child:_M('Quiz','${app.quizAnswered}',Icons.quiz_rounded)),const SizedBox(width:10),Expanded(child:_M('Akurasi','$acc%',Icons.track_changes_rounded))]),
   const SizedBox(height:10),
-  Row(children:[Expanded(child:_M('Kanji dikuasai','${app.masteredKanjiIds.length}',Icons.translate_rounded)),const SizedBox(width:10),Expanded(child:_M('Web3','${app.web3CredentialCount}',Icons.badge_rounded))]),
+  Row(children:[Expanded(child:_M('Kanji dikuasai','${app.masteredKanjiIds.length}',Icons.translate_rounded)),const SizedBox(width:10),Expanded(child:_M('Hari aktif','${app.activeDays}',Icons.calendar_today_rounded))]),
   const SizedBox(height:18),const Text('Penguasaan materi',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900)),const SizedBox(height:10),for(final l in const ['N5','N4','N3','N2','N1'])_P(l,app.levelOverallMastery(l)),
   const SizedBox(height:18),const Text('Aktivitas terbaru',style:TextStyle(fontSize:19,fontWeight:FontWeight.w900)),const SizedBox(height:8),...app.activityJournal.reversed.take(24).map((e)=>ListTile(dense:true,leading:const Icon(Icons.timeline_rounded),title:Text('${e['label']??'-'}'),subtitle:Text('${e['type']??'-'} · ${e['at']??'-'}'))),
  ]));}

@@ -48,7 +48,7 @@ class QuizCenterScreen extends StatelessWidget {
       const SizedBox(height:10),
       _Grid(items:[
         _Item('Quiz Kotoba','Arti, bacaan, konteks',Icons.abc_rounded,()=>_open(context,VocabularyQuizScreen(level:level,sessionSize:15))),
-        _Item('Quiz Kanji','Penguasaan & kartu flip',Icons.translate_rounded,()=>_open(context,KanjiMasteryQuizScreen(level:level,sessionSize:15))),
+        _Item('Latihan Kanji','Kanji → arti Bahasa Indonesia',Icons.translate_rounded,()=>_open(context,KanjiMasteryQuizScreen(level:level,sessionSize:15))),
         _Item('Kanji → Hiragana','Baca kanji dengan tepat',Icons.spellcheck_rounded,()=>_open(context,const KanjiHiraganaQuizScreen())),
         _Item('Kanji Mirip','Bedakan karakter serupa',Icons.blur_on_rounded,()=>_open(context,const KanjiSimilarQuizScreen())),
         _Item('Quiz Tema','Kosakata berbasis tema',Icons.category_rounded,()=>_open(context,const KanjiThemeQuizScreen())),

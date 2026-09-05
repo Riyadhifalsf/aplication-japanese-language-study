@@ -9,8 +9,10 @@ build/
 
 # Android
 .gradle/
+.gradle-user-home/
 local.properties
 android/.gradle/
+android/.kotlin/
 android/app/debug/
 android/app/profile/
 android/app/release/
@@ -42,6 +44,9 @@ desktop.ini
 
 # Logs / temp
 *.log
+__pycache__/
+tool/flutter_build_web.err.log
+tool/flutter_build_web.log
 *.tmp
 *.bak
 *.swp

@@ -1,3 +1,5 @@
+include: package:flutter_lints/flutter.yaml
+
 analyzer:
   exclude:
     - build/**
@@ -7,7 +9,17 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
-include: package:flutter_lints/flutter.yaml
+  errors:
+    unused_import: ignore
+    unused_element: ignore
+    unused_local_variable: ignore
+    unused_element_parameter: ignore
+    unnecessary_cast: ignore
+    unnecessary_to_list_in_spreads: ignore
+    unnecessary_brace_in_string_interps: ignore
+    deprecated_member_use: ignore
+    curly_braces_in_flow_control_structures: ignore
+    depend_on_referenced_packages: ignore
 
 linter:
   rules:

@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../../services/feature_flags_service.dart';
 import '../../state/app_controller.dart';
+import '../../widgets/reward_ad_card.dart';
 import '../auth/login_screen.dart';
-import '../premium/premium_screen.dart';
 import '../streak/streak_screen.dart';
 import 'profile_settings_screen.dart';
 import 'study_stats_screen.dart';
-import 'web3_passport_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -182,54 +181,13 @@ class ProfileScreen extends StatelessWidget {
                   label: const Text('Login untuk sinkronisasi'),
                 ),
               ],
+              if (!app.isPremium) ...[
+                const SizedBox(height: 12),
+                const RewardAdCard(),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 14),
-        if (app.web3PassportEnabled) ...[
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.badge_rounded),
-              title: const Row(
-                children: [
-                  Text(
-                    'Japanese Web3 Passport',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  SizedBox(width: 6),
-                  _BetaBadge(),
-                ],
-              ),
-              subtitle: const Text(
-                'Credential pencapaian yang dapat diverifikasi.',
-              ),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const Web3PassportScreen(),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 14),
-        ],
-        if (!app.paymentsEnabled)
-          Card(
-            color: cs.surfaceContainerHighest,
-            child: const ListTile(
-              leading: Icon(Icons.lock_clock_rounded),
-              title: Text(
-                'Langganan & pembayaran',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-              subtitle: Text(
-                'Nonaktif sementara selama tahap pengujian.',
-              ),
-            ),
-          ),
         const SizedBox(height: 14),
         Card(
           color: cs.surfaceContainerHighest,
@@ -253,21 +211,6 @@ class ProfileScreen extends StatelessWidget {
             trailing: const Icon(Icons.lock_clock_rounded),
           ),
         ),
-        if (app.paymentsEnabled) ...[
-          const SizedBox(height: 14),
-          _SubscriptionCard(
-            app: app,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const PremiumScreen(),
-                ),
-              );
-            },
-          ),
-        ],
-        const SizedBox(height: 14),
         Card(
           child: ListTile(
             leading: const Icon(Icons.local_fire_department_rounded),
@@ -391,38 +334,6 @@ class _BetaBadge extends StatelessWidget {
   }
 }
 
-class _SubscriptionCard extends StatelessWidget {
-  const _SubscriptionCard({required this.app, required this.onTap});
-
-  final AppController app;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          child: Icon(
-            app.isPremium
-                ? Icons.verified_rounded
-                : Icons.workspace_premium_rounded,
-          ),
-        ),
-        title: Text(
-          app.isPremium ? 'Premium aktif' : 'Upgrade langganan',
-          style: const TextStyle(fontWeight: FontWeight.w900),
-        ),
-        subtitle: Text(
-          app.isPremium
-              ? 'Semua jalur dan fitur premium terbuka.'
-              : 'Fitur premium tersedia setelah pembayaran diaktifkan.',
-        ),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      ),
-    );
-  }
-}
 
 class _LevelProgress extends StatelessWidget {
   const _LevelProgress(this.level, this.app);

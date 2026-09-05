@@ -11,7 +11,6 @@ class ActivityHistoryScreen extends StatelessWidget {
         'study' => 'Aktivitas belajar',
         'quiz' => 'Kuis selesai',
         'kanji_mastery' => 'Kanji dikuasai',
-        'web3_credential' => 'Credential Web3 dibuat',
         _ => type,
       };
 

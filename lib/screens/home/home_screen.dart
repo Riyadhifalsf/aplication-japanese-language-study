@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/kanji.dart';
 import '../../services/study_intelligence_service.dart';
 import '../../state/app_controller.dart';
+import '../../widgets/admob_native_slot.dart';
 import '../../widgets/liquid_glass.dart';
 import '../kanji/kanji_detail_screen.dart';
 import '../notifications/notification_center_screen.dart';
@@ -81,6 +82,10 @@ class HomeScreen extends StatelessWidget {
         _StreakCard(app: app),
         const SizedBox(height: 16),
         _TodayKanjiCarousel(app: app),
+        if (!app.isPremium) ...[
+          const SizedBox(height: 16),
+          AdmobNativeSlot(hidden: false),
+        ],
         const SizedBox(height: 18),
         const Text(
           'Jalur JLPT',
