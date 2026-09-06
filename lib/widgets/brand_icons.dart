@@ -87,6 +87,34 @@ class _GoogleGPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// Lencana "terverifikasi" ala ikon verified: centang putih di lingkaran biru.
+///
+/// Dipakai untuk: akun terverifikasi di profil, email terverifikasi,
+/// dan konten resmi. Singkat, tidak berisik.
+class VerifiedBadge extends StatelessWidget {
+  const VerifiedBadge({super.key, this.size = 20, this.tooltip});
+
+  final double size;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1D9BF0),
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Icon(Icons.check_rounded, color: Colors.white, size: size * 0.62),
+    );
+    final tip = tooltip;
+    if (tip == null || tip.isEmpty) return badge;
+    return Tooltip(message: tip, child: badge);
+  }
+}
+
 /// Ikon Facebook "f" putih di lingkaran biru.
 class FacebookFIcon extends StatelessWidget {
   const FacebookFIcon({super.key, this.size = 22});

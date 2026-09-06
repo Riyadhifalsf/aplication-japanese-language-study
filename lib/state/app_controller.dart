@@ -686,6 +686,18 @@ class AppController extends ChangeNotifier {
   bool canAccessFeature(String feature) =>
       xp >= featureXpRequirement(feature) || hasFullAccess;
 
+  /// Akun dianggap terverifikasi bila login via Google atau emailnya
+  /// sudah diverifikasi Firebase. Tamu tidak pernah terverifikasi.
+  bool get isAccountVerified {
+    if (!isAuthenticated) return false;
+    if (authProvider == 'google' || googleLinked) return true;
+    try {
+      return firebaseAuth.currentUser?.emailVerified ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Tamu boleh melihat + mencoba fitur dalam mode pratinjau terbatas
   /// (kuis dibatasi [guestPreviewSessionSize] soal per sesi).
   bool get isGuestPreview => !isAuthenticated;

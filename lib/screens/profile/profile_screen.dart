@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../services/feature_flags_service.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/reward_ad_card.dart';
+import '../../widgets/brand_icons.dart';
 import '../auth/login_screen.dart';
 import '../streak/streak_screen.dart';
 import 'premium_screen.dart';
@@ -64,12 +65,26 @@ class ProfileScreen extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                app.profileName,
-                                style: const TextStyle(
-                                  fontSize: 23,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      app.profileName,
+                                      style: const TextStyle(
+                                        fontSize: 23,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (app.isAccountVerified) ...[
+                                    const SizedBox(width: 6),
+                                    const VerifiedBadge(
+                                      tooltip: 'Akun terverifikasi',
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             IconButton(

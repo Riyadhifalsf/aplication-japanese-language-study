@@ -37,7 +37,7 @@ class GuestPreviewBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Kamu bisa lihat & coba semua latihan, ${AppController.guestPreviewSessionSize} soal per sesi. Masuk untuk sesi penuh + simpan progress.',
+                    'Lihat & coba semua latihan · ${AppController.guestPreviewSessionSize} soal per sesi. Masuk untuk sesi penuh.',
                     style: TextStyle(
                       fontSize: 12,
                       color: cs.onSecondaryContainer,

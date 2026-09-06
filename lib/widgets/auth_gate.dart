@@ -16,8 +16,8 @@ Future<bool> requireLogin(BuildContext context, {String feature = 'fitur ini'}) 
     builder: (dialogContext) => AlertDialog(
       title: const Text('Login dulu yuk'),
       content: Text(
-        '$feature khusus untuk akun terdaftar. Masuk untuk menyimpan '
-        'progress-mu, atau daftar akun baru gratis.',
+        '$feature khusus akun terdaftar. Masuk untuk simpan progress, '
+        'atau daftar gratis.',
       ),
       actions: [
         TextButton(
