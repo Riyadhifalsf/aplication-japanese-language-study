@@ -43,35 +43,14 @@ class HomeScreen extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${app.homeGreeting}, ${app.homeDisplayName}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _homeSubheading(today),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
             Tooltip(
               message: 'Buka profil',
               child: GestureDetector(
                 onTap: onOpenProfile,
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: 12),
                   child: CircleAvatar(
-                    radius: 22,
+                    radius: 24,
                     backgroundColor: Theme.of(context)
                         .colorScheme
                         .primaryContainer,
@@ -91,6 +70,27 @@ class HomeScreen extends StatelessWidget {
                         : null,
                   ),
                 ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${app.homeGreeting}, ${app.homeDisplayName}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _homeSubheading(today),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
             Badge(

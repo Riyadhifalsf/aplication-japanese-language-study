@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 mkdir -p /etc/nginx/certs
-IP="${DOMAIN:-192.168.100.11}"
+IP="${DOMAIN:-192.168.100.230}"
 if [ ! -f /etc/nginx/certs/cert.pem ] || [ ! -f /etc/nginx/certs/key.pem ]; then
   echo "Generating self-signed certificate for ${IP}..."
   openssl req -x509 -nodes -newkey rsa:3072 -days 3650 \
