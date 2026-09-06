@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/admin_models.dart';
+import '../models/app_notification.dart';
 import '../models/exam_question.dart';
 import '../services/api_service.dart';
+import '../services/app_changelog.dart';
 import '../services/content_repository.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_bootstrap.dart';
@@ -95,6 +98,8 @@ class AppController extends ChangeNotifier {
   final Map<String, int> placementBestScores = {};
   String activeRoadmapStepId = 'n5';
   bool hasUnreadNotifications = true;
+  final List<AppNotification> inbox = [];
+  final Set<String> _seenAnnouncementIds = {};
   bool reviewReminderEnabled = true;
   int reviewReminderHour = 20;
   int reviewReminderMinute = 0;
@@ -242,6 +247,22 @@ class AppController extends ChangeNotifier {
             premiumUntil!.isAfter(DateTime.now()));
     activeRoadmapStepId = prefs.getString('activeRoadmapStepId') ?? 'n5';
     hasUnreadNotifications = prefs.getBool('hasUnreadNotifications') ?? true;
+    _seenAnnouncementIds
+      ..clear()
+      ..addAll(prefs.getStringList('seenAnnouncementIds') ?? const []);
+    inbox
+      ..clear()
+      ..addAll(AppNotification.pruneExpired(
+        (prefs.getStringList('inbox_v1') ?? const []).map((raw) {
+          try {
+            return AppNotification.fromJson(
+                Map<String, dynamic>.from(jsonDecode(raw) as Map));
+          } catch (_) {
+            return AppNotification(id: '', title: '', body: '');
+          }
+        }).toList(),
+      ));
+    inbox.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     reviewReminderEnabled = prefs.getBool('reviewReminderEnabled') ?? true;
     reviewReminderHour = prefs.getInt('reviewReminderHour') ?? 20;
     reviewReminderMinute = prefs.getInt('reviewReminderMinute') ?? 0;
@@ -363,6 +384,7 @@ class AppController extends ChangeNotifier {
       weekdays: reviewReminderWeekdays,
       dueCount: dueKanjiReviewCount,
     ));
+    unawaited(checkAppUpdateNotes());
   }
 
   int get level => xp ~/ 500 + 1;
@@ -388,6 +410,13 @@ class AppController extends ChangeNotifier {
     if (h >= 5 && h < 12) return 'Okaerinasai';
     if (h >= 12 && h < 18) return 'Irasshaimase';
     return 'Konbanwa';
+  }
+
+  /// Nama yang disapa di beranda: tamu (belum login) dipanggil Okyaku-sama.
+  String get homeDisplayName {
+    if (!isAuthenticated) return 'Okyaku-sama';
+    final name = profileName.trim();
+    return name.isEmpty ? 'Tamu' : name;
   }
 
   bool get hasNeverStudiedJapanese =>
@@ -1415,10 +1444,117 @@ class AppController extends ChangeNotifier {
   }
 
   void markNotificationsRead() {
-    if (!hasUnreadNotifications) return;
+    var changed = hasUnreadNotifications;
     hasUnreadNotifications = false;
     _preferences?.setBool('hasUnreadNotifications', false);
+    for (final item in inbox) {
+      if (!item.read) {
+        item.read = true;
+        changed = true;
+      }
+    }
+    if (changed) {
+      unawaited(_persistInbox());
+      notifyListeners();
+    }
+  }
+
+  Future<void> _persistInbox() async {
+    final prefs = _preferences;
+    if (prefs == null) return;
+    await prefs.setStringList(
+      'inbox_v1',
+      inbox.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  /// Tambah notifikasi ke kotak masuk (dedupe per id, tanpa hapus manual;
+  /// kedaluwarsa otomatis 90 hari).
+  void pushInboxNotification({
+    required String id,
+    required String title,
+    required String body,
+    String kind = 'info',
+    DateTime? createdAt,
+  }) {
+    if (id.isEmpty || title.trim().isEmpty) return;
+    if (inbox.any((e) => e.id == id)) return;
+    inbox.insert(
+      0,
+      AppNotification(
+        id: id,
+        title: title.trim(),
+        body: body.trim(),
+        kind: kind,
+        createdAt: createdAt,
+      ),
+    );
+    // Batasi 200 entri agar penyimpanan lokal tetap ringan.
+    if (inbox.length > 200) inbox.removeRange(200, inbox.length);
+    hasUnreadNotifications = true;
+    _preferences?.setBool('hasUnreadNotifications', true);
+    unawaited(_persistInbox());
     notifyListeners();
+  }
+
+  /// Sinkronkan pengumuman admin menjadi notifikasi otomatis.
+  ///
+  /// Pemakaian pertama menandai semua yang sudah ada sebagai "terlihat"
+  /// tanpa notifikasi (agar tidak banjir); pengumuman BARU setelah itu
+  /// otomatis masuk kotak masuk.
+  void syncAnnouncementInbox(List<AdminAnnouncement> announcements) {
+    final prefs = _preferences;
+    if (prefs == null) return;
+    final firstRun = !prefs.containsKey('seenAnnouncementIds');
+    var added = false;
+    for (final a in announcements) {
+      if (!a.active || a.id.isEmpty) continue;
+      if (_seenAnnouncementIds.add(a.id)) {
+        added = true;
+        if (!firstRun) {
+          pushInboxNotification(
+            id: 'ann-${a.id}',
+            title: a.title.isEmpty ? 'Pengumuman baru' : a.title,
+            body: a.body,
+            kind: 'pengumuman',
+            createdAt: a.createdAt,
+          );
+        }
+      }
+    }
+    if (added || firstRun) {
+      unawaited(prefs.setStringList(
+          'seenAnnouncementIds', _seenAnnouncementIds.toList()));
+    }
+  }
+
+  /// Cek catatan perubahan bawaan aplikasi; tiap versi/konten baru otomatis
+  /// menjadi notifikasi "update".
+  Future<void> checkAppUpdateNotes() async {
+    final prefs = _preferences;
+    if (prefs == null) return;
+    final seen = prefs.getString('lastChangelogVersion') ?? '';
+    if (seen.isEmpty) {
+      await prefs.setString(
+          'lastChangelogVersion', AppChangelog.latestVersion);
+      return;
+    }
+    final fresh = AppChangelog.newerThan(seen);
+    for (final entry in fresh) {
+      pushInboxNotification(
+        id: 'changelog-${entry.version}',
+        title: entry.title,
+        body: entry.body,
+        kind: 'update',
+      );
+    }
+    if (fresh.isNotEmpty) {
+      await prefs.setString(
+          'lastChangelogVersion', AppChangelog.latestVersion);
+    } else if (seen != AppChangelog.latestVersion) {
+      await prefs.setString(
+          'lastChangelogVersion', AppChangelog.latestVersion);
+    }
   }
 
   void resetNotificationsForTesting() {

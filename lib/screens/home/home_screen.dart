@@ -29,6 +29,14 @@ class HomeScreen extends StatelessWidget {
     final app = AppScope.of(context);
     final recommendation = StudyIntelligenceService.recommend(app);
     final today = DateTime.now();
+    ImageProvider? headerPhoto;
+    try {
+      headerPhoto = app.profilePhotoData.isNotEmpty
+          ? MemoryImage(base64Decode(app.profilePhotoData))
+          : null;
+    } catch (_) {
+      headerPhoto = null;
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 34),
@@ -40,7 +48,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${app.homeGreeting}, ${app.profileName}',
+                    '${app.homeGreeting}, ${app.homeDisplayName}',
                     style: Theme.of(context)
                         .textTheme
                         .headlineSmall
@@ -54,6 +62,35 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            Tooltip(
+              message: 'Buka profil',
+              child: GestureDetector(
+                onTap: onOpenProfile,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
+                    backgroundImage: headerPhoto,
+                    child: headerPhoto == null
+                        ? (app.isAuthenticated
+                            ? Text(
+                                app.homeDisplayName.isEmpty
+                                    ? '日'
+                                    : app.homeDisplayName
+                                        .substring(0, 1)
+                                        .toUpperCase(),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w900),
+                              )
+                            : const Icon(Icons.person_rounded))
+                        : null,
+                  ),
+                ),
               ),
             ),
             Badge(
