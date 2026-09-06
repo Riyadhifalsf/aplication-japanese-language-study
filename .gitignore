@@ -76,3 +76,6 @@ firebase-setup.md
 
 # Payment backend secrets
 payment_api/.env
+
+# Local-only checklist (never push)
+checklist-konfigurasi.txt
