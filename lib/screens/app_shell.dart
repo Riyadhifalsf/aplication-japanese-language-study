@@ -141,19 +141,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           reverseDuration: disableAnimations
               ? Duration.zero
               : const Duration(milliseconds: 180),
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: CurvedAnimation(
+          // Pindah tab: fade + scale super halus. TANPA slide horizontal
+          // (slide tiap ganti tab terlihat seperti bug, bukan animasi).
+          transitionBuilder: (child, animation) {
+            final curved = CurvedAnimation(
               parent: animation,
               curve: Curves.easeOutCubic,
-            ),
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(.015, 0),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
-          ),
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: .985, end: 1).animate(curved),
+                child: child,
+              ),
+            );
+          },
           child: KeyedSubtree(key: ValueKey(_index), child: _page(app)),
         ),
       ),

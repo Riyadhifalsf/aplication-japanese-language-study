@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/exam_question.dart';
 import '../../state/app_controller.dart';
 import '../../services/feature_flags_service.dart';
+import '../../widgets/entrance.dart';
 import '../../widgets/guest_preview_banner.dart';
 import '../exams/exam_hub_screen.dart';
 import '../kana/kana_screen.dart';
@@ -47,7 +48,10 @@ class QuizCenterScreen extends StatelessWidget {
     return ListView(padding: const EdgeInsets.fromLTRB(18, 16, 18, 32), children: [
       const GuestPreviewBanner(),
       if (app.isGuestPreview) const SizedBox(height: 10),
-      _Section(title:'Latihan utama', subtitle:'Pilih latihan yang ingin kamu kerjakan sekarang.'),
+      Entrance(
+        keyName: 'quiz-header',
+        child: _Section(title:'Latihan utama', subtitle:'Pilih latihan yang ingin kamu kerjakan sekarang.'),
+      ),
       const SizedBox(height:10),
       _Grid(items:[
         _Item('Quiz Kotoba','Arti, bacaan, konteks',Icons.abc_rounded,()=>_open(context,VocabularyQuizScreen(level:level,sessionSize:app.cappedSessionSize(15)))),

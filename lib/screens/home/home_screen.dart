@@ -6,6 +6,7 @@ import '../../models/kanji.dart';
 import '../../services/study_intelligence_service.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/admob_native_slot.dart';
+import '../../widgets/entrance.dart';
 import '../../widgets/liquid_glass.dart';
 import '../kanji/kanji_detail_screen.dart';
 import '../notifications/notification_center_screen.dart';
@@ -41,16 +42,58 @@ class HomeScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 34),
       children: [
-        Row(
-          children: [
-            Tooltip(
-              message: 'Buka profil',
-              child: GestureDetector(
-                onTap: onOpenProfile,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
+        Entrance(
+          keyName: 'home-header',
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${app.homeGreeting}, ${app.homeDisplayName}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _homeSubheading(today),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Badge(
+                isLabelVisible:
+                    app.hasUnreadNotifications || app.dueKanjiReviewCount > 0,
+                label: Text(
+                  app.dueKanjiReviewCount > 99
+                      ? '99+'
+                      : '${app.dueKanjiReviewCount}',
+                ),
+                child: IconButton.filledTonal(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationCenterScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_rounded),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Buka profil',
+                child: GestureDetector(
+                  onTap: onOpenProfile,
                   child: CircleAvatar(
-                    radius: 24,
+                    radius: 22,
                     backgroundColor: Theme.of(context)
                         .colorScheme
                         .primaryContainer,
@@ -71,54 +114,21 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${app.homeGreeting}, ${app.homeDisplayName}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _homeSubheading(today),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Badge(
-              isLabelVisible:
-                  app.hasUnreadNotifications || app.dueKanjiReviewCount > 0,
-              label: Text(
-                app.dueKanjiReviewCount > 99
-                    ? '99+'
-                    : '${app.dueKanjiReviewCount}',
-              ),
-              child: IconButton.filledTonal(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const NotificationCenterScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.notifications_rounded),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 14),
-        _StreakCard(app: app),
+        Entrance(
+          keyName: 'home-streak',
+          delay: const Duration(milliseconds: 70),
+          child: _StreakCard(app: app),
+        ),
         const SizedBox(height: 16),
-        _TodayKanjiCarousel(app: app),
+        Entrance(
+          keyName: 'home-kanji',
+          delay: const Duration(milliseconds: 140),
+          child: _TodayKanjiCarousel(app: app),
+        ),
         if (!app.isPremium) ...[
           const SizedBox(height: 16),
           AdmobNativeSlot(hidden: false),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/entrance.dart';
 import '../../widgets/guest_preview_banner.dart';
 import 'kanji_hiragana_quiz_screen.dart';
 import 'kanji_library_screen.dart';
@@ -41,7 +42,7 @@ class KanjiStudyScreen extends StatelessWidget {
           children: [
             const GuestPreviewBanner(),
             if (app.isGuestPreview) const SizedBox(height: 12),
-            _Header(app: app),
+            Entrance(keyName: 'kanji-header', child: _Header(app: app)),
             const SizedBox(height: 16),
             _HeroCard(
               level: targetLevel,
