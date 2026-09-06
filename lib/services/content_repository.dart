@@ -144,10 +144,17 @@ class ContentRepository {
   }
 
   Future<void> _refreshFromServer() async {
+    await refreshFromServer();
+  }
+
+  /// Paksa sinkron dari server (dipakai unduhan paket offline).
+  /// true bila server memberi data segar; false = tetap pakai bundel.
+  Future<bool> refreshFromServer() async {
     final serverData = await _fetchServerData();
-    if (serverData == null) return;
+    if (serverData == null) return false;
     await _buildFromRaw(serverData, null);
     onRefreshed?.call();
+    return true;
   }
 
   Future<void> _buildFromRaw(

@@ -30,8 +30,11 @@ class ProgressSyncService {
 
   bool get isAvailable => FirebaseBootstrap.isAvailable;
 
-  DocumentReference<Map<String, dynamic>> _doc(String uid) =>
-      _firestore.collection('users').doc(uid).collection('progress').doc(docPath);
+  DocumentReference<Map<String, dynamic>> _doc(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('progress')
+      .doc(docPath);
 
   /// Gabung dua snapshot progress. [localUpdatedAt]/[remoteUpdatedAt] berisi
   /// epoch-ms per field bila ada.
@@ -72,7 +75,10 @@ class ProgressSyncService {
     Map<String, dynamic> maxMap(String key) {
       final a = (l[key] as Map?) ?? const {};
       final b = (r[key] as Map?) ?? const {};
-      final keys = <String>{...a.keys.map((e) => '$e'), ...b.keys.map((e) => '$e')};
+      final keys = <String>{
+        ...a.keys.map((e) => '$e'),
+        ...b.keys.map((e) => '$e')
+      };
       final merged = <String, dynamic>{};
       for (final k in keys) {
         final av = (a[k] as num?) ?? (a[int.tryParse(k)] as num?);
@@ -92,24 +98,78 @@ class ProgressSyncService {
     }
 
     // Counter: ambil yang terbesar agar XP tidak hilang saat ganti HP.
-    for (final k in ['xp', 'dailyXp', 'streak', 'quizCorrect', 'quizAnswered', 'examPoints', 'totalActiveSeconds', 'sessionCount']) {
+    for (final k in [
+      'xp',
+      'dailyXp',
+      'streak',
+      'quizCorrect',
+      'quizAnswered',
+      'examPoints',
+      'totalActiveSeconds',
+      'sessionCount'
+    ]) {
       out[k] = maxNum(k);
     }
 
     // Set ID: union.
-    for (final k in ['learnedKanji', 'masteredKanji', 'favoriteKanji', 'masteredVocabulary', 'completedGrammar', 'completedLearningSteps', 'completedPhrases', 'completedSentences', 'completedCulture', 'unlockedLevels', 'studyDateKeys']) {
+    for (final k in [
+      'learnedKanji',
+      'masteredKanji',
+      'favoriteKanji',
+      'masteredVocabulary',
+      'completedGrammar',
+      'completedLearningSteps',
+      'completedPhrases',
+      'completedSentences',
+      'completedCulture',
+      'unlockedLevels',
+      'studyDateKeys'
+    ]) {
       out[k] = unionList(k);
     }
 
     // Best score / SRS: max per key.
-    for (final k in ['placementBestScores', 'examBestScores', 'kanjiMasteryStreaks', 'kanjiReviewSteps', 'kanjiNextReviewDays']) {
+    for (final k in [
+      'placementBestScores',
+      'examBestScores',
+      'kanjiMasteryStreaks',
+      'kanjiReviewSteps',
+      'kanjiNextReviewDays'
+    ]) {
       out[k] = maxMap(k);
     }
 
     // Config/profil: last-write-wins.
-    for (final k in ['profileName', 'profileEmail', 'profilePhotoUrl', 'onboardingComplete', 'studyGoal', 'selfLevel', 'dailyStudyMinutes', 'selectedStudyLevel', 'learningMode', 'appLanguage', 'ttsGender', 'reviewIntervalDays', 'membershipPlan', 'membershipTier', 'activeRoadmapStepId', 'lastStudyDate', 'todayKanjiMode', 'todayKanjiPinnedId']) {
+    for (final k in [
+      'profileName',
+      'profileEmail',
+      'profilePhotoUrl',
+      'onboardingComplete',
+      'studyGoal',
+      'selfLevel',
+      'dailyStudyMinutes',
+      'selectedStudyLevel',
+      'learningMode',
+      'appLanguage',
+      'ttsGender',
+      'reviewIntervalDays',
+      'membershipPlan',
+      'membershipTier',
+      'activeRoadmapStepId',
+      'lastStudyDate',
+      'todayKanjiMode',
+      'todayKanjiPinnedId'
+    ]) {
       out[k] = lastWriteWins(k, l[k] ?? r[k]);
     }
+
+    // Learning engine: gabung per-record, bukan LWW untuk seluruh profil.
+    // Ini mencegah hasil review pada HP lain menghapus mistake/mastery yang
+    // sudah dicatat lokal ketika perangkat kembali online.
+    out['learningEngineState'] = _mergeLearningEngineState(
+      l['learningEngineState'],
+      r['learningEngineState'],
+    );
 
     // Journal: gabung unik по id/waktu, cap 2000 terbaru.
     final journal = <String, Map<String, Object?>>{};
@@ -126,6 +186,98 @@ class ProgressSyncService {
 
     out['updatedAt'] = DateTime.now().toIso8601String();
     return out;
+  }
+
+  static Map<String, dynamic> _mergeLearningEngineState(
+    dynamic local,
+    dynamic remote,
+  ) {
+    final l =
+        local is Map ? Map<String, dynamic>.from(local) : <String, dynamic>{};
+    final r =
+        remote is Map ? Map<String, dynamic>.from(remote) : <String, dynamic>{};
+
+    Map<String, dynamic> recordsFor(String key) {
+      final left = l[key] is Map
+          ? Map<String, dynamic>.from(l[key] as Map)
+          : <String, dynamic>{};
+      final right = r[key] is Map
+          ? Map<String, dynamic>.from(r[key] as Map)
+          : <String, dynamic>{};
+      final result = <String, dynamic>{};
+      for (final id in {...left.keys, ...right.keys}) {
+        final a = left[id];
+        final b = right[id];
+        if (a is! Map) {
+          result[id] = b;
+          continue;
+        }
+        if (b is! Map) {
+          result[id] = a;
+          continue;
+        }
+        final aMap = Map<String, dynamic>.from(a);
+        final bMap = Map<String, dynamic>.from(b);
+        final newer =
+            _recordUpdatedAt(bMap) > _recordUpdatedAt(aMap) ? bMap : aMap;
+        final older = identical(newer, aMap) ? bMap : aMap;
+        final merged = <String, dynamic>{...older, ...newer};
+
+        // Nilai monotonik tidak boleh mundur saat dua snapshot berkonflik.
+        if (key == 'mastery') {
+          merged['attemptCount'] =
+              _maxNumber(aMap['attemptCount'], bMap['attemptCount']);
+          merged['correctCount'] =
+              _maxNumber(aMap['correctCount'], bMap['correctCount']);
+        }
+        if (key == 'mistakes') {
+          merged['mistakeCount'] =
+              _maxNumber(aMap['mistakeCount'], bMap['mistakeCount']);
+        }
+        if (key == 'lessonProgress') {
+          merged['completed'] =
+              aMap['completed'] == true || bMap['completed'] == true;
+          final phases = <Object?>{
+            ...(aMap['completedPhases'] as List? ?? const []),
+            ...(bMap['completedPhases'] as List? ?? const []),
+          }.toList();
+          merged['completedPhases'] = phases;
+        }
+        result[id] = merged;
+      }
+      return result;
+    }
+
+    final lessonProgress = recordsFor('lessonProgress');
+    String? currentLesson;
+    var newest = -1;
+    for (final record in lessonProgress.values.whereType<Map>()) {
+      final time = _recordUpdatedAt(Map<String, dynamic>.from(record));
+      if (time > newest && record['completed'] != true) {
+        newest = time;
+        currentLesson = record['lessonId'] as String?;
+      }
+    }
+    currentLesson ??= (l['currentLessonId'] ?? r['currentLessonId']) as String?;
+    return {
+      'version': 1,
+      'currentLessonId': currentLesson,
+      'mastery': recordsFor('mastery'),
+      'reviews': recordsFor('reviews'),
+      'mistakes': recordsFor('mistakes'),
+      'lessonProgress': lessonProgress,
+    };
+  }
+
+  static int _recordUpdatedAt(Map<String, dynamic> record) =>
+      DateTime.tryParse('${record['updatedAt'] ?? ''}')
+          ?.millisecondsSinceEpoch ??
+      0;
+
+  static int _maxNumber(Object? a, Object? b) {
+    final left = a is num ? a.toInt() : int.tryParse('$a') ?? 0;
+    final right = b is num ? b.toInt() : int.tryParse('$b') ?? 0;
+    return left >= right ? left : right;
   }
 
   static Map<String, int> _fieldTimes(Map<String, dynamic>? raw) {
@@ -169,7 +321,8 @@ class ProgressSyncService {
     }
   }
 
-  Future<bool> pushLocal(String uid, Map<String, dynamic> localData, {Map<String, int>? fieldUpdatedAt}) async {
+  Future<bool> pushLocal(String uid, Map<String, dynamic> localData,
+      {Map<String, int>? fieldUpdatedAt}) async {
     if (!isAvailable) {
       syncPending = true;
       return false;
@@ -181,12 +334,14 @@ class ProgressSyncService {
         localData,
         (remoteData['data'] as Map?)?.map((k, v) => MapEntry('$k', v)) ?? {},
         localUpdatedAt: fieldUpdatedAt,
-        remoteUpdatedAt: _fieldTimes((remoteData['fieldUpdatedAt'] as Map?)?.map((k, v) => MapEntry('$k', v))),
+        remoteUpdatedAt: _fieldTimes((remoteData['fieldUpdatedAt'] as Map?)
+            ?.map((k, v) => MapEntry('$k', v))),
       );
       await _doc(uid).set({
         'data': merged,
         'fieldUpdatedAt': {
-          ..._fieldTimes((remoteData['fieldUpdatedAt'] as Map?)?.map((k, v) => MapEntry('$k', v))),
+          ..._fieldTimes((remoteData['fieldUpdatedAt'] as Map?)
+              ?.map((k, v) => MapEntry('$k', v))),
           ...(fieldUpdatedAt ?? {}),
           'updatedAt': DateTime.now().millisecondsSinceEpoch,
         },
@@ -205,7 +360,8 @@ class ProgressSyncService {
 
   /// Jadwalkan push dengan debounce agar tiap ada perubahan lokal tidak
   /// langsung spam Firestore. Cocok untuk "sinkronisasi terus".
-  void schedulePush(Future<void> Function() push, {Duration delay = const Duration(seconds: 3)}) {
+  void schedulePush(Future<void> Function() push,
+      {Duration delay = const Duration(seconds: 3)}) {
     _debounce?.cancel();
     _debounce = Timer(delay, () async {
       try {
@@ -218,13 +374,15 @@ class ProgressSyncService {
   }
 
   /// Dengarkan perubahan remote agar dua HP online bisa saling update.
-  void listenRemote(String uid, void Function(Map<String, dynamic> remoteData) onRemote) {
+  void listenRemote(
+      String uid, void Function(Map<String, dynamic> remoteData) onRemote) {
     if (!isAvailable) return;
     _subscription?.cancel();
     _subscription = _doc(uid).snapshots().listen((snap) {
       final data = snap.data();
       if (data == null) return;
-      final inner = (data['data'] as Map?)?.map((k, v) => MapEntry('$k', v)) ?? {};
+      final inner =
+          (data['data'] as Map?)?.map((k, v) => MapEntry('$k', v)) ?? {};
       onRemote(Map<String, dynamic>.from(inner));
     }, onError: (Object e) {
       lastError = e.toString();

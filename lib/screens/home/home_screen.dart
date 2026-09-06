@@ -12,6 +12,7 @@ import '../kanji/kanji_detail_screen.dart';
 import '../notifications/notification_center_screen.dart';
 import '../profile/study_stats_screen.dart';
 import '../study/learning_path_screen.dart';
+import '../study/today_learning_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
@@ -94,9 +95,8 @@ class HomeScreen extends StatelessWidget {
                   onTap: onOpenProfile,
                   child: CircleAvatar(
                     radius: 22,
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .primaryContainer,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.primaryContainer,
                     backgroundImage: headerPhoto,
                     child: headerPhoto == null
                         ? (app.isAuthenticated
@@ -118,6 +118,12 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        Entrance(
+          keyName: 'home-mission',
+          delay: const Duration(milliseconds: 45),
+          child: _TodayMissionCard(app: app),
+        ),
+        const SizedBox(height: 16),
         Entrance(
           keyName: 'home-streak',
           delay: const Duration(milliseconds: 70),
@@ -185,10 +191,12 @@ class HomeScreen extends StatelessWidget {
             Expanded(
               child: _ActionCard(
                 icon: Icons.auto_stories_rounded,
-                title: 'Mulai belajar',
-                subtitle:
-                    '${app.dailyXp}/${AppController.dailyGoal} XP hari ini',
-                onTap: onOpenStudy,
+                title: 'Misi hari ini',
+                subtitle: 'Ikuti urutan yang direkomendasikan',
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const TodayLearningScreen())),
               ),
             ),
             const SizedBox(width: 10),
@@ -224,6 +232,68 @@ class HomeScreen extends StatelessWidget {
     if (now.hour < 12) return 'Hari baru untuk satu langkah kecil.';
     if (now.hour < 18) return 'Lanjutkan latihanmu saat ritmenya masih hangat.';
     return 'Tutup hari dengan sedikit review.';
+  }
+}
+
+class _TodayMissionCard extends StatelessWidget {
+  const _TodayMissionCard({required this.app});
+
+  final AppController app;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = app.dailyLearningPlan();
+    final lesson = plan.currentLesson;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TodayLearningScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 27,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: const Icon(Icons.flag_rounded),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Yang perlu dipelajari sekarang',
+                        style: TextStyle(fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 4),
+                    Text(
+                      lesson?.title ??
+                          'Review dan pertahankan materi yang sudah dikuasai',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      lesson?.whyNow ??
+                          'Tidak ada lesson baru yang boleh dibuka sebelum katalog berikutnya tersedia.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -603,7 +673,8 @@ class _ActionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+                    Text(title,
+                        style: const TextStyle(fontWeight: FontWeight.w900)),
                     Text(
                       subtitle,
                       style: TextStyle(

@@ -5,10 +5,15 @@ import 'firebase_bootstrap.dart';
 
 /// Error auth Firebase dengan pesan Indonesia siap tampil.
 class FirebaseAuthFailure implements Exception {
-  FirebaseAuthFailure(this.message, {this.isNetworkError = false});
+  FirebaseAuthFailure(this.message,
+      {this.isNetworkError = false, this.isConfigError = false});
 
   final String message;
   final bool isNetworkError;
+
+  /// true bila Firebase belum siap (provider mati / reCAPTCHA / config):
+  /// panggil backend/lokal sebagai fallback, jangan vonis gagal.
+  final bool isConfigError;
 
   @override
   String toString() => message;
@@ -35,11 +40,15 @@ class FirebaseAuthFailure implements Exception {
             isNetworkError: true);
       case 'operation-not-allowed':
         return FirebaseAuthFailure(
-            'Login email belum diaktifkan di Firebase Console.');
+          'Login email belum diaktifkan di Firebase Console.',
+          isConfigError: true,
+        );
       case 'internal-error':
         return FirebaseAuthFailure(
-            'Server auth tidak merespons (kemungkinan reCAPTCHA / '
-            'konfigurasi Firebase belum lengkap). Coba lagi.');
+          'Server auth tidak merespons (kemungkinan reCAPTCHA / '
+          'konfigurasi Firebase belum lengkap). Coba lagi.',
+          isConfigError: true,
+        );
       default:
         return FirebaseAuthFailure('Auth gagal (${e.code}).');
     }

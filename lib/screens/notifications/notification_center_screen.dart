@@ -38,6 +38,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     'konten' => Icons.auto_stories_rounded,
     'pengumuman' => Icons.campaign_rounded,
     'pengingat' => Icons.schedule_rounded,
+    'misi' => Icons.auto_awesome_rounded,
     _ => Icons.notifications_rounded,
   };
 
@@ -46,6 +47,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
     'konten' => 'Konten baru',
     'pengumuman' => 'Pengumuman',
     'pengingat' => 'Pengingat',
+    'misi' => 'Misi tersembunyi',
     _ => 'Info',
   };
 

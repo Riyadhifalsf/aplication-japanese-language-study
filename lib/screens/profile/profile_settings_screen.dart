@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../services/offline_packs.dart';
 import '../../state/app_controller.dart';
 import '../auth/login_screen.dart';
 import '../kanji/kanji_review_screen.dart';
@@ -76,6 +77,14 @@ class ProfileSettingsScreen extends StatelessWidget {
                 ListTile(leading: const Icon(Icons.event_available_rounded), title: const Text('Ulangan jatuh tempo', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.dueKanjiReviewCount} kanji perlu diulang.'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanjiReviewScreen()))),
                 const Divider(height: 1),
                 ListTile(leading: const Icon(Icons.copy_rounded), title: const Text('Cadangan manual', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Salin atau pulihkan JSON progres.'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _manualBackup(context, app)),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.cloud_download_outlined),
+                  title: const Text('Paket offline', style: TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: Text('${app.downloadedPacks.length}/${OfflinePacks.all.length} paket siap offline.'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _offlinePacks(context, app),
+                ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.restart_alt_rounded),
@@ -197,6 +206,60 @@ class ProfileSettingsScreen extends StatelessWidget {
           ok
               ? 'Progres dihapus. Mulai lagi dari 0.'
               : 'Gagal menghapus data server (${app.lastSyncError ?? 'offline'}). Coba lagi saat online.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _offlinePacks(BuildContext context, AppController app) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Paket offline',
+                  style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 4),
+              const Text('Unduh agar materi level tetap segar tanpa internet.'),
+              const SizedBox(height: 12),
+              for (final pack in OfflinePacks.all)
+                Builder(builder: (_) {
+                  final done = app.downloadedPacks.contains(pack.id);
+                  final when = app.packSyncedAt[pack.id];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(child: Icon(pack.icon)),
+                    title: Text(pack.title,
+                        style: const TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: Text(done
+                        ? 'Siap offline${when == null ? '' : ' · $when'}'
+                        : pack.subtitle),
+                    trailing: done
+                        ? const Icon(Icons.check_circle_rounded,
+                            color: Colors.green)
+                        : const Icon(Icons.cloud_download_outlined),
+                    onTap: () async {
+                      Navigator.pop(sheetContext);
+                      final fresh =
+                          await app.downloadOfflinePack(pack.id);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(fresh
+                              ? '${pack.title} disinkron & siap offline.'
+                              : '${pack.title} siap offline dari bundel.'),
+                        ),
+                      );
+                    },
+                  );
+                }),
+            ],
+          ),
         ),
       ),
     );

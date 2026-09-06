@@ -7,7 +7,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/admin_models.dart';
 import '../models/app_notification.dart';
+import '../services/hidden_quests.dart';
 import '../models/exam_question.dart';
+import '../features/learning/data/japanese_curriculum.dart';
+import '../features/learning/domain/learning_engine.dart';
+import '../features/learning/domain/learning_models.dart';
 import '../services/api_service.dart';
 import '../services/app_changelog.dart';
 import '../services/content_repository.dart';
@@ -98,6 +102,11 @@ class AppController extends ChangeNotifier {
   final Map<String, int> placementBestScores = {};
   String activeRoadmapStepId = 'n5';
   bool hasUnreadNotifications = true;
+  final Set<String> unlockedQuests = {};
+  int dailyMasteredKanji = 0;
+  String dailyMasteredDate = '';
+  int dailyActiveSeconds = 0;
+  bool lastQuizPerfect = false;
   final List<AppNotification> inbox = [];
   final Set<String> _seenAnnouncementIds = {};
   bool reviewReminderEnabled = true;
@@ -137,6 +146,11 @@ class AppController extends ChangeNotifier {
   final Set<String> completedPhraseIds = {};
   final Set<String> completedSentenceIds = {};
   final Set<String> completedCultureIds = {};
+
+  /// State akademik baru. Terpisah dari statistik lama agar completion,
+  /// mastery, SRS, dan error notebook tidak saling tertukar.
+  final LearningEngine learningEngine =
+      LearningEngine(catalog: JapaneseCurriculum.catalog);
   Map<String, bool> featureFlags = {};
 
   static const dailyGoal = 100;
@@ -151,6 +165,7 @@ class AppController extends ChangeNotifier {
       return true;
     }());
   }
+
   List<int> get kanjiReviewIntervals => [
         reviewIntervalDays,
         reviewIntervalDays * 2,
@@ -232,12 +247,12 @@ class AppController extends ChangeNotifier {
     final savedUid = prefs.getString('cloudUid');
     if (savedUid != null && savedUid.isNotEmpty) cloudUid = savedUid;
     try {
-      final times = jsonDecode(
-          prefs.getString('progressFieldUpdatedAt') ?? '{}') as Map;
+      final times =
+          jsonDecode(prefs.getString('progressFieldUpdatedAt') ?? '{}') as Map;
       _fieldUpdatedAt
         ..clear()
-        ..addAll(times.map((k, v) =>
-            MapEntry('$k', (v as num?)?.toInt() ?? 0)));
+        ..addAll(
+            times.map((k, v) => MapEntry('$k', (v as num?)?.toInt() ?? 0)));
     } catch (_) {}
     isPremium = prefs.getBool('isPremium') ?? false;
     membershipPlan =
@@ -257,6 +272,21 @@ class AppController extends ChangeNotifier {
             premiumUntil!.isAfter(DateTime.now()));
     activeRoadmapStepId = prefs.getString('activeRoadmapStepId') ?? 'n5';
     hasUnreadNotifications = prefs.getBool('hasUnreadNotifications') ?? true;
+    unlockedQuests
+      ..clear()
+      ..addAll(prefs.getStringList('unlockedQuests') ?? const []);
+    dailyMasteredKanji = prefs.getInt('dailyMasteredKanji') ?? 0;
+    dailyMasteredDate = prefs.getString('dailyMasteredDate') ?? '';
+    dailyActiveSeconds = prefs.getInt('dailyActiveSeconds') ?? 0;
+    downloadedPacks
+      ..clear()
+      ..addAll(prefs.getStringList('downloadedPacks') ?? const []);
+    try {
+      final raw = jsonDecode(prefs.getString('packSyncedAt') ?? '{}') as Map;
+      packSyncedAt
+        ..clear()
+        ..addAll(raw.map((k, v) => MapEntry('$k', '$v')));
+    } catch (_) {}
     _seenAnnouncementIds
       ..clear()
       ..addAll(prefs.getStringList('seenAnnouncementIds') ?? const []);
@@ -373,6 +403,16 @@ class AppController extends ChangeNotifier {
     completedCultureIds.addAll(
       prefs.getStringList('completedCulture') ?? const [],
     );
+    try {
+      final rawLearningState = prefs.getString('learningEngineStateV1');
+      if (rawLearningState != null && rawLearningState.isNotEmpty) {
+        learningEngine
+            .restore(LearnerState.fromJson(jsonDecode(rawLearningState)));
+      }
+    } catch (_) {
+      // State learning yang korup tidak boleh menghalangi aplikasi offline.
+      learningEngine.restore(LearnerState());
+    }
     _refreshDailyCounter();
 
     // Tampilkan shell aplikasi segera setelah state lokal siap. Dataset besar
@@ -695,7 +735,9 @@ class AppController extends ChangeNotifier {
 
   /// Murni (pure) agar mudah dites.
   static int previewSessionSize(bool isGuest, int full) =>
-      isGuest && full > guestPreviewSessionSize ? guestPreviewSessionSize : full;
+      isGuest && full > guestPreviewSessionSize
+          ? guestPreviewSessionSize
+          : full;
 
   int cappedSessionSize(int full) => previewSessionSize(isGuestPreview, full);
 
@@ -788,8 +830,10 @@ class AppController extends ChangeNotifier {
     final seconds =
         DateTime.now().difference(started).inSeconds.clamp(0, 86400).toInt();
     totalActiveSeconds += seconds;
+    dailyActiveSeconds += seconds;
     sessionStartedAt = null;
     _preferences?.setInt('totalActiveSeconds', totalActiveSeconds);
+    _preferences?.setInt('dailyActiveSeconds', dailyActiveSeconds);
     recordActivity(
         'session_ended', 'Sesi belajar selesai (${seconds ~/ 60} menit)');
   }
@@ -985,8 +1029,7 @@ class AppController extends ChangeNotifier {
                 : 'Tamu')
             : fbName;
       }
-      final providers =
-          fbUser.providerData.map((p) => p.providerId).toSet();
+      final providers = fbUser.providerData.map((p) => p.providerId).toSet();
       googleLinked = providers.contains('google.com');
       authProvider = googleLinked ? 'google' : 'email';
       await _saveAuthPrefs();
@@ -1036,19 +1079,17 @@ class AppController extends ChangeNotifier {
       unawaited(syncNow());
       return true;
     } catch (e) {
-      lastAuthError =
-          '$e'.replaceFirst('Exception: ', '').trim().isEmpty
-              ? 'Login Google gagal. Coba lagi.'
-              : '$e'.replaceFirst('Exception: ', '');
+      lastAuthError = '$e'.replaceFirst('Exception: ', '').trim().isEmpty
+          ? 'Login Google gagal. Coba lagi.'
+          : '$e'.replaceFirst('Exception: ', '');
       // Fallback lama: hanya profil Drive lokal (offline).
       try {
         final profile = await driveBackup.signIn();
         if (profile == null) return false;
         lastAuthError = null;
         googleLinked = true;
-        profileName = profile.name.trim().isEmpty
-            ? profileName
-            : profile.name.trim();
+        profileName =
+            profile.name.trim().isEmpty ? profileName : profile.name.trim();
         profileEmail = profile.email.trim();
         profilePhotoUrl = profile.photoUrl.trim();
         await Future.wait([
@@ -1176,8 +1217,9 @@ class AppController extends ChangeNotifier {
         unawaited(syncNow());
         return null;
       } on FirebaseAuthFailure catch (e) {
-        if (!e.isNetworkError) return e.message;
-        // Offline: lanjut ke fallback lokal di bawah.
+        // Hanya vonis gagal bila kredensialnya yang salah. Gangguan
+        // jaringan / Firebase belum dikonfigurasi -> coba backend.
+        if (!e.isNetworkError && !e.isConfigError) return e.message;
       } catch (_) {
         // Lanjut ke fallback di bawah.
       }
@@ -1189,7 +1231,8 @@ class AppController extends ChangeNotifier {
         email: normalizedEmail,
         password: password,
       );
-      final user = Map<String, dynamic>.from(result['user'] as Map? ?? const {});
+      final user =
+          Map<String, dynamic>.from(result['user'] as Map? ?? const {});
       isAuthenticated = true;
       isAdmin = (user['role'] ?? 'user').toString() == 'admin';
       authProvider = 'email';
@@ -1239,8 +1282,9 @@ class AppController extends ChangeNotifier {
         unawaited(syncNow());
         return null;
       } on FirebaseAuthFailure catch (e) {
-        if (!e.isNetworkError) return e.message;
-        // Offline: lanjut ke fallback lokal di bawah.
+        // Hanya vonis gagal bila kredensialnya yang salah. Gangguan
+        // jaringan / Firebase belum dikonfigurasi -> coba backend.
+        if (!e.isNetworkError && !e.isConfigError) return e.message;
       } catch (_) {
         // Lanjut ke fallback di bawah.
       }
@@ -1251,14 +1295,15 @@ class AppController extends ChangeNotifier {
         email: normalizedEmail,
         password: password,
       );
-      final user = Map<String, dynamic>.from(result['user'] as Map? ?? const {});
+      final user =
+          Map<String, dynamic>.from(result['user'] as Map? ?? const {});
       isAuthenticated = true;
       isAdmin = (user['role'] ?? 'user').toString() == 'admin';
       authProvider = 'email';
       googleLinked = false;
       profileEmail = (user['email'] ?? normalizedEmail).toString();
-      profileName = (user['display_name'] ?? user['email'] ?? normalizedEmail)
-          .toString();
+      profileName =
+          (user['display_name'] ?? user['email'] ?? normalizedEmail).toString();
       await _saveAuthPrefs();
       notifyListeners();
       return null;
@@ -1370,7 +1415,8 @@ class AppController extends ChangeNotifier {
     for (final k in keys) {
       _fieldUpdatedAt[k] = now;
     }
-    _preferences?.setString('progressFieldUpdatedAt', jsonEncode(_fieldUpdatedAt));
+    _preferences?.setString(
+        'progressFieldUpdatedAt', jsonEncode(_fieldUpdatedAt));
   }
 
   /// Tandai progress kotor lalu jadwalkan push (dipanggil tiap ada perubahan).
@@ -1427,9 +1473,8 @@ class AppController extends ChangeNotifier {
       syncStatus = 'syncing';
       notifyListeners();
       final remoteDoc = await syncService.pullRemote(uid);
-      final remoteData = (remoteDoc?['data'] as Map?)
-              ?.map((k, v) => MapEntry('$k', v)) ??
-          {};
+      final remoteData =
+          (remoteDoc?['data'] as Map?)?.map((k, v) => MapEntry('$k', v)) ?? {};
       final remoteTimes = (remoteDoc?['fieldUpdatedAt'] as Map?)
               ?.map((k, v) => MapEntry('$k', (v as num?)?.toInt() ?? 0)) ??
           {};
@@ -1617,8 +1662,7 @@ class AppController extends ChangeNotifier {
     if (prefs == null) return;
     final seen = prefs.getString('lastChangelogVersion') ?? '';
     if (seen.isEmpty) {
-      await prefs.setString(
-          'lastChangelogVersion', AppChangelog.latestVersion);
+      await prefs.setString('lastChangelogVersion', AppChangelog.latestVersion);
       return;
     }
     final fresh = AppChangelog.newerThan(seen);
@@ -1631,11 +1675,9 @@ class AppController extends ChangeNotifier {
       );
     }
     if (fresh.isNotEmpty) {
-      await prefs.setString(
-          'lastChangelogVersion', AppChangelog.latestVersion);
+      await prefs.setString('lastChangelogVersion', AppChangelog.latestVersion);
     } else if (seen != AppChangelog.latestVersion) {
-      await prefs.setString(
-          'lastChangelogVersion', AppChangelog.latestVersion);
+      await prefs.setString('lastChangelogVersion', AppChangelog.latestVersion);
     }
   }
 
@@ -1879,6 +1921,14 @@ class AppController extends ChangeNotifier {
       _saveIntSet('masteredKanji', masteredKanjiIds);
       _saveIntSet('learnedKanji', learnedKanjiIds);
       _scheduleReviewSave();
+      final today = _dateKey(DateTime.now());
+      if (dailyMasteredDate != today) {
+        dailyMasteredDate = today;
+        dailyMasteredKanji = 0;
+      }
+      dailyMasteredKanji++;
+      _preferences?.setInt('dailyMasteredKanji', dailyMasteredKanji);
+      _preferences?.setString('dailyMasteredDate', dailyMasteredDate);
     }
     _saveIntMap('kanjiMasteryStreaks', kanjiMasteryStreaks);
     recordStudy(
@@ -1981,6 +2031,105 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  // ---------- Structured learning engine ----------
+
+  /// Rencana harian yang menjawab apa yang perlu dilakukan, alasannya, dan
+  /// urutan berikutnya. Kurikulum tetap menentukan lesson; adaptasi hanya
+  /// menentukan porsi review/remedial.
+  DailyPlan dailyLearningPlan({DateTime? now}) => learningEngine.buildDailyPlan(
+        level: selectedStudyLevel,
+        dailyMinutes: dailyStudyMinutes,
+        now: now ?? DateTime.now(),
+      );
+
+  LessonDefinition? learningLesson(String id) =>
+      learningEngine.catalog.lessonById(id);
+
+  LessonPhase advanceLearningPhase(String lessonId, {DateTime? now}) {
+    final phase = learningEngine.advancePhase(
+      lessonId: lessonId,
+      now: now ?? DateTime.now(),
+    );
+    _persistLearningEngine();
+    notifyListeners();
+    return phase;
+  }
+
+  AnswerEvaluation recordLessonAnswer({
+    required LessonQuestion question,
+    required int selectedIndex,
+    bool review = false,
+    DateTime? now,
+  }) {
+    final answeredAt = now ?? DateTime.now();
+    final result = review
+        ? learningEngine.answerReviewQuestion(
+            question: question,
+            selectedIndex: selectedIndex,
+            now: answeredAt,
+          )
+        : learningEngine.answerLessonQuestion(
+            question: question,
+            selectedIndex: selectedIndex,
+            now: answeredAt,
+          );
+    recordQuiz(correct: result.correct ? 1 : 0, total: 1);
+    _persistLearningEngine();
+    return result;
+  }
+
+  GateStatus finishLessonAssessment(
+    LessonDefinition lesson, {
+    DateTime? now,
+  }) {
+    final result = learningEngine.completeAssessment(
+      lesson: lesson,
+      now: now ?? DateTime.now(),
+    );
+    if (result.passed) {
+      recordActivity('lesson_mastery', 'Lesson dikuasai', meta: {
+        'lessonId': lesson.id,
+        'level': lesson.level,
+      });
+      recordStudy(xpGained: 20, notify: false);
+    } else {
+      recordActivity('lesson_remedial', 'Remedial dibutuhkan', meta: {
+        'lessonId': lesson.id,
+        'skills': result.unmetSkills.map((skill) => skill.name).toList(),
+      });
+    }
+    _persistLearningEngine();
+    notifyListeners();
+    return result;
+  }
+
+  List<ReviewState> dueLearningReviews({DateTime? now}) =>
+      learningEngine.dueReviews(now ?? DateTime.now());
+
+  List<LessonQuestion> dueLearningReviewQuestions({
+    DateTime? now,
+    int limit = 10,
+  }) =>
+      learningEngine.questionsForReview(now ?? DateTime.now(), limit: limit);
+
+  List<MistakeRecord> learningMistakes({LearningSkill? skill}) =>
+      learningEngine.mistakes(skill: skill);
+
+  void _persistLearningEngine() {
+    _preferences?.setString(
+      'learningEngineStateV1',
+      jsonEncode(learningEngine.state.toJson()),
+    );
+    markProgressDirty(const [
+      'learningEngineState',
+      'quizCorrect',
+      'quizAnswered',
+      'xp',
+      'dailyXp',
+      'activityJournal',
+    ]);
+  }
+
   void togglePhraseComplete(String id) {
     if (!completedPhraseIds.remove(id)) {
       completedPhraseIds.add(id);
@@ -2015,6 +2164,7 @@ class AppController extends ChangeNotifier {
 
   void recordQuiz({required int correct, required int total}) {
     if (total <= 0) return;
+    lastQuizPerfect = correct == total && total >= 5;
     recordActivity('quiz', 'Kuis diselesaikan',
         meta: {'correct': correct, 'total': total});
     quizCorrect += correct;
@@ -2080,6 +2230,7 @@ class AppController extends ChangeNotifier {
       'activityJournal',
     ]);
     if (notify) notifyListeners();
+    checkHiddenQuests();
   }
 
   Future<void> addBonusXp(int amount) async {
@@ -2162,6 +2313,7 @@ class AppController extends ChangeNotifier {
         'completedPhrases': completedPhraseIds.toList()..sort(),
         'completedSentences': completedSentenceIds.toList()..sort(),
         'completedCulture': completedCultureIds.toList()..sort(),
+        'learningEngineState': learningEngine.state.toJson(),
       });
 
   Future<bool> importProgress(String source) async {
@@ -2367,6 +2519,10 @@ class AppController extends ChangeNotifier {
           (json['completedCulture'] as List<dynamic>? ?? const [])
               .map((value) => '$value'),
         );
+      if (json.containsKey('learningEngineState')) {
+        learningEngine
+            .restore(LearnerState.fromJson(json['learningEngineState']));
+      }
       final prefs = _preferences;
       if (prefs != null) {
         await Future.wait([
@@ -2461,6 +2617,10 @@ class AppController extends ChangeNotifier {
             'completedCulture',
             completedCultureIds.toList(),
           ),
+          prefs.setString(
+            'learningEngineStateV1',
+            jsonEncode(learningEngine.state.toJson()),
+          ),
         ]);
       }
       notifyListeners();
@@ -2498,6 +2658,7 @@ class AppController extends ChangeNotifier {
     completedPhraseIds.clear();
     completedSentenceIds.clear();
     completedCultureIds.clear();
+    learningEngine.restore(LearnerState());
     final prefs = _preferences;
     if (prefs != null) {
       for (final key in [
@@ -2522,6 +2683,7 @@ class AppController extends ChangeNotifier {
         'completedPhrases',
         'completedSentences',
         'completedCulture',
+        'learningEngineStateV1',
         'progressFieldUpdatedAt',
         'lastCloudSyncAt',
       ]) {
@@ -2661,8 +2823,78 @@ class AppController extends ChangeNotifier {
     final today = _dateKey(DateTime.now());
     if (lastStudyDate.isNotEmpty && lastStudyDate != today) {
       dailyXp = 0;
+      dailyMasteredKanji = 0;
+      dailyActiveSeconds = 0;
       _preferences?.setInt('dailyXp', 0);
+      _preferences?.setInt('dailyMasteredKanji', 0);
+      _preferences?.setInt('dailyActiveSeconds', 0);
     }
+    if (dailyMasteredDate.isNotEmpty && dailyMasteredDate != today) {
+      dailyMasteredKanji = 0;
+      dailyMasteredDate = today;
+      _preferences?.setInt('dailyMasteredKanji', 0);
+      _preferences?.setString('dailyMasteredDate', today);
+    }
+  }
+
+  /// Cek misi tersembunyi setelah tiap aktivitas. Bonus XP langsung
+  /// (tanpa rekursi) + notifikasi saat misi baru terbuka.
+  final Set<String> downloadedPacks = {};
+  final Map<String, String> packSyncedAt = {};
+
+  /// Unduh paket offline: pastikan bundel + coba sinkron server + tandai.
+  /// Selalu true secara offline (bundel menjamin); [refreshed] lapor
+  /// apakah server memberi data segar.
+  Future<bool> downloadOfflinePack(String id) async {
+    await repository.load();
+    final refreshed = await repository.refreshFromServer();
+    downloadedPacks.add(id);
+    packSyncedAt[id] =
+        DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' ');
+    final prefs = _preferences;
+    if (prefs != null) {
+      await prefs.setStringList('downloadedPacks', downloadedPacks.toList());
+      await prefs.setString('packSyncedAt', jsonEncode(packSyncedAt));
+    }
+    notifyListeners();
+    return refreshed;
+  }
+
+  void checkHiddenQuests() {
+    final now = DateTime.now();
+    final stats = QuestStats(
+      hour: now.hour,
+      streak: streak,
+      dailyMasteredKanji: dailyMasteredKanji,
+      dailyActiveSeconds: dailyActiveSeconds,
+      perfectQuiz: lastQuizPerfect,
+      quizAnswered: quizAnswered,
+    );
+    final fresh = HiddenQuests.checkUnlocked(stats, unlockedQuests);
+    if (fresh.isEmpty) return;
+    var bonus = 0;
+    for (final q in fresh) {
+      unlockedQuests.add(q.id);
+      bonus += q.rewardXp;
+      pushInboxNotification(
+        id: 'quest-${q.id}',
+        title: 'Misi tersembunyi: ${q.title}',
+        body: 'Bonus +${q.rewardXp} XP. ${unlockedQuests.length}/'
+            '${HiddenQuests.defs.length} misi terbuka.',
+        kind: 'misi',
+      );
+      recordActivity('hidden_quest', 'Misi tersembunyi: ${q.title}',
+          meta: {'id': q.id, 'xp': q.rewardXp});
+    }
+    if (bonus > 0) {
+      xp += bonus;
+      dailyXp += bonus;
+      _preferences?.setInt('xp', xp);
+      _preferences?.setInt('dailyXp', dailyXp);
+      markProgressDirty(const ['xp', 'dailyXp']);
+    }
+    _preferences?.setStringList('unlockedQuests', unlockedQuests.toList());
+    notifyListeners();
   }
 
   DateTime? _readDate(String? value) {

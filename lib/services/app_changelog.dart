@@ -19,15 +19,15 @@ class AppChangelogEntry {
 class AppChangelog {
   AppChangelog._();
 
-  static const String latestVersion = '3.3.0';
+  static const String latestVersion = '1.0.0';
 
   static const List<AppChangelogEntry> entries = [
     AppChangelogEntry(
-      version: '3.3.0',
-      title: 'Tampilan merah + pratinjau tamu',
+      version: '1.0.0',
+      title: 'Rilis perdana',
       body:
-          'Tema merah Japanese Study, splash logo, mode pratinjau 5 soal '
-          'untuk tamu, reset progres lokal+server, dan startup lebih cepat.',
+          'Belajar N5–N1 offline-first, login Firebase + server sendiri, '
+          'mode pratinjau tamu, misi tersembunyi, dan paket offline.',
     ),
   ];
 
