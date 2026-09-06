@@ -1,13 +1,12 @@
 import 'package:firebase_core/firebase_core.dart';
 
-/// Initializes Firebase when platform configuration has been added.
+import '../firebase_options.dart';
+
+/// Initializes Firebase for project "aplication-japanese-study".
 ///
-/// The learning app remains usable before Firebase is configured, so local
-/// study progress is not blocked during development or self-hosted deployment.
-///
-/// Android: tambah `android/app/google-services.json`.
-/// Web/semua platform: jalankan `flutterfire configure` untuk generate
-/// `lib/firebase_options.dart`, lalu Firebase otomatis terpakai.
+/// Android memakai `android/app/google-services.json` + plugin google-services.
+/// Platform lain memakai [DefaultFirebaseOptions] (tambah via
+/// `flutterfire configure`). Bila init gagal, app tetap jalan offline penuh.
 class FirebaseBootstrap {
   FirebaseBootstrap._();
 
@@ -16,7 +15,11 @@ class FirebaseBootstrap {
 
   static Future<void> initialize() async {
     try {
-      if (Firebase.apps.isEmpty) await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
       isAvailable = true;
       lastError = null;
     } on FirebaseException catch (e) {

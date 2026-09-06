@@ -3,6 +3,58 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'firebase_bootstrap.dart';
 
+/// Error auth Firebase dengan pesan Indonesia siap tampil.
+class FirebaseAuthFailure implements Exception {
+  FirebaseAuthFailure(this.message, {this.isNetworkError = false});
+
+  final String message;
+  final bool isNetworkError;
+
+  @override
+  String toString() => message;
+
+  static FirebaseAuthFailure fromCode(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return FirebaseAuthFailure('Email sudah terdaftar. Masuk saja.');
+      case 'invalid-email':
+        return FirebaseAuthFailure('Format email tidak valid.');
+      case 'weak-password':
+        return FirebaseAuthFailure('Password terlalu lemah (minimal 6 karakter).');
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return FirebaseAuthFailure('Email atau password salah.');
+      case 'user-disabled':
+        return FirebaseAuthFailure('Akun dinonaktifkan. Hubungi admin.');
+      case 'too-many-requests':
+        return FirebaseAuthFailure(
+            'Terlalu banyak percobaan. Coba lagi beberapa menit.');
+      case 'network-request-failed':
+        return FirebaseAuthFailure('Tidak ada koneksi internet.',
+            isNetworkError: true);
+      case 'operation-not-allowed':
+        return FirebaseAuthFailure(
+            'Login email belum diaktifkan di Firebase Console.');
+      default:
+        return FirebaseAuthFailure('Auth gagal (${e.code}).');
+    }
+  }
+}
+
+/// Hasil auth email/password via Firebase.
+class FirebaseEmailResult {
+  const FirebaseEmailResult({
+    required this.uid,
+    required this.email,
+    required this.displayName,
+  });
+
+  final String uid;
+  final String email;
+  final String displayName;
+}
+
 /// Hasil login Google via Firebase.
 class FirebaseGoogleResult {
   const FirebaseGoogleResult({
@@ -74,6 +126,61 @@ class FirebaseAuthService {
       photoUrl: user.photoURL ?? account.photoUrl ?? '',
       idToken: firebaseIdToken ?? '',
     );
+  }
+
+  /// Daftar akun baru dengan email/password (Firebase backend utama).
+  Future<FirebaseEmailResult> signUpWithEmail({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    _ensureAvailable();
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = credential.user;
+      if (user == null) throw FirebaseAuthFailure('Pendaftaran gagal.');
+      final displayName = name.trim();
+      if (displayName.isNotEmpty) {
+        try {
+          await user.updateDisplayName(displayName);
+          await user.reload();
+        } catch (_) {}
+      }
+      final current = _auth.currentUser ?? user;
+      return FirebaseEmailResult(
+        uid: current.uid,
+        email: current.email ?? email,
+        displayName: current.displayName ?? displayName,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw FirebaseAuthFailure.fromCode(e);
+    }
+  }
+
+  /// Masuk dengan email/password (Firebase backend utama).
+  Future<FirebaseEmailResult> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    _ensureAvailable();
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = credential.user;
+      if (user == null) throw FirebaseAuthFailure('Login gagal.');
+      return FirebaseEmailResult(
+        uid: user.uid,
+        email: user.email ?? email,
+        displayName: user.displayName ?? (user.email ?? email).split('@').first,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw FirebaseAuthFailure.fromCode(e);
+    }
   }
 
   Future<void> signOut() async {

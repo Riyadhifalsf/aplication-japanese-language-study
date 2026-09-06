@@ -9,6 +9,7 @@ import '../models/exam_question.dart';
 import '../services/api_service.dart';
 import '../services/content_repository.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/firebase_bootstrap.dart';
 import '../services/google_drive_backup_service.dart';
 import '../services/notification_service.dart';
 import '../services/home_widget_service.dart';
@@ -59,7 +60,7 @@ class AppController extends ChangeNotifier {
   bool contentReady = false;
   bool darkMode = false;
   bool furiganaVisible = true;
-  String profileName = 'Riyadhifal';
+  String profileName = 'Tamu';
   String profileEmail = '';
   String profilePhotoUrl = '';
   String profilePhotoData = '';
@@ -187,7 +188,7 @@ class AppController extends ChangeNotifier {
     }
     darkMode = prefs.getBool('darkMode') ?? false;
     furiganaVisible = prefs.getBool('furiganaVisible') ?? true;
-    profileName = prefs.getString('profileName') ?? 'Riyadhifal';
+    profileName = prefs.getString('profileName') ?? 'Tamu';
     profileEmail = prefs.getString('profileEmail') ?? '';
     profilePhotoUrl = prefs.getString('profilePhotoUrl') ?? '';
     profilePhotoData = prefs.getString('profilePhotoData') ?? '';
@@ -1044,6 +1045,33 @@ class AppController extends ChangeNotifier {
       return 'Format email tidak valid.';
     if (password.length < 8) return 'Password minimal 8 karakter.';
 
+    // 1. Firebase (backend utama) bila sudah dikonfigurasi.
+    if (FirebaseBootstrap.isAvailable) {
+      try {
+        final fb = await firebaseAuth.signUpWithEmail(
+          name: normalizedName,
+          email: normalizedEmail,
+          password: password,
+        );
+        cloudUid = fb.uid;
+        isAuthenticated = true;
+        isAdmin = false;
+        authProvider = 'email';
+        profileEmail = fb.email;
+        profileName = fb.displayName;
+        await _saveAuthPrefs();
+        await _persistCloudUid();
+        notifyListeners();
+        unawaited(syncNow());
+        return null;
+      } on FirebaseAuthFailure catch (e) {
+        if (!e.isNetworkError) return e.message;
+        // Offline: lanjut ke fallback lokal di bawah.
+      } catch (_) {
+        // Lanjut ke fallback di bawah.
+      }
+    }
+
     try {
       final result = await _api.register(
         name: normalizedName,
@@ -1079,6 +1107,33 @@ class AppController extends ChangeNotifier {
     final normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.isEmpty || password.isEmpty)
       return 'Email dan password wajib diisi.';
+
+    // 1. Firebase (backend utama) bila sudah dikonfigurasi.
+    if (FirebaseBootstrap.isAvailable) {
+      try {
+        final fb = await firebaseAuth.signInWithEmail(
+          email: normalizedEmail,
+          password: password,
+        );
+        cloudUid = fb.uid;
+        isAuthenticated = true;
+        isAdmin = false;
+        authProvider = 'email';
+        googleLinked = false;
+        profileEmail = fb.email;
+        profileName = fb.displayName;
+        await _saveAuthPrefs();
+        await _persistCloudUid();
+        notifyListeners();
+        unawaited(syncNow());
+        return null;
+      } on FirebaseAuthFailure catch (e) {
+        if (!e.isNetworkError) return e.message;
+        // Offline: lanjut ke fallback lokal di bawah.
+      } catch (_) {
+        // Lanjut ke fallback di bawah.
+      }
+    }
 
     try {
       final result = await _api.login(
@@ -1117,6 +1172,12 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       return null;
     }
+  }
+
+  Future<void> _persistCloudUid() async {
+    final uid = cloudUid;
+    if (uid == null || uid.isEmpty) return;
+    await (_preferences?.setString('cloudUid', uid) ?? Future.value(false));
   }
 
   Future<void> _saveAuthPrefs() async {

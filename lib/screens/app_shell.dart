@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/ads_service.dart';
 import '../state/app_controller.dart';
 import '../widgets/admob_banner_slot.dart';
+import '../widgets/auth_gate.dart';
 import '../widgets/common_widgets.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
@@ -41,8 +42,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _app = AppScope.of(context);
   }
 
-  void _select(int value) {
+  Future<void> _select(int value) async {
     final app = _app ?? AppScope.of(context);
+    // Tamu boleh jelajah Beranda + Belajar; sisanya wajib login.
+    if (!app.isAuthenticated && (value == 2 || value == 3 || value == 4)) {
+      const names = {2: 'Quiz', 3: 'Kanji', 4: 'Profil'};
+      await requireLogin(context, feature: names[value] ?? 'fitur ini');
+      return;
+    }
     if (value == 2 && !app.canAccessFeature('quiz_center')) {
       _lock(context, 'Quiz Center', app.featureXpRequirement('quiz_center'));
       return;

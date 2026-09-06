@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "418436084166",
+    "firebase_url": "https://aplication-japanese-study-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "aplication-japanese-study",
+    "storage_bucket": "aplication-japanese-study.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:418436084166:android:4546a716ac2330e7d602c7",
+        "android_client_info": {
+          "package_name": "com.babeh.japanese_study"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCx9uwUizDKyY4pyjeqg4s_Y_ImDw_voA0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

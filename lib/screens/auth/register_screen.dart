@@ -115,9 +115,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
                 children: [
-                  const Text('Mulai perjalanan bahasa Jepangmu', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 8),
-                  Text('Akunmu akan menyimpan progress belajar, streak, level, dan hasil quiz.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45)),
+                  Center(
+                    child: Image.asset(
+                        'assets/branding/japanese_study_logo.png',
+                        width: 148,
+                        height: 148,
+                        fit: BoxFit.contain),
+                  ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: _busy ? null : _googleSignUp,

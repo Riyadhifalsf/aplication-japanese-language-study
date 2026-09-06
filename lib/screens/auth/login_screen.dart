@@ -60,11 +60,10 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520), child: ListView(padding: const EdgeInsets.fromLTRB(24, 42, 24, 28), children: [
-      Container(width: 104, height: 104, padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .08), blurRadius: 26, offset: const Offset(0, 12))]), child: Image.asset('assets/branding/japanese_study_logo.png', fit: BoxFit.contain)),
-      const SizedBox(height: 24),
-      const Text('Masuk ke Japanese Study', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 8),
-      Text('Akses akunmu untuk sinkronisasi progress ke server secara aman.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45)),
+      Center(
+        child: Image.asset('assets/branding/japanese_study_logo.png',
+            width: 168, height: 168, fit: BoxFit.contain),
+      ),
       const SizedBox(height: 24),
       FilledButton.icon(onPressed: _busy ? null : _googleLogin, icon: const Icon(Icons.account_circle_rounded), label: const Text('Lanjut dengan Google'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54))),
       const SizedBox(height: 20),

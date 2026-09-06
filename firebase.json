@@ -1,5 +1,11 @@
 {
   "firestore": {
     "rules": "firestore.rules"
+  },
+  "auth": {
+    "authorizedDomains": ["localhost"],
+    "providers": {
+      "emailPassword": true
+    }
   }
 }
