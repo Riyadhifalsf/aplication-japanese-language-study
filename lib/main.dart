@@ -27,11 +27,17 @@ Future<void> main() async {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     AppController.logStartup('first-frame');
   });
-  unawaited(FirebaseBootstrap.initialize());
+  // Prinsip startup: runApp DULU, semua init BERAT menyusul. Tidak ada
+  // `await` sebelum runApp kecuali ensureInitialized (wajib framework).
   unawaited(controller.load());
-  // Tugas berat (tz database, Mobile Ads + jaringan) ditunda sampai frame
-  // pertama selesai agar cat pertama secepat mungkin.
+  // Firebase ikut ditunda ke idle pasca-frame agar Installations/config
+  // network tidak berebut thread UI dengan cat pertama. Setelah siap,
+  // sesi Firebase dipulihkan susulan bila belum pulih saat load().
   WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(const Duration(seconds: 1), () async {
+      await FirebaseBootstrap.initialize();
+      await controller.restoreFirebaseSession();
+    });
     Future.delayed(const Duration(seconds: 2), () {
       unawaited(AdsService.instance.ensureInitialized());
       unawaited(NotificationService.instance.initialize());

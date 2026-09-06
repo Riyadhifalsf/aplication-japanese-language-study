@@ -358,31 +358,9 @@ class AppController extends ChangeNotifier {
     }
     // Pulihkan sesi bila prefs bilang logout tapi Firebase masih login
     // (mis. install ulang tanpa hapus data Auth / prefs korup).
-    if (!isAuthenticated) {
-      try {
-        final fbUser = firebaseAuth.currentUser;
-        if (fbUser != null) {
-          cloudUid = fbUser.uid;
-          isAuthenticated = true;
-          if (profileEmail.isEmpty) profileEmail = fbUser.email ?? '';
-          final fbName = (fbUser.displayName ?? '').trim();
-          if (profileName.trim().isEmpty || profileName == 'Tamu') {
-            profileName = fbName.isEmpty
-                ? (profileEmail.contains('@')
-                    ? profileEmail.split('@').first
-                    : 'Tamu')
-                : fbName;
-          }
-          final providers =
-              fbUser.providerData.map((p) => p.providerId).toSet();
-          googleLinked = providers.contains('google.com');
-          authProvider = googleLinked ? 'google' : 'email';
-          await _saveAuthPrefs();
-          await _persistCloudUid();
-          unawaited(syncNow());
-        }
-      } catch (_) {}
-    }
+    // Firebase init ditunda pasca-frame, jadi restore dicoba di sini DAN
+    // susulan via restoreFirebaseSession() setelah Firebase siap.
+    await restoreFirebaseSession();
     completedLearningStepIds.addAll(
       prefs.getStringList('completedLearningSteps') ?? const [],
     );
@@ -988,6 +966,39 @@ class AppController extends ChangeNotifier {
 
   /// Login Google via Firebase (benerin auth). Fallback ke profil Drive
   /// lokal bila Firebase belum dikonfigurasi agar tetap bisa offline.
+  /// Pulihkan sesi Firebase secara eksplisit. Aman dipanggil kapan saja
+  /// (termasuk sebelum Firebase siap — gagal diam-diam, coba lagi nanti).
+  /// Mengembalikan true bila ada sesi yang dipulihkan.
+  Future<bool> restoreFirebaseSession() async {
+    if (isAuthenticated) return false;
+    try {
+      final fbUser = firebaseAuth.currentUser;
+      if (fbUser == null) return false;
+      cloudUid = fbUser.uid;
+      isAuthenticated = true;
+      if (profileEmail.isEmpty) profileEmail = fbUser.email ?? '';
+      final fbName = (fbUser.displayName ?? '').trim();
+      if (profileName.trim().isEmpty || profileName == 'Tamu') {
+        profileName = fbName.isEmpty
+            ? (profileEmail.contains('@')
+                ? profileEmail.split('@').first
+                : 'Tamu')
+            : fbName;
+      }
+      final providers =
+          fbUser.providerData.map((p) => p.providerId).toSet();
+      googleLinked = providers.contains('google.com');
+      authProvider = googleLinked ? 'google' : 'email';
+      await _saveAuthPrefs();
+      await _persistCloudUid();
+      notifyListeners();
+      unawaited(syncNow());
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Pesan error login Google terakhir (untuk ditampilkan di UI).
   String? lastAuthError;
 
