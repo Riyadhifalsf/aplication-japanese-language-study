@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,27 @@ import '../models/phrase_item.dart';
 import '../models/reading_item.dart';
 import '../models/sentence_item.dart';
 import '../models/vocabulary.dart';
+
+/// Decode JSON di isolate latar agar thread UI tidak macet saat cold start.
+///
+/// Harus fungsi top-level (syarat `compute`). String masuk, List/Map
+/// primitif keluar — keduanya transferable antar isolate.
+List<List<dynamic>> _decodeBundledJson(List<String> raws) =>
+    raws.map((raw) => (jsonDecode(raw) as List<dynamic>)).toList();
+
+/// Envelope server `{'data': [...]}` -> linya saja (null bila tak sesuai).
+List<dynamic>? _decodeServerEnvelope(String raw) {
+  try {
+    final body = jsonDecode(raw);
+    if (body is! Map || body['data'] is! List) return null;
+    return body['data'] as List<dynamic>;
+  } catch (_) {
+    return null;
+  }
+}
+
+List<List<dynamic>?> _decodeEnvelopes(List<String> raws) =>
+    raws.map(_decodeServerEnvelope).toList();
 
 class ContentRepository {
   static const _vocabularyOverridesKey = 'admin_vocabulary_overrides_v1';
@@ -60,29 +82,33 @@ class ContentRepository {
   Future<Map<String, List<dynamic>>?> _fetchServerData() async {
     final client = http.Client();
     try {
-      Future<List<dynamic>?> fetchOne(String type) async {
+      Future<String?> fetchOne(String type) async {
         try {
           final uri = Uri.parse('$serverBaseUrl/content/$type?limit=20000');
           final response =
               await client.get(uri).timeout(const Duration(seconds: 3));
           if (response.statusCode != 200) return null;
-          final body = jsonDecode(response.body);
-          if (body is! Map || body['data'] is! List) return null;
-          return body['data'] as List<dynamic>;
+          return response.body;
         } catch (_) {
           return null;
         }
       }
       // Paralel (bukan sekuensial) agar total tunggu ~3 detik, bukan ~28 detik.
-      final results =
+      final raws =
           await Future.wait([for (final type in _contentTypes) fetchOne(type)]);
-      for (final result in results) {
-        if (result == null) return null;
+      for (final raw in raws) {
+        if (raw == null) return null;
       }
-      return {
-        for (var i = 0; i < _contentTypes.length; i++)
-          _contentTypes[i]: results[i]!,
-      };
+      // Decode di isolate latar (body bisa puluhan ribu baris).
+      final decoded =
+          await compute(_decodeEnvelopes, raws.cast<String>());
+      final out = <String, List<dynamic>>{};
+      for (var i = 0; i < _contentTypes.length; i++) {
+        final items = decoded[i];
+        if (items == null) return null;
+        out[_contentTypes[i]] = items;
+      }
+      return out;
     } catch (_) {
       return null;
     } finally {
@@ -90,9 +116,10 @@ class ContentRepository {
     }
   }
 
-  List<dynamic> _rawAt(Map<String, List<dynamic>>? server, List<String>? bundled, int index) {
+  List<dynamic> _rawAt(Map<String, List<dynamic>>? server,
+      List<List<dynamic>>? decoded, int index) {
     if (server != null) return server[_contentTypes[index]] ?? const [];
-    return jsonDecode(bundled![index]) as List<dynamic>;
+    return decoded![index];
   }
 
   /// Dipanggil saat refresh server di background selesai.
@@ -109,7 +136,9 @@ class ContentRepository {
       rootBundle.loadString('assets/data/culture.json'),
       rootBundle.loadString('assets/data/readings.json'),
     ]);
-    await _buildFromRaw(null, results);
+    // Parse 7MB JSON di isolate latar — thread UI tetap responsif.
+    final decoded = await compute(_decodeBundledJson, results);
+    await _buildFromRaw(null, decoded);
     // Server menyusul diam-diam di background tanpa menahan UI.
     unawaited(_refreshFromServer());
   }
@@ -123,7 +152,7 @@ class ContentRepository {
 
   Future<void> _buildFromRaw(
     Map<String, List<dynamic>>? serverData,
-    List<String>? results,
+    List<List<dynamic>>? results,
   ) async {
     kanji = _rawAt(serverData, results, 0)
         .map((e) => Kanji.fromJson(e as Map<String, dynamic>))

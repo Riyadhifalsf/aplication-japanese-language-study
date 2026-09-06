@@ -23,6 +23,10 @@ Future<void> main() async {
     tts: TtsService(),
   );
   runApp(JapaneseStudyBootstrap(controller: controller));
+  AppController.logStartup('runApp');
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    AppController.logStartup('first-frame');
+  });
   unawaited(FirebaseBootstrap.initialize());
   unawaited(controller.load());
   // Tugas berat (tz database, Mobile Ads + jaringan) ditunda sampai frame

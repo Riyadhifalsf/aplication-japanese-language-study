@@ -141,6 +141,16 @@ class AppController extends ChangeNotifier {
 
   static const dailyGoal = 100;
   static const kanjiMasteryThreshold = 3;
+
+  /// Stopwatch umur proses untuk diagnosis cold start (log [STARTUP]).
+  static final Stopwatch bootWatch = Stopwatch()..start();
+
+  static void logStartup(String mark) {
+    assert(() {
+      debugPrint('[STARTUP] $mark ${bootWatch.elapsedMilliseconds}ms');
+      return true;
+    }());
+  }
   List<int> get kanjiReviewIntervals => [
         reviewIntervalDays,
         reviewIntervalDays * 2,
@@ -393,6 +403,7 @@ class AppController extends ChangeNotifier {
     startSession();
     bootstrapRevision.value++;
     notifyListeners();
+    logStartup('ready-shell');
 
     repository.onRefreshed = () {
       bootstrapRevision.value++;
@@ -402,6 +413,7 @@ class AppController extends ChangeNotifier {
     contentReady = true;
     bootstrapRevision.value++;
     notifyListeners();
+    logStartup('content-ready');
     unawaited(HomeWidgetService.instance
         .update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
     unawaited(NotificationService.instance.syncReviewSchedule(

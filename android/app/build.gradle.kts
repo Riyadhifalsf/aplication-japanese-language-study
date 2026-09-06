@@ -59,6 +59,12 @@ android {
             // APK lebih kecil + load native lib lebih cepat saat cold start.
             isMinifyEnabled = true
             isShrinkResources = true
+            // WAJIB: tanpa ini WorkManager (flutter_local_notifications)
+            // ikut terbuang R8 -> crash saat start.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
