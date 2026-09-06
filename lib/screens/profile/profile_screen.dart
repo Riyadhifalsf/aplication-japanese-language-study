@@ -20,10 +20,14 @@ class ProfileScreen extends StatelessWidget {
     final app = AppScope.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 34),
-      children: [
-        Container(
+    // Halaman penuh (dibuka dari avatar beranda, ala Busuu): AppBar dengan
+    // tombol kembali + judul. Pengaturan tetap via ikon gerigi di header.
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profil')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 34),
+        children: [
+          Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             gradient: LinearGradient(
@@ -282,7 +286,8 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }

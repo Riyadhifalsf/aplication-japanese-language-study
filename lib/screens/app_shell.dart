@@ -42,14 +42,25 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _app = AppScope.of(context);
   }
 
-  Future<void> _select(int value) async {
+  /// Buka Profil dari avatar beranda (ala Busuu: tanpa tab Profil).
+  /// Tamu diarahkan login dulu; yang login masuk halaman Profil.
+  Future<void> _openProfile() async {
     final app = _app ?? AppScope.of(context);
-    // Tamu: Beranda + Belajar bebas; Quiz + Kanji mode pratinjau terbatas;
-    // Profil wajib login.
-    if (!app.isAuthenticated && value == 4) {
+    if (!app.isAuthenticated) {
       await requireLogin(context, feature: 'Profil');
       return;
     }
+    if (!mounted) return;
+    unawaited(Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    ));
+  }
+
+  Future<void> _select(int value) async {
+    final app = _app ?? AppScope.of(context);
+    // Tamu: Beranda + Belajar bebas; Quiz + Kanji mode pratinjau terbatas.
+    // (Tab Profil sudah dihapus — akses lewat avatar beranda.)
     // Kunci XP hanya berlaku untuk yang sudah login; tamu lewat pratinjau
     // dengan batas sesi di tiap layar.
     if (app.isAuthenticated && value == 2 && !app.canAccessFeature('quiz_center')) {
@@ -96,11 +107,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         0 => HomeScreen(
             onOpenStudy: () => _select(1),
             onOpenQuiz: () => _select(2),
-            onOpenProfile: () => _select(4)),
+            onOpenProfile: _openProfile),
         1 => const StudyHubScreen(),
         2 => const QuizCenterScreen(),
-        3 => const KanjiStudyScreen(),
-        _ => const ProfileScreen(),
+        _ => const KanjiStudyScreen(),
       };
 
   @override
@@ -124,10 +134,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           icon: Icon(Icons.wb_sunny_outlined),
           selectedIcon: Icon(Icons.wb_sunny_rounded),
           label: Text('Kanji')),
-      const NavigationRailDestination(
-          icon: Icon(Icons.person_outline_rounded),
-          selectedIcon: Icon(Icons.person_rounded),
-          label: Text('Profil')),
     ];
 
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
@@ -206,10 +212,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               icon: Icon(Icons.wb_sunny_outlined),
               selectedIcon: Icon(Icons.wb_sunny_rounded),
               label: 'Kanji'),
-          NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded),
-              selectedIcon: Icon(Icons.person_rounded),
-              label: 'Profil'),
         ],
       ),
         ],
