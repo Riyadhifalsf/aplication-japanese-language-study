@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const seed = Color(0xFF635BFF);
-  static const primaryDark = Color(0xFF312E81);
-  static const accent = Color(0xFF8B85FF);
+  /// Merah hinomaru (blend merah khas Japanese Study).
+  static const seed = Color(0xFFD92D20);
+  static const primaryDark = Color(0xFF7F1D1D);
+  static const accent = Color(0xFFFF8A80);
   static const success = Color(0xFF17A673);
 
   static ThemeData light() => _theme(

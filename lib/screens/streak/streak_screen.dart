@@ -14,7 +14,7 @@ class StreakScreen extends StatelessWidget {
       body: ListView(padding: const EdgeInsets.fromLTRB(18, 10, 18, 30), children: [
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(30), gradient: const LinearGradient(colors: [Color(0xFFFF7A45), Color(0xFF635BFF)])),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(30), gradient: const LinearGradient(colors: [Color(0xFFFF7A45), Color(0xFFD92D20)])),
           child: LayoutBuilder(builder: (context, constraints) {
             final details = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${app.streak} hari', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),

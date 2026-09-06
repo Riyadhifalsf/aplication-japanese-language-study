@@ -119,7 +119,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                   subtitle: '50 paket per tingkat',
                   icon: Icons.school_rounded,
                   jp: '試',
-                  color: const Color(0xFF635BFF),
+                  color: const Color(0xFFD92D20),
                   onTap: () => _open(context, const ExamHubScreen()),
                 ),
                 _QuizModeData(

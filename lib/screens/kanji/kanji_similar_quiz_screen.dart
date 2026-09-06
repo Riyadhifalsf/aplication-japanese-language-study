@@ -44,7 +44,7 @@ class _KanjiSimilarQuizScreenState extends State<KanjiSimilarQuizScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(30),
               gradient: const LinearGradient(
-                colors: [Color(0xFF2F2C44), Color(0xFF7C3AED)],
+                colors: [Color(0xFF4A1110), Color(0xFFB42318)],
               ),
             ),
             child: const Column(

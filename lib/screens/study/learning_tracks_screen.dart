@@ -72,7 +72,7 @@ class _TrackHero extends StatelessWidget {
           gradient: LinearGradient(
             colors: [
               Theme.of(context).colorScheme.primary,
-              const Color(0xFF2F2C44),
+              const Color(0xFF4A1110),
             ],
           ),
         ),

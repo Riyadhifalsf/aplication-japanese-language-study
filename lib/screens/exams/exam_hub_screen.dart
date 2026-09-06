@@ -292,7 +292,7 @@ class _ExamSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = type == ExamType.jlpt ? const Color(0xFF635BFF) : const Color(0xFF17A673);
+    final color = type == ExamType.jlpt ? const Color(0xFFD92D20) : const Color(0xFF17A673);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -370,7 +370,7 @@ class _ExamBlueprint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = type == ExamType.jlpt ? const Color(0xFF635BFF) : const Color(0xFF17A673);
+    final color = type == ExamType.jlpt ? const Color(0xFFD92D20) : const Color(0xFF17A673);
     final rows = type == ExamType.jlpt
         ? const [
             _BlueprintRow('文字・語彙', 'Kanji, bacaan, arti, penggunaan kosakata'),
@@ -455,7 +455,7 @@ class _StageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = type == ExamType.jlpt ? const Color(0xFF635BFF) : const Color(0xFF17A673);
+    final color = type == ExamType.jlpt ? const Color(0xFFD92D20) : const Color(0xFF17A673);
     final format = ExamSimulatorRepository.formatSummary(type, level);
     return Card(
       clipBehavior: Clip.antiAlias,

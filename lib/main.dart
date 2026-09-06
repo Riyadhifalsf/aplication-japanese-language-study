@@ -24,9 +24,15 @@ Future<void> main() async {
   );
   runApp(JapaneseStudyBootstrap(controller: controller));
   unawaited(FirebaseBootstrap.initialize());
-  unawaited(AdsService.instance.ensureInitialized());
   unawaited(controller.load());
-  unawaited(NotificationService.instance.initialize());
+  // Tugas berat (tz database, Mobile Ads + jaringan) ditunda sampai frame
+  // pertama selesai agar cat pertama secepat mungkin.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(const Duration(seconds: 2), () {
+      unawaited(AdsService.instance.ensureInitialized());
+      unawaited(NotificationService.instance.initialize());
+    });
+  });
 }
 
 class JapaneseStudyBootstrap extends StatelessWidget {

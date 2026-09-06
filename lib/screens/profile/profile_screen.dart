@@ -7,6 +7,7 @@ import '../../state/app_controller.dart';
 import '../../widgets/reward_ad_card.dart';
 import '../auth/login_screen.dart';
 import '../streak/streak_screen.dart';
+import 'premium_screen.dart';
 import 'profile_settings_screen.dart';
 import 'study_stats_screen.dart';
 
@@ -182,6 +183,24 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ],
               if (!app.isPremium) ...[
+                const SizedBox(height: 12),
+                Card(
+                  color: cs.primaryContainer.withValues(alpha: .55),
+                  child: ListTile(
+                    leading: const Icon(Icons.workspace_premium_rounded),
+                    title: const Text('Go Premium',
+                        style: TextStyle(fontWeight: FontWeight.w900)),
+                    subtitle: const Text(
+                        'Mulai Rp15rb/bln — harga naik tiap fase.'),
+                    trailing:
+                        const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const PremiumScreen()),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 const RewardAdCard(),
               ],

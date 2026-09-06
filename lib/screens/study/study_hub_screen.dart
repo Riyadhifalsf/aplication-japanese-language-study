@@ -113,14 +113,14 @@ class StudyHubScreen extends StatelessWidget {
               badge: 'Panjang',
               screen: const ReadingScreen(),
             ),
-            const _StudyCardData(title:'Games', subtitle:'Typing Kana, Kotoba, Kanji', icon:Icons.sports_esports_rounded, color:Color(0xFF7C3AED), badge:'Play', screen:GameHubScreen()),
+            const _StudyCardData(title:'Games', subtitle:'Typing Kana, Kotoba, Kanji', icon:Icons.sports_esports_rounded, color:Color(0xFFB42318), badge:'Play', screen:GameHubScreen()),
             const _StudyCardData(title:'Speaking Practice', subtitle:'Latihan pengucapan dengan TTS', icon:Icons.mic_rounded, color:Color(0xFF0EA5E9), badge:'Speak', screen:SpeakingPracticeScreen()),
             const _StudyCardData(title:'Ulasan Kesalahan', subtitle:'Evaluasi kesalahan dan rekomendasi AI', icon:Icons.rate_review_rounded, color:Color(0xFFEF4444), badge:'Review', screen:MistakeReviewScreen()),
           ],
         ),
         const SizedBox(height: 16),
         _StudyShelf(title: 'Jalur level', subtitle: 'Mulai dari N5 atau buktikan kemampuanmu lewat placement quiz.', cards: [
-          _StudyCardData(title: 'Placement Quiz', subtitle: 'Tes untuk membantu membuka N4–N1', icon: Icons.assignment_turned_in_rounded, color: const Color(0xFF635BFF), badge: '80%+', screen: const LearningPathScreen()),
+          _StudyCardData(title: 'Placement Quiz', subtitle: 'Tes untuk membantu membuka N4–N1', icon: Icons.assignment_turned_in_rounded, color: const Color(0xFFD92D20), badge: '80%+', screen: const LearningPathScreen()),
         ]),
         const SizedBox(height: 24),
         _StudyShelf(
@@ -188,7 +188,7 @@ class StudyHubScreen extends StatelessWidget {
               title: 'Simulasi JLPT',
               subtitle: 'N5–N1 lengkap',
               icon: Icons.school_rounded,
-              color: Color(0xFF635BFF),
+              color: Color(0xFFD92D20),
               badge: '本番',
               screen: ExamHubScreen(),
             ),
@@ -220,7 +220,7 @@ class StudyHubScreen extends StatelessWidget {
               title: 'Kanji Mirip',
               subtitle: 'Bedakan bentuk serupa',
               icon: Icons.blur_on_rounded,
-              color: Color(0xFF7C3AED),
+              color: Color(0xFFB42318),
               badge: 'Mirip',
               screen: KanjiSimilarQuizScreen(),
             ),
@@ -276,7 +276,7 @@ class _StudyHeader extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
           gradient: LinearGradient(
-            colors: [Theme.of(context).colorScheme.primary.withValues(alpha: .92), const Color(0xFF2F2C44)],
+            colors: [Theme.of(context).colorScheme.primary.withValues(alpha: .92), const Color(0xFF4A1110)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
