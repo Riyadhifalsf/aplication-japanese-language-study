@@ -32,7 +32,7 @@ class ApiService {
       headers: {'Content-Type':'application/json'},
       body: jsonEncode({'name':name,'email':email,'password':password}));
     final data=_decode(r);
-    if(r.statusCode<200 || r.statusCode>=300) throw ApiException(data['message']?.toString() ?? 'Pendaftaran gagal.');
+    if(r.statusCode<200 || r.statusCode>=300) throw apiError(data, r.statusCode, 'Pendaftaran gagal.');
     await _saveToken(data['token'].toString());
     return data;
   }
@@ -45,7 +45,7 @@ class ApiService {
       headers: {'Content-Type':'application/json'},
       body: jsonEncode({'email':email,'password':password}));
     final data=_decode(r);
-    if(r.statusCode<200 || r.statusCode>=300) throw ApiException(data['message']?.toString() ?? 'Login gagal.');
+    if(r.statusCode<200 || r.statusCode>=300) throw apiError(data, r.statusCode, 'Login gagal.');
     await _saveToken(data['token'].toString());
     return data;
   }
@@ -58,8 +58,7 @@ class ApiService {
         body: jsonEncode({'idToken': idToken}));
     final data = _decode(r);
     if (r.statusCode < 200 || r.statusCode >= 300) {
-      throw ApiException(
-          data['message']?.toString() ?? 'Login Google gagal.');
+      throw apiError(data, r.statusCode, 'Login Google gagal.');
     }
     final token = data['token']?.toString();
     if (token != null && token.isNotEmpty) await _saveToken(token);
@@ -71,7 +70,7 @@ class ApiService {
     if(t==null) throw ApiException('Belum login.');
     final r=await _client.get(_uri('/api/me'),headers:{'Authorization':'Bearer $t'});
     final data=_decode(r);
-    if(r.statusCode!=200) throw ApiException(data['message']?.toString() ?? 'Sesi tidak valid.');
+    if(r.statusCode!=200) throw apiError(data, r.statusCode, 'Sesi tidak valid.');
     return data;
   }
 
@@ -81,7 +80,7 @@ class ApiService {
     final r=await _client.put(_uri('/api/me/progress'),
       headers:{'Content-Type':'application/json','Authorization':'Bearer $t'},
       body:jsonEncode(progress));
-    if(r.statusCode<200 || r.statusCode>=300) throw ApiException('Gagal menyimpan progress (${r.statusCode}).');
+    if(r.statusCode<200 || r.statusCode>=300) throw apiError(_decode(r), r.statusCode, 'Gagal menyimpan progress (${r.statusCode}).');
   }
 
 
@@ -90,7 +89,7 @@ class ApiService {
     if(t==null) throw ApiException('Belum login.');
     final r=await _client.get(_uri('/api/admin/users'),headers:{'Authorization':'Bearer $t'});
     final data=_decode(r);
-    if(r.statusCode!=200) throw ApiException(data['message']?.toString() ?? 'Gagal mengambil user.');
+    if(r.statusCode!=200) throw apiError(data, r.statusCode, 'Gagal mengambil user.');
     return (data['users'] as List? ?? const [])
         .map((e)=>Map<String,dynamic>.from(e as Map)).toList();
   }
@@ -109,7 +108,33 @@ class ApiService {
 }
 
 class ApiException implements Exception {
-  ApiException(this.message);
+  ApiException(this.message, {this.code = '', this.status = 0});
+
+  /// Pesan Indonesia siap tampil.
   final String message;
-  @override String toString() => message;
+
+  /// Kode mesin dari backend (`error.code`), mis. AUTH_BAD_CREDENTIALS.
+  /// Kosong bila server lama / offline.
+  final String code;
+  final int status;
+
+  bool get isAuthError =>
+      status == 401 ||
+      code == 'AUTH_BAD_TOKEN' ||
+      code == 'AUTH_MISSING_TOKEN' ||
+      code == 'USER_NOT_FOUND';
+
+  @override
+  String toString() => message;
+}
+
+/// Ambil kode error terstruktur bila ada (`{error:{code}}`), fallback pesan.
+ApiException apiError(Map<String, dynamic> data, int status, String fallback) {
+  final err = data['error'];
+  final code = err is Map ? err['code']?.toString() ?? '' : '';
+  return ApiException(
+    data['message']?.toString() ?? fallback,
+    code: code,
+    status: status,
+  );
 }

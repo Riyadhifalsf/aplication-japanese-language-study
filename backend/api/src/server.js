@@ -17,9 +17,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
-if (!process.env.JWT_SECRET) {
-  console.warn('[auth] PERINGATAN: JWT_SECRET tidak diatur — memakai secret dev. Jangan pakai di produksi!');
+const JWT_SECRET = process.env.JWT_SECRET || '';
+if (!JWT_SECRET) {
+  console.error('[auth] FATAL: JWT_SECRET tidak diatur. Isi di .env, server tidak boleh jalan tanpa itu.');
+  process.exit(1);
 }
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
 const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
@@ -37,29 +38,39 @@ const issueToken = (user) => jwt.sign(
 );
 
 class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) {
+    super(message);
+    this.status = status;
+    this.code = code || 'INTERNAL';
+  }
 }
+
+/// Bentuk error terstruktur (aditif & kompatibel):
+/// { success:false, message, error:{code,message} }.
+/// Field `message` level atas dipertahankan agar klien lama tetap jalan.
+const fail = (res, status, code, message) =>
+  res.status(status).json({ success: false, message, error: { code, message } });
 
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
 const authRequired = (req, _res, next) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
-  if (!token) return next(new HttpError(401, 'Token tidak ada.'));
+  if (!token) return next(new HttpError(401, 'Token tidak ada.', 'AUTH_MISSING_TOKEN'));
   try { req.auth = jwt.verify(token, JWT_SECRET); return next(); }
-  catch (_) { return next(new HttpError(401, 'Token tidak valid atau sudah kedaluwarsa.')); }
+  catch (_) { return next(new HttpError(401, 'Token tidak valid atau sudah kedaluwarsa.', 'AUTH_BAD_TOKEN')); }
 };
 
 const adminGuard = (req, _res, next) => {
   const supplied = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
   if (ADMIN_TOKEN && supplied === ADMIN_TOKEN) return next();
-  if (!supplied) return next(new HttpError(401, 'Token admin tidak ada.'));
+  if (!supplied) return next(new HttpError(401, 'Token admin tidak ada.', 'AUTH_MISSING_TOKEN'));
   try {
     const payload = jwt.verify(supplied, JWT_SECRET);
     if (payload.role === 'admin') return next();
-    return next(new HttpError(403, 'Akses admin saja.'));
+    return next(new HttpError(403, 'Akses admin saja.', 'AUTH_FORBIDDEN'));
   } catch (_) {
-    return next(new HttpError(401, 'Token admin tidak valid.'));
+    return next(new HttpError(401, 'Token admin tidak valid.', 'AUTH_BAD_TOKEN'));
   }
 };
 
@@ -68,7 +79,7 @@ const authLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Terlalu banyak percobaan. Coba lagi dalam beberapa menit.' },
+  message: { success: false, message: 'Terlalu banyak percobaan. Coba lagi dalam beberapa menit.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak percobaan. Coba lagi dalam beberapa menit.' } },
 });
 
 const apiLimiter = rateLimit({
@@ -76,9 +87,12 @@ const apiLimiter = rateLimit({
   max: 240,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Terlalu banyak permintaan. Coba lagi nanti.' },
+  message: { success: false, message: 'Terlalu banyak permintaan. Coba lagi nanti.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan. Coba lagi nanti.' } },
 });
-app.use('/api/', apiLimiter);
+app.use('/api', apiLimiter);
+app.use('/api/v1', apiLimiter);
+
+const api = require('express').Router();
 
 const audit = (userId, action, req) =>
   pool.query(
@@ -89,43 +103,48 @@ const audit = (userId, action, req) =>
 const rawToJson = (row) => ({ ...row, raw: typeof row.raw === 'string' ? JSON.parse(row.raw) : row.raw });
 
 // ---------- health ----------
-app.get('/api/health', asyncHandler(async (_req, res) => {
+api.get('/health', asyncHandler(async (_req, res) => {
   const r = await pool.query('SELECT now() AS time');
   res.json({ ok: true, database: true, time: r.rows[0].time });
 }));
 
 // ---------- auth / akun ----------
-app.post('/api/auth/register', authLimiter, asyncHandler(async (req, res) => {
+api.post('/auth/register', authLimiter, asyncHandler(async (req, res) => {
   const name = String(req.body.name || '').trim();
   const email = cleanEmail(req.body.email);
   const password = String(req.body.password || '');
-  if (name.length < 2 || name.length > 80) return res.status(400).json({ message: 'Nama minimal 2 karakter (maks 80).' });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: 'Email tidak valid.' });
-  if (password.length < 8) return res.status(400).json({ message: 'Password minimal 8 karakter.' });
-  if (password.length > 128) return res.status(400).json({ message: 'Password terlalu panjang.' });
-  const exists = await pool.query('SELECT 1 FROM app_users WHERE email=$1', [email]);
-  if (exists.rowCount) return res.status(409).json({ message: 'Email sudah terdaftar.' });
+  if (name.length < 2 || name.length > 80) return fail(res, 400, 'AUTH_INVALID_NAME', 'Nama minimal 2 karakter (maks 80).');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, 'AUTH_INVALID_EMAIL', 'Email tidak valid.');
+  if (password.length < 8) return fail(res, 400, 'AUTH_WEAK_PASSWORD', 'Password minimal 8 karakter.');
+  if (password.length > 128) return fail(res, 400, 'AUTH_WEAK_PASSWORD', 'Password terlalu panjang.');
   const hash = await bcrypt.hash(password, 12);
-  const r = await pool.query(
-    `INSERT INTO app_users(email,password_hash,display_name,role,profile)
-     VALUES($1,$2,$3,'user',$4) RETURNING *`,
-    [email, hash, name, JSON.stringify({})]
-  );
+  let r;
+  try {
+    r = await pool.query(
+      `INSERT INTO app_users(email,password_hash,display_name,role,profile)
+       VALUES($1,$2,$3,'user',$4) RETURNING *`,
+      [email, hash, name, JSON.stringify({})]
+    );
+  } catch (e) {
+    // Race registrasi ganda: UNIQUE(email) yang memutuskan, bukan cek di atas.
+    if (e && e.code === '23505') return fail(res, 409, 'AUTH_EMAIL_TAKEN', 'Email sudah terdaftar.');
+    throw e;
+  }
   const u = r.rows[0];
   await audit(u.id, 'register', req);
   res.status(201).json({ token: issueToken(u), user: publicUser(u), progress: u.progress || {} });
 }));
 
-app.post('/api/auth/login', authLimiter, asyncHandler(async (req, res) => {
+api.post('/auth/login', authLimiter, asyncHandler(async (req, res) => {
   const email = cleanEmail(req.body.email);
   const password = String(req.body.password || '');
-  if (!email || !password) return res.status(400).json({ message: 'Email dan password wajib diisi.' });
+  if (!email || !password) return fail(res, 400, 'AUTH_MISSING_FIELDS', 'Email dan password wajib diisi.');
   const r = await pool.query('SELECT * FROM app_users WHERE email=$1', [email]);
-  if (!r.rowCount) return res.status(401).json({ message: 'Email atau password salah.' });
+  if (!r.rowCount) return fail(res, 401, 'AUTH_BAD_CREDENTIALS', 'Email atau password salah.');
   const u = r.rows[0];
-  if (!u.is_active) return res.status(403).json({ message: 'Akun dinonaktifkan. Hubungi admin.' });
+  if (!u.is_active) return fail(res, 403, 'AUTH_DISABLED', 'Akun dinonaktifkan. Hubungi admin.');
   if (!u.password_hash || !(await bcrypt.compare(password, u.password_hash)))
-    return res.status(401).json({ message: 'Email atau password salah.' });
+    return fail(res, 401, 'AUTH_BAD_CREDENTIALS', 'Email atau password salah.');
   await pool.query('UPDATE app_users SET last_login_at=now() WHERE id=$1', [u.id]);
   await audit(u.id, 'login', req);
   res.json({ token: issueToken(u), user: publicUser(u), progress: u.progress || {} });
@@ -203,76 +222,92 @@ async function verifyGoogleIdToken(idToken) {
   }
 }
 
-app.post('/api/auth/google', authLimiter, asyncHandler(async (req, res) => {
+api.post('/auth/google', authLimiter, asyncHandler(async (req, res) => {
   const idToken = String(req.body.idToken || req.body.id_token || '').trim();
-  if (!idToken) return res.status(400).json({ message: 'idToken wajib diisi.' });
+  if (!idToken) return fail(res, 400, 'AUTH_GOOGLE_NO_TOKEN', 'idToken wajib diisi.');
   const info = await verifyGoogleIdToken(idToken);
   const subject = String(info.sub || '').trim();
   const email = cleanEmail(info.email);
   const name = String(info.name || email.split('@')[0] || 'Google User').slice(0, 80);
-  if (!subject || !email) return res.status(401).json({ message: 'Token Google tidak valid.' });
-  let r = await pool.query('SELECT * FROM app_users WHERE google_subject=$1', [subject]);
-  if (!r.rowCount) {
-    const byEmail = await pool.query('SELECT * FROM app_users WHERE email=$1', [email]);
-    if (byEmail.rowCount) {
-      r = await pool.query(
-        'UPDATE app_users SET google_subject=$2, display_name=COALESCE(display_name,$3), last_login_at=now() WHERE id=$1 RETURNING *',
-        [byEmail.rows[0].id, subject, name]
-      );
+  if (!subject || !email) return fail(res, 401, 'AUTH_GOOGLE_INVALID', 'Token Google tidak valid.');
+  const linkOrCreate = async () => {
+    let r = await pool.query('SELECT * FROM app_users WHERE google_subject=$1', [subject]);
+    if (!r.rowCount) {
+      const byEmail = await pool.query('SELECT * FROM app_users WHERE email=$1', [email]);
+      if (byEmail.rowCount) {
+        r = await pool.query(
+          'UPDATE app_users SET google_subject=$2, display_name=COALESCE(display_name,$3), last_login_at=now() WHERE id=$1 RETURNING *',
+          [byEmail.rows[0].id, subject, name]
+        );
+      } else {
+        r = await pool.query(
+          `INSERT INTO app_users(email,display_name,role,google_subject,profile)
+           VALUES($1,$2,'user',$3,$4) RETURNING *`,
+          [email, name, subject, JSON.stringify({ photoUrl: info.picture || '' })]
+        );
+      }
     } else {
-      r = await pool.query(
-        `INSERT INTO app_users(email,display_name,role,google_subject,profile)
-         VALUES($1,$2,'user',$3,$4) RETURNING *`,
-        [email, name, subject, JSON.stringify({ photoUrl: info.picture || '' })]
-      );
+      await pool.query('UPDATE app_users SET last_login_at=now() WHERE id=$1', [r.rows[0].id]);
     }
-  } else {
-    await pool.query('UPDATE app_users SET last_login_at=now() WHERE id=$1', [r.rows[0].id]);
+    return r;
+  };
+  let r;
+  try {
+    r = await linkOrCreate();
+  } catch (e) {
+    // Race link ganda: UNIQUE yang memutuskan; baca ulang hasil pemenang.
+    if (e && e.code === '23505') {
+      r = await pool.query('SELECT * FROM app_users WHERE google_subject=$1', [subject]);
+      if (!r.rowCount) r = await pool.query('SELECT * FROM app_users WHERE email=$1', [email]);
+    } else {
+      throw e;
+    }
   }
   const u = r.rows[0];
-  if (!u.is_active) return res.status(403).json({ message: 'Akun dinonaktifkan. Hubungi admin.' });
+  if (!u) return fail(res, 401, 'AUTH_GOOGLE_INVALID', 'Token Google tidak valid.');
+  if (!u.is_active) return fail(res, 403, 'AUTH_DISABLED', 'Akun dinonaktifkan. Hubungi admin.');
   await audit(u.id, 'login_google', req);
   res.json({ token: issueToken(u), user: publicUser(u), progress: u.progress || {} });
 }));
 
-app.get('/api/me', authRequired, asyncHandler(async (req, res) => {
+api.get('/me', authRequired, asyncHandler(async (req, res) => {
   const r = await pool.query('SELECT * FROM app_users WHERE id=$1', [req.auth.sub]);
-  if (!r.rowCount) return res.status(404).json({ message: 'User tidak ditemukan.' });
+  if (!r.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
   const u = r.rows[0];
   res.json({ user: publicUser(u), progress: u.progress || {} });
 }));
 
-app.put('/api/me/profile', authRequired, asyncHandler(async (req, res) => {
+api.put('/me/profile', authRequired, asyncHandler(async (req, res) => {
   const profile = req.body && typeof req.body === 'object' ? req.body : {};
   const r = await pool.query(
     `UPDATE app_users SET display_name=COALESCE($2,display_name),profile=$3 WHERE id=$1 RETURNING *`,
     [req.auth.sub, profile.display_name ? String(profile.display_name).slice(0, 80) : null, JSON.stringify(profile)]
   );
-  if (!r.rowCount) return res.status(404).json({ message: 'User tidak ditemukan.' });
+  if (!r.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
   res.json({ user: publicUser(r.rows[0]) });
 }));
 
-app.put('/api/me/progress', authRequired, asyncHandler(async (req, res) => {
+api.put('/me/progress', authRequired, asyncHandler(async (req, res) => {
   const progress = req.body && typeof req.body === 'object' ? req.body : {};
   const r = await pool.query(
     `UPDATE app_users SET progress=$2 WHERE id=$1 RETURNING updated_at`,
     [req.auth.sub, JSON.stringify(progress)]
   );
-  if (!r.rowCount) return res.status(404).json({ message: 'User tidak ditemukan.' });
+  if (!r.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
   res.json({ ok: true, updated_at: r.rows[0].updated_at });
 }));
 
-app.delete('/api/me', authRequired, asyncHandler(async (req, res) => {
+api.delete('/me', authRequired, asyncHandler(async (req, res) => {
   await pool.query('DELETE FROM app_users WHERE id=$1', [req.auth.sub]);
   res.json({ ok: true });
 }));
 
-app.get('/api/admin/users', adminGuard, asyncHandler(async (_req, res) => {
+api.get('/admin/users', adminGuard, asyncHandler(async (_req, res) => {
   const r = await pool.query('SELECT id,email,display_name,role,is_active,profile,created_at,last_login_at FROM app_users ORDER BY created_at DESC');
   res.json({ users: r.rows.map((u) => ({ ...u, display_name: u.display_name })) });
 }));
 
-app.delete('/api/admin/users/:id', adminGuard, asyncHandler(async (req, res) => {
+api.delete('/admin/users/:id', adminGuard, asyncHandler(async (req, res) => {
   await pool.query('DELETE FROM app_users WHERE id=$1', [req.params.id]);
   res.json({ ok: true });
 }));
@@ -280,7 +315,7 @@ app.delete('/api/admin/users/:id', adminGuard, asyncHandler(async (req, res) => 
 // ---------- vocabulary (katalog admin; dipakai tooling / CLI) ----------
 const vocabFromRow = (r) => ({ id: Number(r.id), word: r.word, reading: r.reading, meaning: r.meaning, level: r.level });
 
-app.get('/api/vocabulary', adminGuard, asyncHandler(async (req, res) => {
+api.get('/vocabulary', adminGuard, asyncHandler(async (req, res) => {
   const { level, search, limit = '200', offset = '0' } = req.query;
   const params = [];
   const where = [];
@@ -299,9 +334,9 @@ app.get('/api/vocabulary', adminGuard, asyncHandler(async (req, res) => {
   res.json({ data: result.rows.map(vocabFromRow) });
 }));
 
-app.post('/api/vocabulary', adminGuard, asyncHandler(async (req, res) => {
+api.post('/vocabulary', adminGuard, asyncHandler(async (req, res) => {
   const { word, reading, meaning, level = 'N5' } = req.body || {};
-  if (!word || !reading || !meaning) return res.status(400).json({ message: 'word, reading, dan meaning wajib diisi.' });
+  if (!word || !reading || !meaning) return fail(res, 400, 'VALIDATION', 'word, reading, dan meaning wajib diisi.');
   const r = await pool.query(
     'INSERT INTO vocabularies(word,reading,meaning,level) VALUES($1,$2,$3,$4) RETURNING *',
     [String(word).trim().slice(0, 120), String(reading).trim().slice(0, 120), String(meaning).trim().slice(0, 500), level]
@@ -309,19 +344,19 @@ app.post('/api/vocabulary', adminGuard, asyncHandler(async (req, res) => {
   res.status(201).json({ data: vocabFromRow(r.rows[0]) });
 }));
 
-app.put('/api/vocabulary/:id', adminGuard, asyncHandler(async (req, res) => {
+api.put('/vocabulary/:id', adminGuard, asyncHandler(async (req, res) => {
   const { word, reading, meaning, level } = req.body || {};
   const r = await pool.query(
     'UPDATE vocabularies SET word=$1,reading=$2,meaning=$3,level=$4,updated_at=NOW() WHERE id=$5 RETURNING *',
     [String(word ?? '').trim().slice(0, 120), String(reading ?? '').trim().slice(0, 120), String(meaning ?? '').trim().slice(0, 500), level || 'N5', req.params.id]
   );
-  if (!r.rowCount) return res.status(404).json({ message: 'Kotoba tidak ditemukan.' });
+  if (!r.rowCount) return fail(res, 404, 'VOCAB_NOT_FOUND', 'Kotoba tidak ditemukan.');
   res.json({ data: vocabFromRow(r.rows[0]) });
 }));
 
-app.delete('/api/vocabulary/:id', adminGuard, asyncHandler(async (req, res) => {
+api.delete('/vocabulary/:id', adminGuard, asyncHandler(async (req, res) => {
   const r = await pool.query('DELETE FROM vocabularies WHERE id=$1 RETURNING id', [req.params.id]);
-  if (!r.rowCount) return res.status(404).json({ message: 'Kotoba tidak ditemukan.' });
+  if (!r.rowCount) return fail(res, 404, 'VOCAB_NOT_FOUND', 'Kotoba tidak ditemukan.');
   res.json({ ok: true });
 }));
 
@@ -347,10 +382,10 @@ function addCategory(q, p) {
   return '';
 }
 
-app.get('/api/content/:type', asyncHandler(async (req, res) => {
+api.get('/content/:type', asyncHandler(async (req, res) => {
   const type = String(req.params.type).toLowerCase();
   const def = contentDefs[type];
-  if (!def) return res.status(404).json({ message: `Konten tidak dikenal: ${type}` });
+  if (!def) return fail(res, 404, 'CONTENT_UNKNOWN', `Konten tidak dikenal: ${type}`);
   const params = [];
   const wheres = [];
   const w = def.extraWhere(req.query, params);
@@ -404,7 +439,7 @@ const collections = {
   },
 };
 
-app.get('/api/admin/data', adminGuard, asyncHandler(async (_req, res) => {
+api.get('/admin/data', adminGuard, asyncHandler(async (_req, res) => {
   const out = {};
   for (const [name, def] of Object.entries(collections)) {
     const { rows } = await pool.query(`SELECT * FROM ${def.table} ORDER BY created_at DESC`);
@@ -413,11 +448,11 @@ app.get('/api/admin/data', adminGuard, asyncHandler(async (_req, res) => {
   res.json(out);
 }));
 
-app.post('/api/admin/data/:collection', adminGuard, asyncHandler(async (req, res) => {
+api.post('/admin/data/:collection', adminGuard, asyncHandler(async (req, res) => {
   const def = collections[req.params.collection];
-  if (!def) return res.status(404).json({ message: 'Koleksi tidak dikenal.' });
+  if (!def) return fail(res, 404, 'COLLECTION_UNKNOWN', 'Koleksi tidak dikenal.');
   const item = req.body && req.body.item ? req.body.item : req.body;
-  if (!item) return res.status(400).json({ message: 'Data item wajib diisi.' });
+  if (!item) return fail(res, 400, 'VALIDATION', 'Data item wajib diisi.');
   const db = def.toDb(item);
   const keys = Object.keys(db);
   const cols = keys.join(',');
@@ -426,28 +461,28 @@ app.post('/api/admin/data/:collection', adminGuard, asyncHandler(async (req, res
   res.status(201).json({ data: def.toApi(r.rows[0]) });
 }));
 
-app.put('/api/admin/data/:collection/:id', adminGuard, asyncHandler(async (req, res) => {
+api.put('/admin/data/:collection/:id', adminGuard, asyncHandler(async (req, res) => {
   const def = collections[req.params.collection];
-  if (!def) return res.status(404).json({ message: 'Koleksi tidak dikenal.' });
+  if (!def) return fail(res, 404, 'COLLECTION_UNKNOWN', 'Koleksi tidak dikenal.');
   const item = req.body && req.body.item ? req.body.item : req.body;
-  if (!item) return res.status(400).json({ message: 'Data item wajib diisi.' });
+  if (!item) return fail(res, 400, 'VALIDATION', 'Data item wajib diisi.');
   const db = def.toDb({ ...item, id: req.params.id });
   const keys = Object.keys(db).filter((k) => k !== 'id');
   const sets = keys.map((k, idx) => `${k} = $${idx + 2}`).join(', ');
   const r = await pool.query(`UPDATE ${def.table} SET ${sets} WHERE id = $1 RETURNING *`, [req.params.id, ...keys.map((k) => db[k])]);
-  if (!r.rowCount) return res.status(404).json({ message: 'Item tidak ditemukan.' });
+  if (!r.rowCount) return fail(res, 404, 'ITEM_NOT_FOUND', 'Item tidak ditemukan.');
   res.json({ data: def.toApi(r.rows[0]) });
 }));
 
-app.delete('/api/admin/data/:collection/:id', adminGuard, asyncHandler(async (req, res) => {
+api.delete('/admin/data/:collection/:id', adminGuard, asyncHandler(async (req, res) => {
   const def = collections[req.params.collection];
-  if (!def) return res.status(404).json({ message: 'Koleksi tidak dikenal.' });
+  if (!def) return fail(res, 404, 'COLLECTION_UNKNOWN', 'Koleksi tidak dikenal.');
   await pool.query(`DELETE FROM ${def.table} WHERE id = $1`, [req.params.id]);
   res.json({ ok: true });
 }));
 
 // ---------- analitik admin (dipakai dashboard admin Flutter) ----------
-app.get('/api/admin/analytics', adminGuard, asyncHandler(async (_req, res) => {
+api.get('/admin/analytics', adminGuard, asyncHandler(async (_req, res) => {
   const since14 = `date_trunc('day', created_at) >= now() - interval '14 days'`;
 
   const count = (sql, params = []) => pool.query(sql, params).then((r) => Number(r.rows[0].c));
@@ -518,18 +553,22 @@ app.get('/api/admin/analytics', adminGuard, asyncHandler(async (_req, res) => {
   });
 }));
 
+// Versioning: kontrak kanonis /api/v1, alias /api dipertahankan kompatibel.
+app.use('/api', api);
+app.use('/api/v1', api);
+
 // ---------- 404 & error ----------
-app.use((req, res) => res.status(404).json({ message: `Rute tidak ditemukan: ${req.method} ${req.path}` }));
+app.use((req, res) => fail(res, 404, 'ROUTE_NOT_FOUND', `Rute tidak ditemukan: ${req.method} ${req.path}`));
 
 app.use((err, _req, res, _next) => {
   if (err instanceof HttpError) {
-    return res.status(err.status).json({ message: err.message });
+    return fail(res, err.status, err.code, err.message);
   }
   if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ message: 'Format JSON tidak valid.' });
+    return fail(res, 400, 'BAD_JSON', 'Format JSON tidak valid.');
   }
   console.error('[error]', err);
-  res.status(500).json({ message: 'Terjadi kesalahan pada server.' });
+  fail(res, 500, 'INTERNAL', 'Terjadi kesalahan pada server.');
 });
 
 // ---------- run ----------

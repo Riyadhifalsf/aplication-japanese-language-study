@@ -24,6 +24,21 @@ import '../services/feature_flags_service.dart';
 import '../services/progress_sync_service.dart';
 import '../services/tts_service.dart';
 
+/// Status auth eksplisit (bukan sekadar boolean).
+///
+/// Unauthenticated = tamu; authenticating = proses login/daftar berjalan;
+/// authenticated = sesi valid; expired = token ditolak server; error = gagal
+/// dengan pesan di [AppController.authError]. `isAuthenticated` tetap
+/// dipertahankan kompatibel untuk UI lama.
+enum AuthStatus {
+  unknown,
+  guest,
+  authenticating,
+  authenticated,
+  expired,
+  error,
+}
+
 class AppController extends ChangeNotifier {
   AppController({
     required this.repository,
@@ -92,6 +107,14 @@ class AppController extends ChangeNotifier {
   bool isAuthenticated = false;
   bool isAdmin = false;
   String authProvider = '';
+  AuthStatus authStatus = AuthStatus.unknown;
+  String authError = '';
+
+  void _setAuth(AuthStatus status, [String error = '']) {
+    authStatus = status;
+    if (error.isNotEmpty) authError = error;
+    if (status == AuthStatus.authenticated) authError = '';
+  }
   final Map<String, String> _localAccounts = {};
   final Map<String, String> _localAccountNames = {};
   bool isPremium = false;
@@ -391,6 +414,9 @@ class AppController extends ChangeNotifier {
     // Firebase init ditunda pasca-frame, jadi restore dicoba di sini DAN
     // susulan via restoreFirebaseSession() setelah Firebase siap.
     await restoreFirebaseSession();
+    if (!isAuthenticated && authStatus == AuthStatus.unknown) {
+      _setAuth(AuthStatus.guest);
+    }
     completedLearningStepIds.addAll(
       prefs.getStringList('completedLearningSteps') ?? const [],
     );
@@ -1034,6 +1060,7 @@ class AppController extends ChangeNotifier {
       authProvider = googleLinked ? 'google' : 'email';
       await _saveAuthPrefs();
       await _persistCloudUid();
+      _setAuth(AuthStatus.authenticated);
       notifyListeners();
       unawaited(syncNow());
       return true;
@@ -1196,6 +1223,7 @@ class AppController extends ChangeNotifier {
     if (!normalizedEmail.contains('@') || !normalizedEmail.contains('.'))
       return 'Format email tidak valid.';
     if (password.length < 8) return 'Password minimal 8 karakter.';
+    _setAuth(AuthStatus.authenticating);
 
     // 1. Firebase (backend utama) bila sudah dikonfigurasi.
     if (FirebaseBootstrap.isAvailable) {
@@ -1213,6 +1241,7 @@ class AppController extends ChangeNotifier {
         profileName = fb.displayName;
         await _saveAuthPrefs();
         await _persistCloudUid();
+        _setAuth(AuthStatus.authenticated);
         notifyListeners();
         unawaited(syncNow());
         return null;
@@ -1239,13 +1268,17 @@ class AppController extends ChangeNotifier {
       profileEmail = (user['email'] ?? normalizedEmail).toString();
       profileName = (user['display_name'] ?? normalizedName).toString();
       await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
       notifyListeners();
       return null;
     } on ApiException catch (e) {
+      _setAuth(AuthStatus.error,
+          e.message.isNotEmpty ? e.message : 'Pendaftaran gagal.');
       return e.message.isNotEmpty ? e.message : 'Pendaftaran gagal.';
     } catch (_) {
       // Server tidak terjangkau: daftar di penyimpanan lokal (offline).
       if (_localAccounts.containsKey(normalizedEmail)) {
+        _setAuth(AuthStatus.error, 'Email sudah terdaftar.');
         return 'Email sudah terdaftar.';
       }
       _localAccounts[normalizedEmail] = _hashPassword(password);
@@ -1253,6 +1286,14 @@ class AppController extends ChangeNotifier {
       final prefs = _preferences ?? await SharedPreferences.getInstance();
       _preferences ??= prefs;
       await _persistLocalAccounts(prefs);
+      isAuthenticated = true;
+      isAdmin = false;
+      authProvider = 'email';
+      profileEmail = normalizedEmail;
+      profileName = normalizedName;
+      await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
+      notifyListeners();
       return null;
     }
   }
@@ -1261,6 +1302,7 @@ class AppController extends ChangeNotifier {
     final normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.isEmpty || password.isEmpty)
       return 'Email dan password wajib diisi.';
+    _setAuth(AuthStatus.authenticating);
 
     // 1. Firebase (backend utama) bila sudah dikonfigurasi.
     if (FirebaseBootstrap.isAvailable) {
@@ -1278,13 +1320,17 @@ class AppController extends ChangeNotifier {
         profileName = fb.displayName;
         await _saveAuthPrefs();
         await _persistCloudUid();
+        _setAuth(AuthStatus.authenticated);
         notifyListeners();
         unawaited(syncNow());
         return null;
       } on FirebaseAuthFailure catch (e) {
         // Hanya vonis gagal bila kredensialnya yang salah. Gangguan
         // jaringan / Firebase belum dikonfigurasi -> coba backend.
-        if (!e.isNetworkError && !e.isConfigError) return e.message;
+        if (!e.isNetworkError && !e.isConfigError) {
+          _setAuth(AuthStatus.error, e.message);
+          return e.message;
+        }
       } catch (_) {
         // Lanjut ke fallback di bawah.
       }
@@ -1305,16 +1351,20 @@ class AppController extends ChangeNotifier {
       profileName =
           (user['display_name'] ?? user['email'] ?? normalizedEmail).toString();
       await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
       notifyListeners();
       return null;
     } on ApiException catch (e) {
       // Server merespons: pesan dari server bersifat otoritatif.
+      _setAuth(AuthStatus.error,
+          e.message.isNotEmpty ? e.message : 'Login gagal.');
       return e.message.isNotEmpty ? e.message : 'Login gagal.';
     } catch (_) {
       // Server tidak terjangkau: verifikasi akun lokal (mode offline).
       final registeredPassword = _localAccounts[normalizedEmail];
       final passwordHash = _hashPassword(password);
       if (registeredPassword == null || registeredPassword != passwordHash) {
+        _setAuth(AuthStatus.error, 'Email atau password salah.');
         return 'Email atau password salah. (mode offline)';
       }
       isAuthenticated = true;
@@ -1325,6 +1375,7 @@ class AppController extends ChangeNotifier {
       profileName = _localAccountNames[normalizedEmail] ??
           normalizedEmail.split('@').first;
       await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
       notifyListeners();
       return null;
     }
@@ -1353,12 +1404,17 @@ class AppController extends ChangeNotifier {
   }
 
   Future<bool> loginWithGoogle() async {
+    _setAuth(AuthStatus.authenticating);
     final ok = await signInWithGoogle();
-    if (!ok) return false;
+    if (!ok) {
+      _setAuth(AuthStatus.error, lastAuthError ?? 'Login Google gagal.');
+      return false;
+    }
     isAuthenticated = true;
     isAdmin = false;
     authProvider = 'google';
     await _saveAuthPrefs();
+    _setAuth(AuthStatus.authenticated);
     notifyListeners();
     // Tarik + gabung progress cloud agar HP baru langsung dapat data lama.
     unawaited(syncNow());
@@ -1381,6 +1437,7 @@ class AppController extends ChangeNotifier {
     isAuthenticated = false;
     isAdmin = false;
     authProvider = '';
+    _setAuth(AuthStatus.guest);
     await Future.wait([
       _preferences?.setBool('isAuthenticated', false) ?? Future.value(false),
       _preferences?.setBool('isAdmin', false) ?? Future.value(false),
