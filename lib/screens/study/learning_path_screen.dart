@@ -32,7 +32,7 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final chapters = _curriculum[level]!;
+    final chapters = curriculum[level]!;
     final completed = chapters.where((c) => app.completedLearningStepIds.contains(c.id)).length;
     return Scaffold(
       appBar: AppBar(title: const Text('Path Belajar')),
@@ -131,7 +131,7 @@ class _LockedLevelPanel extends StatelessWidget {
 
 class _RoadPath extends StatelessWidget {
   const _RoadPath({required this.chapters});
-  final List<_Chapter> chapters;
+  final List<PathChapter> chapters;
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +156,7 @@ class _RoadPath extends StatelessWidget {
 
 class _NodeCard extends StatelessWidget {
   const _NodeCard({required this.chapter, required this.index, required this.completed, required this.locked});
-  final _Chapter chapter;
+  final PathChapter chapter;
   final int index;
   final bool completed;
   final bool locked;
@@ -168,7 +168,7 @@ class _NodeCard extends StatelessWidget {
         child: Card(
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: locked ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => _ChapterDetail(chapter: chapter))),
+            onTap: locked ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChapterDetailScreen(chapter: chapter))),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(children: [
@@ -193,9 +193,12 @@ class _NodeCard extends StatelessWidget {
       );
 }
 
-class _ChapterDetail extends StatelessWidget {
-  const _ChapterDetail({required this.chapter});
-  final _Chapter chapter;
+/// Detail satu bab: materi -> latihan -> review -> uji penguasaan.
+///
+/// Publik agar "Lanjutkan belajar" di StudyHub bisa deep-link langsung.
+class ChapterDetailScreen extends StatelessWidget {
+  const ChapterDetailScreen({required this.chapter, super.key});
+  final PathChapter chapter;
 
   @override
   Widget build(BuildContext context) {
@@ -232,11 +235,11 @@ class _ChapterDetail extends StatelessWidget {
     );
   }
 
-  void _showSubLesson(BuildContext context, _Chapter chapter, String lesson) {
+  void _showSubLesson(BuildContext context, PathChapter chapter, String lesson) {
     showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (_) => Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 30), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(lesson, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)), const SizedBox(height: 10), Text('Bab ${chapter.number} · ${chapter.level}', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w800)), const SizedBox(height: 10), ...chapter.material.map((item) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.check_circle_outline_rounded, size: 18), const SizedBox(width: 8), Expanded(child: Text(item))]))), const SizedBox(height: 4), const Text('Setelah membaca, lanjutkan ke latihan pada bab ini lalu ambil Uji Penguasaan Bab.', style: TextStyle(height: 1.4))])));
   }
 
-  void _showMaterial(BuildContext context, _Chapter chapter) {
+  void _showMaterial(BuildContext context, PathChapter chapter) {
     showModalBottomSheet(context: context, showDragHandle: true, builder: (_) => Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 30), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Materi inti Bab ${chapter.number}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)), const SizedBox(height: 12), for (final item in chapter.material) Padding(padding: const EdgeInsets.only(bottom: 9), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.check_circle_outline_rounded, size: 18), const SizedBox(width: 8), Expanded(child: Text(item, style: const TextStyle(height: 1.35)))])), const SizedBox(height: 4), Text('Target: ${chapter.target}', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w800))])));
   }
 }
@@ -250,9 +253,10 @@ class _LessonTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(margin: const EdgeInsets.only(bottom: 9), child: ListTile(onTap: onTap, leading: CircleAvatar(child: Icon(icon)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(subtitle), trailing: const Icon(Icons.chevron_right_rounded)));
 }
+/// Satu bab kurikulum path belajar. Publik agar bisa dipakai lintas layar.
+class PathChapter {
 
-class _Chapter {
-  const _Chapter(this.id, this.number, this.level, this.title, this.summary, this.material, this.target, this.tags, [this.subLessons = const []]);
+  const PathChapter(this.id, this.number, this.level, this.title, this.summary, this.material, this.target, this.tags, [this.subLessons = const []]);
   final String id;
   final int number;
   final String level;
@@ -274,33 +278,34 @@ final Map<String, String> _levelDescription = {
   'N1': 'bahasa tingkat lanjut dan nuansa',
 };
 
-final Map<String, List<_Chapter>> _curriculum = {
+/// Kurikulum per level. Publik agar StudyHub bisa hitung progres & deep-link.
+final Map<String, List<PathChapter>> curriculum = {
   'N5': [
-    _Chapter('path-n5-01', 1, 'N5', 'Salam & perkenalan', 'Memulai percakapan dan memperkenalkan diri.', ['Hiragana dasar dan bunyi panjang', 'です sebagai penutup sopan', 'Pola nama + です'], 'Bisa memperkenalkan diri sederhana.', ['Kana', 'です', 'Frasa']),
-    _Chapter('path-n5-02', 2, 'N5', 'Keluarga & orang', 'Menyebut anggota keluarga dan orang di sekitar.', ['これ・それ・あれ', 'こちら・そちら・あちら', 'Kata ganti dasar'], 'Bisa membicarakan orang terdekat.', ['これそれあれ', 'Keluarga']),
-    _Chapter('path-n5-03', 3, 'N5', 'Benda & tempat', 'Menanyakan benda, ruangan, dan lokasi.', ['ここ・そこ・あそこ', 'この・その・あの', 'Tempat umum'], 'Bisa bertanya dan menjawab lokasi.', ['Tempat', 'ここそこあそこ']),
-    _Chapter('path-n5-04', 4, 'N5', 'Waktu & jadwal', 'Jam, hari, tanggal, dan aktivitas rutin.', ['Jam dan menit', 'に untuk waktu', 'Kosakata hari dan tanggal'], 'Bisa mengatakan jadwal harian.', ['Waktu', 'に']),
-    _Chapter('path-n5-05', 5, 'N5', 'Pergi & transportasi', 'Berbicara tentang tujuan dan kendaraan.', ['へ・に untuk tujuan', 'で untuk alat transportasi', 'いきます・きます・かえります'], 'Bisa menjelaskan perjalanan.', ['へ', 'に', 'で']),
-    _Chapter('path-n5-06', 6, 'N5', 'Aktivitas harian', 'Menceritakan apa yang dilakukan.', ['Kata kerja bentuk ます', 'を sebagai objek', 'と sebagai pasangan'], 'Bisa membuat kalimat aktivitas dasar.', ['ます', 'を', 'と']),
-    _Chapter('path-n5-07', 7, 'N5', 'Makan & minum', 'Memesan dan membahas makanan.', ['たべます・のみます', 'を dan で', 'Ungkapan permintaan sederhana'], 'Bisa memesan makanan/minuman.', ['Food', 'ます']),
-    _Chapter('path-n5-08', 8, 'N5', 'Sifat benda & orang', 'Menjelaskan bagus, ramai, mahal, dan sejenisnya.', ['い-adjective', 'な-adjective', 'Bentuk positif sederhana'], 'Bisa mendeskripsikan sesuatu.', ['Adjektiva']),
-    _Chapter('path-n5-09', 9, 'N5', 'Kesukaan & kemampuan', 'Menyampaikan suka, tidak suka, dan kemampuan dasar.', ['すきです・きらいです', 'じょうず・へた', 'が sebagai penanda'], 'Bisa membicarakan preferensi.', ['すき', 'が']),
-    _Chapter('path-n5-10', 10, 'N5', 'Ada & berada', 'Menyatakan keberadaan orang dan benda.', ['あります・います', 'に untuk lokasi keberadaan', 'Posisi benda'], 'Bisa menjelaskan apa yang ada di suatu tempat.', ['あります', 'います']),
-    _Chapter('path-n5-11', 11, 'N5', 'Jumlah & penghitung', 'Jumlah benda, orang, dan kejadian.', ['Counter dasar', 'berapa jumlahnya', 'Partikel umum kuantitas'], 'Bisa menyebut jumlah sederhana.', ['Counter', 'Jumlah']),
-    _Chapter('path-n5-12', 12, 'N5', 'Perbandingan', 'Membandingkan dua atau lebih benda.', ['より', 'ほうが', 'いちばん'], 'Bisa menyatakan yang lebih/terbaik.', ['より', 'ほうが']),
-    _Chapter('path-n5-13', 13, 'N5', 'Keinginan & undangan', 'Menyatakan ingin melakukan sesuatu.', ['ほしいです', 'たいです', 'ませんか・ましょう'], 'Bisa mengajak dan menyatakan keinginan.', ['たい', 'ましょう']),
-    _Chapter('path-n5-14', 14, 'N5', 'Bentuk て', 'Membuka pintu ke banyak pola kerja dasar.', ['てください', 'ている', 'Urutan kegiatan'], 'Bisa meminta seseorang melakukan sesuatu.', ['て形']),
-    _Chapter('path-n5-15', 15, 'N5', 'Izin & larangan', 'Aturan, izin, dan tindakan yang sedang berlangsung.', ['てもいいです', 'てはいけません', 'ています'], 'Bisa bertanya izin dan memahami larangan.', ['Izin', 'Larangan']),
-    _Chapter('path-n5-16', 16, 'N5', 'Bentuk biasa dasar', 'Mulai memahami bahasa yang lebih santai.', ['Bentuk kamus', 'ない dasar', 'Kalimat pendek informal'], 'Mulai memahami percakapan santai.', ['辞書形', 'ない']),
-    _Chapter('path-n5-17', 17, 'N5', 'Pengalaman & kemampuan', 'Menyatakan pernah, bisa, dan tidak bisa.', ['ことがあります', 'bisa/tidak bisa', 'Ungkapan pengalaman'], 'Bisa menceritakan pengalaman sederhana.', ['経験']),
-    _Chapter('path-n5-18', 18, 'N5', 'Rencana & kewajiban', 'Rencana masa depan dan kewajiban dasar.', ['つもりです', 'なければなりません', 'でしょう'], 'Bisa menjelaskan rencana dan kewajiban.', ['つもり', '義務']),
-    _Chapter('path-n5-19', 19, 'N5', 'Kondisi & cuaca', 'Cuaca, kondisi, dan perubahan sederhana.', ['どうですか', 'なります dasar', 'Kosakata cuaca'], 'Bisa membicarakan keadaan sehari-hari.', ['Cuaca', 'なる']),
-    _Chapter('path-n5-20', 20, 'N5', 'Review N5 A', 'Menyatukan pola inti 1–19 melalui dialog.', ['Dialog pendek', 'Kotoba inti', 'Kanji tema kehidupan'], 'Mampu mengikuti percakapan sangat sederhana.', ['Review']),
-    _Chapter('path-n5-21', 21, 'N5', 'Cerita pendek N5', 'Membaca cerita pendek dengan konteks nyata.', ['Kana lancar', 'Kosakata berfrekuensi tinggi', 'Kalimat berantai'], 'Bisa memahami gagasan utama cerita pendek.', ['Reading', 'Story']),
-    _Chapter('path-n5-22', 22, 'N5', 'Listening N5', 'Menangkap informasi penting dari percakapan lambat.', ['Kata kunci', 'Angka dan waktu', 'Dialog sehari-hari'], 'Bisa menangkap informasi utama.', ['Listening']),
-    _Chapter('path-n5-23', 23, 'N5', 'Kanji N5 terapan', 'Menghubungkan kanji dengan kata yang sudah dipelajari.', ['Kanji angka/waktu/orang/tempat', 'Onyomi dan kunyomi dasar', 'Kata majemuk sederhana'], 'Bisa membaca kanji N5 dalam kata.', ['Kanji']),
-    _Chapter('path-n5-24', 24, 'N5', 'Simulasi N5', 'Latihan terpadu seperti mini ujian.', ['Kotoba', 'Bunpou', 'Reading', 'Listening'], 'Mencapai akurasi minimal 80%.', ['Mock']),
-    _Chapter('path-n5-25', 25, 'N5', 'Uji Penguasaan N5', 'Checkpoint akhir sebelum membuka N4.', ['Review semua bab', 'Kanji dan kosakata', 'Cerita dan pemahaman'], 'Lulus penguasaan N5.', ['Mastery', 'Final']),
+    PathChapter('path-n5-01', 1, 'N5', 'Salam & perkenalan', 'Memulai percakapan dan memperkenalkan diri.', ['Hiragana dasar dan bunyi panjang', 'です sebagai penutup sopan', 'Pola nama + です'], 'Bisa memperkenalkan diri sederhana.', ['Kana', 'です', 'Frasa']),
+    PathChapter('path-n5-02', 2, 'N5', 'Keluarga & orang', 'Menyebut anggota keluarga dan orang di sekitar.', ['これ・それ・あれ', 'こちら・そちら・あちら', 'Kata ganti dasar'], 'Bisa membicarakan orang terdekat.', ['これそれあれ', 'Keluarga']),
+    PathChapter('path-n5-03', 3, 'N5', 'Benda & tempat', 'Menanyakan benda, ruangan, dan lokasi.', ['ここ・そこ・あそこ', 'この・その・あの', 'Tempat umum'], 'Bisa bertanya dan menjawab lokasi.', ['Tempat', 'ここそこあそこ']),
+    PathChapter('path-n5-04', 4, 'N5', 'Waktu & jadwal', 'Jam, hari, tanggal, dan aktivitas rutin.', ['Jam dan menit', 'に untuk waktu', 'Kosakata hari dan tanggal'], 'Bisa mengatakan jadwal harian.', ['Waktu', 'に']),
+    PathChapter('path-n5-05', 5, 'N5', 'Pergi & transportasi', 'Berbicara tentang tujuan dan kendaraan.', ['へ・に untuk tujuan', 'で untuk alat transportasi', 'いきます・きます・かえります'], 'Bisa menjelaskan perjalanan.', ['へ', 'に', 'で']),
+    PathChapter('path-n5-06', 6, 'N5', 'Aktivitas harian', 'Menceritakan apa yang dilakukan.', ['Kata kerja bentuk ます', 'を sebagai objek', 'と sebagai pasangan'], 'Bisa membuat kalimat aktivitas dasar.', ['ます', 'を', 'と']),
+    PathChapter('path-n5-07', 7, 'N5', 'Makan & minum', 'Memesan dan membahas makanan.', ['たべます・のみます', 'を dan で', 'Ungkapan permintaan sederhana'], 'Bisa memesan makanan/minuman.', ['Food', 'ます']),
+    PathChapter('path-n5-08', 8, 'N5', 'Sifat benda & orang', 'Menjelaskan bagus, ramai, mahal, dan sejenisnya.', ['い-adjective', 'な-adjective', 'Bentuk positif sederhana'], 'Bisa mendeskripsikan sesuatu.', ['Adjektiva']),
+    PathChapter('path-n5-09', 9, 'N5', 'Kesukaan & kemampuan', 'Menyampaikan suka, tidak suka, dan kemampuan dasar.', ['すきです・きらいです', 'じょうず・へた', 'が sebagai penanda'], 'Bisa membicarakan preferensi.', ['すき', 'が']),
+    PathChapter('path-n5-10', 10, 'N5', 'Ada & berada', 'Menyatakan keberadaan orang dan benda.', ['あります・います', 'に untuk lokasi keberadaan', 'Posisi benda'], 'Bisa menjelaskan apa yang ada di suatu tempat.', ['あります', 'います']),
+    PathChapter('path-n5-11', 11, 'N5', 'Jumlah & penghitung', 'Jumlah benda, orang, dan kejadian.', ['Counter dasar', 'berapa jumlahnya', 'Partikel umum kuantitas'], 'Bisa menyebut jumlah sederhana.', ['Counter', 'Jumlah']),
+    PathChapter('path-n5-12', 12, 'N5', 'Perbandingan', 'Membandingkan dua atau lebih benda.', ['より', 'ほうが', 'いちばん'], 'Bisa menyatakan yang lebih/terbaik.', ['より', 'ほうが']),
+    PathChapter('path-n5-13', 13, 'N5', 'Keinginan & undangan', 'Menyatakan ingin melakukan sesuatu.', ['ほしいです', 'たいです', 'ませんか・ましょう'], 'Bisa mengajak dan menyatakan keinginan.', ['たい', 'ましょう']),
+    PathChapter('path-n5-14', 14, 'N5', 'Bentuk て', 'Membuka pintu ke banyak pola kerja dasar.', ['てください', 'ている', 'Urutan kegiatan'], 'Bisa meminta seseorang melakukan sesuatu.', ['て形']),
+    PathChapter('path-n5-15', 15, 'N5', 'Izin & larangan', 'Aturan, izin, dan tindakan yang sedang berlangsung.', ['てもいいです', 'てはいけません', 'ています'], 'Bisa bertanya izin dan memahami larangan.', ['Izin', 'Larangan']),
+    PathChapter('path-n5-16', 16, 'N5', 'Bentuk biasa dasar', 'Mulai memahami bahasa yang lebih santai.', ['Bentuk kamus', 'ない dasar', 'Kalimat pendek informal'], 'Mulai memahami percakapan santai.', ['辞書形', 'ない']),
+    PathChapter('path-n5-17', 17, 'N5', 'Pengalaman & kemampuan', 'Menyatakan pernah, bisa, dan tidak bisa.', ['ことがあります', 'bisa/tidak bisa', 'Ungkapan pengalaman'], 'Bisa menceritakan pengalaman sederhana.', ['経験']),
+    PathChapter('path-n5-18', 18, 'N5', 'Rencana & kewajiban', 'Rencana masa depan dan kewajiban dasar.', ['つもりです', 'なければなりません', 'でしょう'], 'Bisa menjelaskan rencana dan kewajiban.', ['つもり', '義務']),
+    PathChapter('path-n5-19', 19, 'N5', 'Kondisi & cuaca', 'Cuaca, kondisi, dan perubahan sederhana.', ['どうですか', 'なります dasar', 'Kosakata cuaca'], 'Bisa membicarakan keadaan sehari-hari.', ['Cuaca', 'なる']),
+    PathChapter('path-n5-20', 20, 'N5', 'Review N5 A', 'Menyatukan pola inti 1–19 melalui dialog.', ['Dialog pendek', 'Kotoba inti', 'Kanji tema kehidupan'], 'Mampu mengikuti percakapan sangat sederhana.', ['Review']),
+    PathChapter('path-n5-21', 21, 'N5', 'Cerita pendek N5', 'Membaca cerita pendek dengan konteks nyata.', ['Kana lancar', 'Kosakata berfrekuensi tinggi', 'Kalimat berantai'], 'Bisa memahami gagasan utama cerita pendek.', ['Reading', 'Story']),
+    PathChapter('path-n5-22', 22, 'N5', 'Listening N5', 'Menangkap informasi penting dari percakapan lambat.', ['Kata kunci', 'Angka dan waktu', 'Dialog sehari-hari'], 'Bisa menangkap informasi utama.', ['Listening']),
+    PathChapter('path-n5-23', 23, 'N5', 'Kanji N5 terapan', 'Menghubungkan kanji dengan kata yang sudah dipelajari.', ['Kanji angka/waktu/orang/tempat', 'Onyomi dan kunyomi dasar', 'Kata majemuk sederhana'], 'Bisa membaca kanji N5 dalam kata.', ['Kanji']),
+    PathChapter('path-n5-24', 24, 'N5', 'Simulasi N5', 'Latihan terpadu seperti mini ujian.', ['Kotoba', 'Bunpou', 'Reading', 'Listening'], 'Mencapai akurasi minimal 80%.', ['Mock']),
+    PathChapter('path-n5-25', 25, 'N5', 'Uji Penguasaan N5', 'Checkpoint akhir sebelum membuka N4.', ['Review semua bab', 'Kanji dan kosakata', 'Cerita dan pemahaman'], 'Lulus penguasaan N5.', ['Mastery', 'Final']),
   ],
   'N4': [for (var i = 1; i <= 25; i++) _genericChapter('N4', i)],
   'N3': [for (var i = 1; i <= 20; i++) _genericChapter('N3', i)],
@@ -308,7 +313,18 @@ final Map<String, List<_Chapter>> _curriculum = {
   'N1': [for (var i = 1; i <= 14; i++) _genericChapter('N1', i)],
 };
 
-_Chapter _genericChapter(String level, int i) {
+/// Bab pertama yang belum selesai (menghormati urutan kunci berantai).
+/// Null bila semua bab level ini selesai.
+PathChapter? nextPathChapter(String level, Set<String> completedIds) {
+  final chapters = curriculum[level];
+  if (chapters == null) return null;
+  for (final c in chapters) {
+    if (!completedIds.contains(c.id)) return c;
+  }
+  return null;
+}
+
+PathChapter _genericChapter(String level, int i) {
   final names = {
     1: 'Orientasi & fondasi',
     2: 'Rutinitas & pengalaman',
@@ -337,5 +353,5 @@ _Chapter _genericChapter(String level, int i) {
     25: 'Ujian level',
   };
   final title = names[i] ?? 'Materi lanjutan';
-  return _Chapter('path-${level.toLowerCase()}-${_n(i)}', i, level, title, 'Materi ${level} bab $i dengan alur yang terstruktur dan progresif.', ['Materi inti ${level}', 'Kotoba bertema', 'Bunpou dan contoh kalimat', 'Kanji sesuai konteks', 'Latihan pemahaman'], 'Bisa menggunakan materi bab ini dalam konteks.', ['Kotoba', 'Bunpou', if (i % 3 == 0) 'Kanji' else 'Reading']);
+  return PathChapter('path-${level.toLowerCase()}-${_n(i)}', i, level, title, 'Materi ${level} bab $i dengan alur yang terstruktur dan progresif.', ['Materi inti ${level}', 'Kotoba bertema', 'Bunpou dan contoh kalimat', 'Kanji sesuai konteks', 'Latihan pemahaman'], 'Bisa menggunakan materi bab ini dalam konteks.', ['Kotoba', 'Bunpou', if (i % 3 == 0) 'Kanji' else 'Reading']);
 }

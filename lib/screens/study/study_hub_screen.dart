@@ -24,6 +24,7 @@ import '../readings/reading_screen.dart';
 import '../sentences/sentence_screen.dart';
 import '../vocab/vocabulary_screen.dart';
 import 'learning_path_screen.dart';
+import 'today_learning_screen.dart';
 import 'learning_tracks_screen.dart';
 import '../profile/study_stats_screen.dart';
 import '../games/game_hub_screen.dart';
@@ -40,6 +41,8 @@ class StudyHubScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
       children: [
         const _StudyHeader(),
+        const SizedBox(height: 14),
+        _ContinuePath(app: app),
         const SizedBox(height: 16),
         _StudyOverview(app: app),
         const AnnouncementStrip(),
@@ -47,19 +50,37 @@ class StudyHubScreen extends StatelessWidget {
         const SizedBox(height: 12),
         _RecommendationCard(app: app),
         const SizedBox(height: 22),
-        _StudyShelf(title: 'Akses cepat', subtitle: 'Materi yang sering kamu gunakan.', cards: [
-          _StudyCardData(title:'Kanji',subtitle:'Belajar, flashcard, quiz, dan review',icon:Icons.translate_rounded,color:const Color(0xFFFFA62B),badge:'${app.masteredKanjiIds.length} dikuasai',progress:app.masteredKanjiIds.length/5000,screen:const KanjiStudyScreen()),
-        ]),
-        const SizedBox(height:22),
+        _StudyShelf(
+            title: 'Akses cepat',
+            subtitle: 'Materi yang sering kamu gunakan.',
+            cards: [
+              _StudyCardData(
+                  title: 'Kanji',
+                  subtitle: 'Belajar, flashcard, quiz, dan review',
+                  icon: Icons.translate_rounded,
+                  color: const Color(0xFFFFA62B),
+                  badge: '${app.masteredKanjiIds.length} dikuasai',
+                  progress: app.masteredKanjiIds.length / 5000,
+                  screen: const KanjiStudyScreen()),
+            ]),
+        const SizedBox(height: 22),
         _StudyShelf(
           title: 'Jalur utama belajar',
           subtitle: 'Ikuti path bab demi bab seperti course modern.',
           cards: [
+            const _StudyCardData(
+              title: 'Misi hari ini',
+              subtitle: 'Urutan lesson, review, dan remedial yang jelas',
+              icon: Icons.flag_rounded,
+              color: Color(0xFF6D4AFF),
+              badge: 'Mulai di sini',
+              screen: TodayLearningScreen(),
+            ),
             _StudyCardData(
               title: 'Path Belajar',
               subtitle: 'N5 → N4 → N3 → N2 → N1',
               icon: Icons.route_rounded,
-              color: const Color(0xFF4F6BFF),
+              color: const Color(0xFFD92D20),
               badge: 'Mulai di sini',
               progress: app.completedLearningStepIds.length / 25,
               screen: LearningPathScreen(initialLevel: app.selectedStudyLevel),
@@ -113,15 +134,43 @@ class StudyHubScreen extends StatelessWidget {
               badge: 'Panjang',
               screen: const ReadingScreen(),
             ),
-            const _StudyCardData(title:'Games', subtitle:'Typing Kana, Kotoba, Kanji', icon:Icons.sports_esports_rounded, color:Color(0xFFB42318), badge:'Play', screen:GameHubScreen()),
-            const _StudyCardData(title:'Speaking Practice', subtitle:'Latihan pengucapan dengan TTS', icon:Icons.mic_rounded, color:Color(0xFF0EA5E9), badge:'Speak', screen:SpeakingPracticeScreen()),
-            const _StudyCardData(title:'Ulasan Kesalahan', subtitle:'Evaluasi kesalahan dan rekomendasi AI', icon:Icons.rate_review_rounded, color:Color(0xFFEF4444), badge:'Review', screen:MistakeReviewScreen()),
+            const _StudyCardData(
+                title: 'Games',
+                subtitle: 'Typing Kana, Kotoba, Kanji',
+                icon: Icons.sports_esports_rounded,
+                color: Color(0xFFB42318),
+                badge: 'Play',
+                screen: GameHubScreen()),
+            const _StudyCardData(
+                title: 'Speaking Practice',
+                subtitle: 'Latihan pengucapan dengan TTS',
+                icon: Icons.mic_rounded,
+                color: Color(0xFF0EA5E9),
+                badge: 'Speak',
+                screen: SpeakingPracticeScreen()),
+            const _StudyCardData(
+                title: 'Ulasan Kesalahan',
+                subtitle: 'Evaluasi kesalahan dan rekomendasi AI',
+                icon: Icons.rate_review_rounded,
+                color: Color(0xFFEF4444),
+                badge: 'Review',
+                screen: MistakeReviewScreen()),
           ],
         ),
         const SizedBox(height: 16),
-        _StudyShelf(title: 'Jalur level', subtitle: 'Mulai dari N5 atau buktikan kemampuanmu lewat placement quiz.', cards: [
-          _StudyCardData(title: 'Placement Quiz', subtitle: 'Tes untuk membantu membuka N4–N1', icon: Icons.assignment_turned_in_rounded, color: const Color(0xFFD92D20), badge: '80%+', screen: const LearningPathScreen()),
-        ]),
+        _StudyShelf(
+            title: 'Jalur level',
+            subtitle:
+                'Mulai dari N5 atau buktikan kemampuanmu lewat placement quiz.',
+            cards: [
+              _StudyCardData(
+                  title: 'Placement Quiz',
+                  subtitle: 'Tes untuk membantu membuka N4–N1',
+                  icon: Icons.assignment_turned_in_rounded,
+                  color: const Color(0xFFD92D20),
+                  badge: '80%+',
+                  screen: const LearningPathScreen()),
+            ]),
         const SizedBox(height: 24),
         _StudyShelf(
           title: 'Materi inti',
@@ -182,7 +231,8 @@ class StudyHubScreen extends StatelessWidget {
         const SizedBox(height: 24),
         _StudyShelf(
           title: 'Pusat kuis & ujian',
-          subtitle: 'Semua latihan, uji penguasaan, JLPT, dan JFT dari satu tempat.',
+          subtitle:
+              'Semua latihan, uji penguasaan, JLPT, dan JFT dari satu tempat.',
           cards: [
             const _StudyCardData(
               title: 'Simulasi JLPT',
@@ -251,6 +301,126 @@ class StudyHubScreen extends StatelessWidget {
   }
 }
 
+/// Kartu "Lanjutkan belajar": alur sejelas mungkin — user selalu tahu
+/// persis bab berapa yang dikerjakan berikutnya (ala path Duolingo/Busuu).
+///
+/// Deep-link langsung ke bab berikutnya; bila level selesai, tawarkan review.
+class _ContinuePath extends StatelessWidget {
+  const _ContinuePath({required this.app});
+  final AppController app;
+
+  @override
+  Widget build(BuildContext context) {
+    const levels = {'N5', 'N4', 'N3', 'N2', 'N1'};
+    final level =
+        levels.contains(app.selectedStudyLevel) ? app.selectedStudyLevel : 'N5';
+    final chapters = curriculum[level] ?? const [];
+    final done = chapters
+        .where((c) => app.completedLearningStepIds.contains(c.id))
+        .length;
+    final next = nextPathChapter(level, app.completedLearningStepIds);
+    final progress = chapters.isEmpty ? 0.0 : done / chapters.length;
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: [cs.primary, const Color(0xFF4A1110)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'LANJUTKAN BELAJAR · $level',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
+                  fontSize: 12,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .18),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  'Bab $done/${chapters.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            next == null
+                ? 'Level $level selesai!'
+                : 'Bab ${next.number}: ${next.title}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            next == null
+                ? 'Pertahankan dengan review & simulasi.'
+                : next.summary,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white70, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: .22),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: cs.primary,
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => next == null
+                      ? LearningPathScreen(initialLevel: level)
+                      : ChapterDetailScreen(chapter: next),
+                ),
+              ),
+              child: Text(next == null
+                  ? 'Review level $level'
+                  : 'Mulai Bab ${next.number}'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RecommendationCard extends StatelessWidget {
   const _RecommendationCard({required this.app});
   final AppController app;
@@ -263,7 +433,13 @@ class _RecommendationCard extends StatelessWidget {
       'advance' => Icons.arrow_forward_rounded,
       _ => Icons.flag_rounded,
     };
-    return Card(child: ListTile(leading: CircleAvatar(child: Icon(icon)), title: const Text('Rekomendasi langkah berikutnya', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(recommendation.reason), trailing: const Icon(Icons.chevron_right_rounded)));
+    return Card(
+        child: ListTile(
+            leading: CircleAvatar(child: Icon(icon)),
+            title: const Text('Rekomendasi langkah berikutnya',
+                style: TextStyle(fontWeight: FontWeight.w900)),
+            subtitle: Text(recommendation.reason),
+            trailing: const Icon(Icons.chevron_right_rounded)));
   }
 }
 
@@ -276,21 +452,42 @@ class _StudyHeader extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
           gradient: LinearGradient(
-            colors: [Theme.of(context).colorScheme.primary.withValues(alpha: .92), const Color(0xFF4A1110)],
+            colors: [
+              Theme.of(context).colorScheme.primary.withValues(alpha: .92),
+              const Color(0xFF4A1110)
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: const Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('学ぶ · manabu', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
-            SizedBox(height: 10),
-            Text('Belajar', style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
-            SizedBox(height: 6),
-            Text('Jalur utama, materi inti, Kanji, dan review dalam satu ruang.', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
-          ])),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('学ぶ · manabu',
+                    style: TextStyle(
+                        color: Colors.white70, fontWeight: FontWeight.w800)),
+                SizedBox(height: 10),
+                Text('Belajar',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900)),
+                SizedBox(height: 6),
+                Text(
+                    'Jalur utama, materi inti, Kanji, dan review dalam satu ruang.',
+                    style: TextStyle(
+                        color: Colors.white70, fontWeight: FontWeight.w700)),
+              ])),
           SizedBox(width: 12),
-          CircleAvatar(backgroundColor: Colors.white24, child: Text('学', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20))),
+          CircleAvatar(
+              backgroundColor: Colors.white24,
+              child: Text('学',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20))),
         ]),
       );
 }
@@ -304,9 +501,13 @@ class _StudyOverview extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .45),
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withValues(alpha: .45),
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: Row(
           children: [
@@ -314,7 +515,10 @@ class _StudyOverview extends StatelessWidget {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: .12),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
@@ -332,12 +536,16 @@ class _StudyOverview extends StatelessWidget {
                     '${app.streak} hari rentetan · ${app.xp} XP',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 5),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(value: app.dailyProgress, minHeight: 7),
+                    child: LinearProgressIndicator(
+                        value: app.dailyProgress, minHeight: 7),
                   ),
                   const SizedBox(height: 5),
                   Text(
@@ -358,7 +566,8 @@ class _StudyOverview extends StatelessWidget {
 }
 
 class _StudyShelf extends StatelessWidget {
-  const _StudyShelf({required this.title, required this.subtitle, required this.cards});
+  const _StudyShelf(
+      {required this.title, required this.subtitle, required this.cards});
 
   final String title;
   final String subtitle;
@@ -380,7 +589,8 @@ class _StudyShelf extends StatelessWidget {
                 extraLarge: 4,
               );
               final spacing = 12.0;
-              final width = (constraints.maxWidth - (columns - 1) * spacing) / columns;
+              final width =
+                  (constraints.maxWidth - (columns - 1) * spacing) / columns;
               final height = constraints.maxWidth < 390 ? 156.0 : 168.0;
               return Wrap(
                 spacing: spacing,

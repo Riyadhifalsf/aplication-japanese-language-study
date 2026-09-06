@@ -14,9 +14,8 @@ saat online via Firebase + backend mandiri.
 
 ## Unduh
 
-- **Android (disarankan):** `release/japanese-study-v3.3.0-arm64.apk` di repo ini.
-- **Play Store:** menyusul (track internal testing). Lihat checklist rilis di bawah.
-- **Web demo:** `flutter run -d chrome` dari source.
+- **Android:** `release/japanese-study-v3.3.0-arm64.apk` di repo ini (rilis resmi).
+- **Play Store:** menyusul (track internal testing).
 
 ## Fitur Unggulan
 
@@ -50,10 +49,7 @@ flutter pub get
 flutter analyze
 flutter test
 
-# Debug di HP (lambat, untuk ngoding saja)
-flutter run
-
-# Uji rasa yang benar (cepat, rasa produksi)
+# Jalankan rilis di HP (rasa produksi)
 flutter run --release
 # atau pasang APK dari folder release/
 ```
@@ -68,7 +64,6 @@ curl -k https://192.168.100.230/api/health
 ```
 
 Server produksi: `https://192.168.100.230/api` (Proxmox CT100).
-Detail kredensial & checklist ada di `checklist-konfigurasi.txt` (**lokal saja, tidak di-push**).
 
 ### Firebase (butuh akses Console)
 

@@ -10,6 +10,7 @@ import 'screens/onboarding_screen.dart';
 import 'services/api_security.dart';
 import 'services/ads_service.dart';
 import 'services/content_repository.dart';
+import 'services/error_reporter.dart';
 import 'services/firebase_bootstrap.dart';
 import 'services/notification_service.dart';
 import 'services/tts_service.dart';
@@ -17,6 +18,7 @@ import 'state/app_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  ErrorReporter.install();
   HttpOverrides.global = LocalServerHttpOverrides();
   final controller = AppController(
     repository: ContentRepository(),
