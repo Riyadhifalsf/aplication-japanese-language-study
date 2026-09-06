@@ -44,17 +44,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Future<void> _select(int value) async {
     final app = _app ?? AppScope.of(context);
-    // Tamu boleh jelajah Beranda + Belajar; sisanya wajib login.
-    if (!app.isAuthenticated && (value == 2 || value == 3 || value == 4)) {
-      const names = {2: 'Quiz', 3: 'Kanji', 4: 'Profil'};
-      await requireLogin(context, feature: names[value] ?? 'fitur ini');
+    // Tamu: Beranda + Belajar bebas; Quiz + Kanji mode pratinjau terbatas;
+    // Profil wajib login.
+    if (!app.isAuthenticated && value == 4) {
+      await requireLogin(context, feature: 'Profil');
       return;
     }
-    if (value == 2 && !app.canAccessFeature('quiz_center')) {
+    // Kunci XP hanya berlaku untuk yang sudah login; tamu lewat pratinjau
+    // dengan batas sesi di tiap layar.
+    if (app.isAuthenticated && value == 2 && !app.canAccessFeature('quiz_center')) {
       _lock(context, 'Quiz Center', app.featureXpRequirement('quiz_center'));
       return;
     }
-    if (value == 3 && !app.canAccessFeature('kanji')) {
+    if (app.isAuthenticated && value == 3 && !app.canAccessFeature('kanji')) {
       _lock(context, 'Kanji', app.featureXpRequirement('kanji'));
       return;
     }

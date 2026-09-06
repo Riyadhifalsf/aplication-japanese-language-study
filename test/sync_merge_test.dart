@@ -22,6 +22,16 @@ void main() {
       expect((merged['learnedKanji'] as List).toSet(), {1, 2, 3, 4, 5});
     });
 
+    test('lokal kosong + server berisi = server mengisi ulang (union)', () {
+      final merged = ProgressSyncService.merge(
+        {'learnedKanji': [], 'xp': 0, 'streak': 0},
+        {'learnedKanji': [7, 8], 'xp': 120, 'streak': 4},
+      );
+      expect((merged['learnedKanji'] as List).toSet(), {7, 8});
+      expect(merged['xp'], 120);
+      expect(merged['streak'], 4);
+    });
+
     test('best score pakai max per key', () {
       final merged = ProgressSyncService.merge(
         {'examBestScores': {'a': 70, 'b': 90}},

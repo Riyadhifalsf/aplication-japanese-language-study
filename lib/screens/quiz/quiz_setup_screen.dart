@@ -241,19 +241,25 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
       );
       return;
     }
+    final size = app.cappedSessionSize(count ?? _questionCount);
+    if (size < (count ?? _questionCount)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'Mode pratinjau: 5 soal per sesi. Masuk untuk sesi penuh.')),
+      );
+    }
     if (_kanjiMode) {
       _open(
         context,
         KanjiMasteryQuizScreen(
           level: _level,
-          sessionSize: count ?? _questionCount,
+          sessionSize: size,
         ),
       );
     } else {
       _open(
-          context,
-          VocabularyQuizScreen(
-              level: _level, sessionSize: count ?? _questionCount));
+          context, VocabularyQuizScreen(level: _level, sessionSize: size));
     }
   }
 

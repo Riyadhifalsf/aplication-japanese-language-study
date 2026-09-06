@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/exam_question.dart';
 import '../../state/app_controller.dart';
 import '../../services/feature_flags_service.dart';
+import '../../widgets/guest_preview_banner.dart';
 import '../exams/exam_hub_screen.dart';
 import '../kana/kana_screen.dart';
 import '../kanji/kanji_hiragana_quiz_screen.dart';
@@ -44,11 +45,13 @@ class QuizCenterScreen extends StatelessWidget {
     final examLocked = !app.canAccessFeature('exam_simulation');
     final speakingEnabled = app.speakingEnabled;
     return ListView(padding: const EdgeInsets.fromLTRB(18, 16, 18, 32), children: [
+      const GuestPreviewBanner(),
+      if (app.isGuestPreview) const SizedBox(height: 10),
       _Section(title:'Latihan utama', subtitle:'Pilih latihan yang ingin kamu kerjakan sekarang.'),
       const SizedBox(height:10),
       _Grid(items:[
-        _Item('Quiz Kotoba','Arti, bacaan, konteks',Icons.abc_rounded,()=>_open(context,VocabularyQuizScreen(level:level,sessionSize:15))),
-        _Item('Latihan Kanji','Kanji → arti Bahasa Indonesia',Icons.translate_rounded,()=>_open(context,KanjiMasteryQuizScreen(level:level,sessionSize:15))),
+        _Item('Quiz Kotoba','Arti, bacaan, konteks',Icons.abc_rounded,()=>_open(context,VocabularyQuizScreen(level:level,sessionSize:app.cappedSessionSize(15)))),
+        _Item('Latihan Kanji','Kanji → arti Bahasa Indonesia',Icons.translate_rounded,()=>_open(context,KanjiMasteryQuizScreen(level:level,sessionSize:app.cappedSessionSize(15)))),
         _Item('Kanji → Hiragana','Baca kanji dengan tepat',Icons.spellcheck_rounded,()=>_open(context,const KanjiHiraganaQuizScreen())),
         _Item('Kanji Mirip','Bedakan karakter serupa',Icons.blur_on_rounded,()=>_open(context,const KanjiSimilarQuizScreen())),
         _Item('Quiz Tema','Kosakata berbasis tema',Icons.category_rounded,()=>_open(context,const KanjiThemeQuizScreen())),
@@ -63,7 +66,8 @@ class QuizCenterScreen extends StatelessWidget {
       _Section(title:'Ujian & simulasi', subtitle:'Paket ujian dipisahkan dari latihan harian.'),
       const SizedBox(height:10),
       _Grid(items:[_Item('Simulasi JLPT','N5 sampai N1',Icons.school_rounded,()=>_open(context,const ExamHubScreen())),_Item('Simulasi JFT-Basic','Paket latihan A2',Icons.badge_rounded,()=>_open(context,const ExamHubScreen(initialType:ExamType.jft)))], enabled:!examLocked),
-      if(examLocked) Padding(padding:const EdgeInsets.only(top:10),child:_XpLock(requiredXp:app.featureXpRequirement('exam_simulation'))),
+      if(examLocked && app.isGuestPreview) Padding(padding:const EdgeInsets.only(top:10),child:Card(child:ListTile(leading:const CircleAvatar(child:Icon(Icons.visibility_rounded)),title:const Text('Coba pratinjau ujian',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:const Text('5 soal campuran. Login + 250 XP untuk simulasi penuh.'),trailing:const Icon(Icons.chevron_right_rounded),onTap:()=>_open(context,VocabularyQuizScreen(level:level,sessionSize:AppController.guestPreviewSessionSize))))),
+      if(examLocked && app.isAuthenticated) Padding(padding:const EdgeInsets.only(top:10),child:_XpLock(requiredXp:app.featureXpRequirement('exam_simulation'))),
     ]);
   }
 }

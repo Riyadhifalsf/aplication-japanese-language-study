@@ -346,6 +346,33 @@ class AppController extends ChangeNotifier {
     if (isAuthenticated && authProvider.isEmpty) {
       authProvider = googleLinked ? 'google' : 'email';
     }
+    // Pulihkan sesi bila prefs bilang logout tapi Firebase masih login
+    // (mis. install ulang tanpa hapus data Auth / prefs korup).
+    if (!isAuthenticated) {
+      try {
+        final fbUser = firebaseAuth.currentUser;
+        if (fbUser != null) {
+          cloudUid = fbUser.uid;
+          isAuthenticated = true;
+          if (profileEmail.isEmpty) profileEmail = fbUser.email ?? '';
+          final fbName = (fbUser.displayName ?? '').trim();
+          if (profileName.trim().isEmpty || profileName == 'Tamu') {
+            profileName = fbName.isEmpty
+                ? (profileEmail.contains('@')
+                    ? profileEmail.split('@').first
+                    : 'Tamu')
+                : fbName;
+          }
+          final providers =
+              fbUser.providerData.map((p) => p.providerId).toSet();
+          googleLinked = providers.contains('google.com');
+          authProvider = googleLinked ? 'google' : 'email';
+          await _saveAuthPrefs();
+          await _persistCloudUid();
+          unawaited(syncNow());
+        }
+      } catch (_) {}
+    }
     completedLearningStepIds.addAll(
       prefs.getStringList('completedLearningSteps') ?? const [],
     );
@@ -658,6 +685,17 @@ class AppController extends ChangeNotifier {
 
   bool canAccessFeature(String feature) =>
       xp >= featureXpRequirement(feature) || hasFullAccess;
+
+  /// Tamu boleh melihat + mencoba fitur dalam mode pratinjau terbatas
+  /// (kuis dibatasi [guestPreviewSessionSize] soal per sesi).
+  bool get isGuestPreview => !isAuthenticated;
+  static const int guestPreviewSessionSize = 5;
+
+  /// Murni (pure) agar mudah dites.
+  static int previewSessionSize(bool isGuest, int full) =>
+      isGuest && full > guestPreviewSessionSize ? guestPreviewSessionSize : full;
+
+  int cappedSessionSize(int full) => previewSessionSize(isGuestPreview, full);
 
   String get reviewReminderTimeLabel =>
       '${reviewReminderHour.toString().padLeft(2, '0')}:'
@@ -2388,7 +2426,12 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> resetProgress() async {
+  /// Mulai dari nol: bersihkan lokal DAN dokumen server.
+  ///
+  /// Hapus lokal saja tidak cukup — merge union/max akan mengisi ulang
+  /// lokal dari data lama di server saat sync berikutnya. Mengembalikan
+  /// true bila lokal bersih (server ikut terhapus bila sedang login).
+  Future<bool> resetProgress() async {
     _reviewSaveTimer?.cancel();
     xp = 0;
     dailyXp = 0;
@@ -2435,11 +2478,28 @@ class AppController extends ChangeNotifier {
         'completedPhrases',
         'completedSentences',
         'completedCulture',
+        'progressFieldUpdatedAt',
+        'lastCloudSyncAt',
       ]) {
         await prefs.remove(key);
       }
     }
+    _fieldUpdatedAt.clear();
+    // Hapus juga salinan server supaya sync berikutnya tidak mengisi ulang
+    // lokal dari data lama.
+    final uid = _currentUidOrNull();
+    if (uid != null && uid.isNotEmpty && _syncAvailable) {
+      final ok = await syncService.deleteRemote(uid);
+      if (!ok) {
+        syncStatus = 'error';
+        lastSyncError = syncService.lastError;
+        notifyListeners();
+        return false;
+      }
+      syncStatus = 'idle';
+    }
     notifyListeners();
+    return true;
   }
 
   Map<String, int> _readStringIntMap(String key) {

@@ -137,6 +137,26 @@ class ProgressSyncService {
     return out;
   }
 
+  /// Hapus dokumen progress server agar mulai benar-benar dari nol.
+  ///
+  /// Penting: merge memakai union/max sehingga TIDAK BISA menghapus lewat
+  /// push data kosong — dokumen server harus dihapus eksplisit, kalau tidak
+  /// sync berikutnya akan mengisi ulang lokal dari data lama.
+  Future<bool> deleteRemote(String uid) async {
+    if (!isAvailable) {
+      lastError = 'Firebase belum dikonfigurasi.';
+      return false;
+    }
+    try {
+      await _doc(uid).delete();
+      lastError = null;
+      return true;
+    } catch (e) {
+      lastError = e.toString();
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>?> pullRemote(String uid) async {
     if (!isAvailable) return null;
     try {

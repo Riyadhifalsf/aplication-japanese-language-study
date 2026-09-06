@@ -77,6 +77,14 @@ class ProfileSettingsScreen extends StatelessWidget {
                 const Divider(height: 1),
                 ListTile(leading: const Icon(Icons.copy_rounded), title: const Text('Cadangan manual', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Salin atau pulihkan JSON progres.'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _manualBackup(context, app)),
                 const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.restart_alt_rounded),
+                  title: const Text('Mulai dari nol', style: TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: const Text('Hapus progres lokal DAN server (kanji kembali 0).'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _confirmReset(context, app),
+                ),
+                const Divider(height: 1),
                 ListTile(leading: const Icon(Icons.privacy_tip_outlined), title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w900)), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
                 const Divider(height: 1),
                 ListTile(leading: const Icon(Icons.bug_report_outlined), title: const Text('Laporkan bug', style: TextStyle(fontWeight: FontWeight.w900)), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BugReportScreen()))),
@@ -157,6 +165,41 @@ class ProfileSettingsScreen extends StatelessWidget {
         RadioListTile<String>(value: item.$1, groupValue: app.todayKanjiMode, title: Text(item.$2), onChanged: (v){ if(v!=null) { app.setTodayKanjiMode(v); Navigator.pop(context); } }),
       const SizedBox(height: 12),
     ])));
+  }
+
+  Future<void> _confirmReset(BuildContext context, AppController app) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Mulai dari nol?'),
+        content: const Text(
+          'Semua progres (XP, streak, kanji, kosakata, kuis) di HP ini DAN '
+          'di server akan dihapus permanen dan kembali ke 0. Lanjutkan?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ya, hapus semua'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final ok = await app.resetProgress();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Progres dihapus. Mulai lagi dari 0.'
+              : 'Gagal menghapus data server (${app.lastSyncError ?? 'offline'}). Coba lagi saat online.',
+        ),
+      ),
+    );
   }
 
   void _manualBackup(BuildContext context, AppController app) {

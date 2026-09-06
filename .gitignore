@@ -79,3 +79,6 @@ payment_api/.env
 
 # Local-only checklist (never push)
 checklist-konfigurasi.txt
+
+# Firebase Android config berisi API key — jangan push (ambil dari Console)
+android/app/google-services.json
