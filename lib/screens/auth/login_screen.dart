@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../state/app_controller.dart';
+import '../../widgets/brand_icons.dart';
 import '../admin/admin_dashboard_screen.dart';
 import 'register_screen.dart';
 import '../app_shell.dart';
@@ -38,15 +39,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _googleLogin() async {
     setState(() { _busy = true; _error = ''; });
     try {
-      final ok = await AppScope.of(context).loginWithGoogle();
+      final app = AppScope.of(context);
+      final ok = await app.loginWithGoogle();
       if (!mounted) return;
       setState(() => _busy = false);
-      if (!ok) { setState(() => _error = 'Login Google dibatalkan atau gagal.'); return; }
+      if (!ok) { setState(() => _error = app.lastAuthError ?? 'Login Google dibatalkan atau gagal.'); return; }
       _goNext();
     } catch (_) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = 'Google Login belum dikonfigurasi pada project ini.'; });
+      setState(() {
+        _busy = false;
+        _error = 'Google Login belum dikonfigurasi pada project ini.';
+      });
     }
+  }
+
+  void _facebookSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login Facebook segera hadir — butuh App ID Facebook di konfigurasi.')),
+    );
   }
 
   void _goNext() {
@@ -65,7 +76,9 @@ class _LoginScreenState extends State<LoginScreen> {
             width: 168, height: 168, fit: BoxFit.contain),
       ),
       const SizedBox(height: 24),
-      FilledButton.icon(onPressed: _busy ? null : _googleLogin, icon: const Icon(Icons.account_circle_rounded), label: const Text('Lanjut dengan Google'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54))),
+      FilledButton.icon(onPressed: _busy ? null : _googleLogin, icon: const GoogleGIcon(), label: const Text('Lanjut dengan Google'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: Colors.white, foregroundColor: Colors.black87)),
+      const SizedBox(height: 10),
+      OutlinedButton.icon(onPressed: _busy ? null : _facebookSoon, icon: const FacebookFIcon(), label: const Text('Lanjut dengan Facebook'), style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52))),
       const SizedBox(height: 20),
       Row(children: [Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)), const Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('atau')), Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant))]),
       const SizedBox(height: 18),

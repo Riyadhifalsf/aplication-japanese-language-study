@@ -36,6 +36,10 @@ class FirebaseAuthFailure implements Exception {
       case 'operation-not-allowed':
         return FirebaseAuthFailure(
             'Login email belum diaktifkan di Firebase Console.');
+      case 'internal-error':
+        return FirebaseAuthFailure(
+            'Server auth tidak merespons (kemungkinan reCAPTCHA / '
+            'konfigurasi Firebase belum lengkap). Coba lagi.');
       default:
         return FirebaseAuthFailure('Auth gagal (${e.code}).');
     }
@@ -98,10 +102,38 @@ class FirebaseAuthService {
     }
   }
 
+  /// Pesan ramah untuk kegagalan Google Sign-In di Android.
+  ///
+  /// Kasus paling umum: PlatformException(sign_in_failed, ... ApiException:
+  /// 10: ...) = SHA-1 belum didaftarkan di Firebase Console.
+  static String _googleErrorMessage(Object e) {
+    final text = e.toString();
+    if (text.contains('ApiException: 10') ||
+        text.contains('DEVELOPER_ERROR')) {
+      return 'Login Google gagal (error 10): SHA-1 HP/keystore belum '
+          'terdaftar di Firebase Console. Minta admin daftarkan SHA-1 lalu '
+          'update google-services.json.';
+    }
+    if (text.contains('ApiException: 7') ||
+        text.contains('NETWORK_ERROR')) {
+      return 'Login Google gagal: tidak ada koneksi internet.';
+    }
+    if (text.contains('sign_in_canceled') ||
+        text.contains('canceled')) {
+      return 'Login Google dibatalkan.';
+    }
+    return 'Login Google gagal. Coba lagi.';
+  }
+
   Future<FirebaseGoogleResult> signInWithGoogle() async {
     _ensureAvailable();
-    final account =
-        await _signIn.signInSilently() ?? await _signIn.signIn();
+    late final dynamic account;
+    try {
+      account =
+          await _signIn.signInSilently() ?? await _signIn.signIn();
+    } catch (e) {
+      throw Exception(_googleErrorMessage(e));
+    }
     if (account == null) throw Exception('Login Google dibatalkan.');
     final googleAuth = await account.authentication;
     final idToken = googleAuth.idToken;

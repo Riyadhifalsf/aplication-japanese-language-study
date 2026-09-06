@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../state/app_controller.dart';
+import '../../widgets/brand_icons.dart';
 import '../app_shell.dart';
 import '../onboarding_screen.dart';
 
@@ -36,14 +37,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _error = '';
     });
     try {
-      final ok = await AppScope.of(context).loginWithGoogle();
+      final app = AppScope.of(context);
+      final ok = await app.loginWithGoogle();
       if (!mounted) return;
       setState(() => _busy = false);
       if (!ok) {
-        setState(() => _error = 'Login Google dibatalkan atau gagal.');
+        setState(() => _error = app.lastAuthError ?? 'Login Google dibatalkan atau gagal.');
         return;
       }
-      final app = AppScope.of(context);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => app.onboardingComplete
@@ -59,6 +60,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _error = 'Google Login belum dikonfigurasi pada project ini.';
       });
     }
+  }
+
+  void _facebookSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Daftar via Facebook segera hadir — butuh App ID Facebook di konfigurasi.')),
+    );
   }
 
   Future<void> _register() async {
@@ -125,10 +132,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: _busy ? null : _googleSignUp,
-                    icon: const Icon(Icons.account_circle_rounded),
+                    icon: const GoogleGIcon(),
                     label: const Text('Daftar dengan Google'),
                     style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54)),
+                        minimumSize: const Size.fromHeight(54),
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _facebookSoon,
+                    icon: const FacebookFIcon(),
+                    label: const Text('Daftar dengan Facebook'),
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52)),
                   ),
                   const SizedBox(height: 20),
                   Row(children: [

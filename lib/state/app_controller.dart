@@ -964,7 +964,11 @@ class AppController extends ChangeNotifier {
 
   /// Login Google via Firebase (benerin auth). Fallback ke profil Drive
   /// lokal bila Firebase belum dikonfigurasi agar tetap bisa offline.
+  /// Pesan error login Google terakhir (untuk ditampilkan di UI).
+  String? lastAuthError;
+
   Future<bool> signInWithGoogle() async {
+    lastAuthError = null;
     try {
       final result = await firebaseAuth.signInWithGoogle();
       cloudUid = result.uid;
@@ -996,11 +1000,16 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       unawaited(syncNow());
       return true;
-    } catch (_) {
+    } catch (e) {
+      lastAuthError =
+          '$e'.replaceFirst('Exception: ', '').trim().isEmpty
+              ? 'Login Google gagal. Coba lagi.'
+              : '$e'.replaceFirst('Exception: ', '');
       // Fallback lama: hanya profil Drive lokal (offline).
       try {
         final profile = await driveBackup.signIn();
         if (profile == null) return false;
+        lastAuthError = null;
         googleLinked = true;
         profileName = profile.name.trim().isEmpty
             ? profileName
