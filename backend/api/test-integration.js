@@ -139,6 +139,107 @@ test('konten publik + tipe tak dikenal 404 berkode', async () => {
   assert.equal(bad.data.error.code, 'CONTENT_UNKNOWN');
 });
 
+const ATTEMPT_ID = `att-${stamp}`;
+let firstXp = 0;
+
+test('attempt benar -> XP + mastery + hasil tersimpan', async () => {
+  const { status, data } = await api('POST', '/api/attempts', {
+    token,
+    body: {
+      exerciseId: 'ex-1', questionId: 'q-1', clientAttemptId: ATTEMPT_ID,
+      answer: 'に', isCorrect: true, score: 100, durationMs: 4200,
+      itemId: 'pelajaran-partikel-ni', skill: 'grammar', kind: 'exercise',
+      level: 'N5', title: 'Partikel ni',
+    },
+  });
+  assert.equal(status, 201);
+  assert.equal(data.duplicate, false);
+  assert.equal(data.xpAwarded, 20);
+  assert.ok(data.xpTotal >= 20);
+  assert.ok(data.mastery >= 0 && data.mastery <= 100);
+  firstXp = data.xpTotal;
+});
+
+test('attempt SAMA dikirim ulang -> duplicate, XP tidak ganda', async () => {
+  const { status, data } = await api('POST', '/api/attempts', {
+    token,
+    body: {
+      exerciseId: 'ex-1', questionId: 'q-1', clientAttemptId: ATTEMPT_ID,
+      answer: 'に', isCorrect: true, score: 100, durationMs: 4200,
+      itemId: 'pelajaran-partikel-ni', skill: 'grammar',
+    },
+  });
+  assert.equal(status, 200);
+  assert.equal(data.duplicate, true);
+  assert.equal(data.xpTotal, firstXp);
+});
+
+test('attempt salah -> mistake tercatat, XP 0', async () => {
+  const { status, data } = await api('POST', '/api/attempts', {
+    token,
+    body: {
+      exerciseId: 'ex-2', questionId: 'q-2', clientAttemptId: `att2-${stamp}`,
+      answer: 'を', isCorrect: false, score: 0, durationMs: 3000,
+      itemId: 'pelajaran-partikel-ni', skill: 'grammar',
+    },
+  });
+  assert.equal(status, 201);
+  assert.equal(data.xpAwarded, 0);
+  assert.equal(data.xpTotal, firstXp);
+});
+
+test('learning/next memberi aksi jelas', async () => {
+  const { status, data } = await api('GET', '/api/learning/next', { token });
+  assert.equal(status, 200);
+  assert.ok(['review', 'remedial', 'continue'].includes(data.action));
+  assert.ok(typeof data.reason === 'string' && data.reason.length > 0);
+});
+
+test('learning/mastery + entitlements konsisten', async () => {
+  const m = await api('GET', '/api/learning/mastery', { token });
+  assert.equal(m.status, 200);
+  assert.ok(Array.isArray(m.data.skills));
+  assert.equal(m.data.xpTotal, firstXp);
+  const e = await api('GET', '/api/me/entitlements', { token });
+  assert.equal(e.status, 200);
+  assert.equal(e.data.plan, 'free');
+  assert.equal(e.data.isPremium, false);
+  assert.equal(e.data.xpTotal, firstXp);
+});
+
+test('sessions idempoten + sync dedupe', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const s1 = await api('POST', '/api/sessions', {
+    token, body: { date: today, seconds: 600 },
+  });
+  assert.equal(s1.status, 200);
+  assert.ok(s1.data.streak >= 1);
+  const s2 = await api('POST', '/api/sessions', {
+    token, body: { date: today, seconds: 100 },
+  });
+  assert.equal(s2.status, 200);
+  assert.equal(s2.data.streak, s1.data.streak);
+  const o1 = await api('POST', '/api/sync/operations', {
+    token, body: { operationId: `op-${stamp}`, entity: 'progress', operation: 'upsert' },
+  });
+  assert.equal(o1.status, 201);
+  assert.equal(o1.data.applied, true);
+  const o2 = await api('POST', '/api/sync/operations', {
+    token, body: { operationId: `op-${stamp}`, entity: 'progress', operation: 'upsert' },
+  });
+  assert.equal(o2.status, 200);
+  assert.equal(o2.data.applied, false);
+});
+
+test('attempt tanpa auth -> 401; tanpa clientAttemptId -> 400', async () => {
+  const anon = await api('POST', '/api/attempts', { body: {} });
+  assert.equal(anon.status, 401);
+  const bad = await api('POST', '/api/attempts', {
+    token, body: { answer: 'x', isCorrect: true },
+  });
+  assert.equal(bad.status, 400);
+});
+
 test('hapus akun sendiri (bersih-bersih) -> ok; token jadi yatim 404', async () => {
   const del = await api('DELETE', '/api/me', { token });
   assert.equal(del.status, 200);

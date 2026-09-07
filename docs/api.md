@@ -1,5 +1,21 @@
 # API Contract (`/api/v1`, alias `/api`)
 
+## Learning engine (server-authoritative)
+
+- `POST /attempts` — kirim fakta attempt + `clientAttemptId*`; idempoten
+  (retry = hasil sama, XP tunggal). Server hitung XP/mastery/SRS/mistake
+  dalam SATU transaksi. → `{duplicate,xpAwarded,xpTotal,mastery,
+  nextReviewInDays}`.
+- `GET /learning/next` — keputusan: review jatuh tempo → remedial skill
+  terlemah → lanjutkan. Selalu ada `reason` yang bisa ditampilkan.
+- `GET /learning/mastery` — rata-rata mastery per skill + `xpTotal` ledger.
+- `GET /me/entitlements` — `{plan,active,role,isPremium,xpTotal}`.
+- `POST /sessions` — `{date,sessions}` idempoten per tanggal → `{streak}`.
+- `POST /sync/operations` — ledger dedupe `{applied,serverTs}`.
+- Batas evaluasi jujur: fase 1 memakai `isCorrect` terobservasi client
+  (user hanya bisa curang ke dirinya sendiri); evaluasi jawaban penuh
+  butuh bank jawaban server (roadmap).
+
 Auth: `POST /auth/register|login|google` → `{token,user,progress}`.
 `GET /me`, `PUT /me/profile`, `PUT /me/progress` (blob milik sendiri),
 `DELETE /me`. Admin (ADMIN_TOKEN atau JWT admin): `GET|DELETE

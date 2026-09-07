@@ -101,6 +101,21 @@ class ApiService {
     if(r.statusCode<200 || r.statusCode>=300) throw ApiException('Gagal menghapus user.');
   }
 
+  /// Entitlement server-side: sumber kebenaran premium (jangan percaya
+  /// klaim lokal). Null bila offline/belum login (fallback lokal dipakai).
+  Future<Map<String,dynamic>?> entitlements() async {
+    final t=await token;
+    if(t==null) return null;
+    try {
+      final r=await _client.get(_uri('/api/me/entitlements'),headers:{'Authorization':'Bearer $t'});
+      final data=_decode(r);
+      if(r.statusCode!=200) return null;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Map<String,dynamic> _decode(http.Response r) {
     try { return Map<String,dynamic>.from(jsonDecode(r.body) as Map); }
     catch (_) { return {'message':r.body}; }

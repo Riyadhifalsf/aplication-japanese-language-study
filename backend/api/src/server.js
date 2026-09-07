@@ -17,6 +17,23 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
+// Request ID + access log ringan (observability; health tidak dilog).
+app.use((req, res, next) => {
+  try {
+    req.id = crypto.randomUUID();
+  } catch (_) {
+    req.id = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  }
+  const started = Date.now();
+  res.on('finish', () => {
+    if (req.path === '/api/health' || req.path === '/api/v1/health') return;
+    console.log(
+      `[api] ${req.id} ${req.method} ${req.path} ${res.statusCode} ${Date.now() - started}ms`
+    );
+  });
+  next();
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || '';
 if (!JWT_SECRET) {
   console.error('[auth] FATAL: JWT_SECRET tidak diatur. Isi di .env, server tidak boleh jalan tanpa itu.');
@@ -61,13 +78,26 @@ const authRequired = (req, _res, next) => {
   catch (_) { return next(new HttpError(401, 'Token tidak valid atau sudah kedaluwarsa.', 'AUTH_BAD_TOKEN')); }
 };
 
+const timingSafeEqualHex = (a, b) => {
+  try {
+    const ba = Buffer.from(String(a));
+    const bb = Buffer.from(String(b));
+    return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+  } catch (_) {
+    return false;
+  }
+};
+
 const adminGuard = (req, _res, next) => {
   const supplied = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
-  if (ADMIN_TOKEN && supplied === ADMIN_TOKEN) return next();
+  if (ADMIN_TOKEN && timingSafeEqualHex(supplied, ADMIN_TOKEN)) return next();
   if (!supplied) return next(new HttpError(401, 'Token admin tidak ada.', 'AUTH_MISSING_TOKEN'));
   try {
     const payload = jwt.verify(supplied, JWT_SECRET);
-    if (payload.role === 'admin') return next();
+    if (payload.role === 'admin') {
+      req.auth = payload;
+      return next();
+    }
     return next(new HttpError(403, 'Akses admin saja.', 'AUTH_FORBIDDEN'));
   } catch (_) {
     return next(new HttpError(401, 'Token admin tidak valid.', 'AUTH_BAD_TOKEN'));
@@ -76,7 +106,7 @@ const adminGuard = (req, _res, next) => {
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: Number(process.env.AUTH_RATE_MAX || 20),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Terlalu banyak percobaan. Coba lagi dalam beberapa menit.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak percobaan. Coba lagi dalam beberapa menit.' } },
@@ -84,7 +114,7 @@ const authLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 240,
+  max: Number(process.env.API_RATE_MAX || 240),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Terlalu banyak permintaan. Coba lagi nanti.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan. Coba lagi nanti.' } },
@@ -308,7 +338,20 @@ api.get('/admin/users', adminGuard, asyncHandler(async (_req, res) => {
 }));
 
 api.delete('/admin/users/:id', adminGuard, asyncHandler(async (req, res) => {
-  await pool.query('DELETE FROM app_users WHERE id=$1', [req.params.id]);
+  const targetId = String(req.params.id || '');
+  // Cegah bunuh diri admin & hapus admin terakhir (P0).
+  if (req.auth && req.auth.sub && req.auth.sub === targetId) {
+    return fail(res, 403, 'AUTH_CANNOT_DELETE_SELF', 'Tidak dapat menghapus akun sendiri.');
+  }
+  const target = await pool.query('SELECT role FROM app_users WHERE id=$1', [targetId]);
+  if (!target.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
+  if (target.rows[0].role === 'admin') {
+    const admins = await pool.query(`SELECT count(*)::int AS c FROM app_users WHERE role='admin'`);
+    if (Number(admins.rows[0].c) <= 1) {
+      return fail(res, 403, 'AUTH_LAST_ADMIN', 'Tidak dapat menghapus satu-satunya admin.');
+    }
+  }
+  await pool.query('DELETE FROM app_users WHERE id=$1', [targetId]);
   res.json({ ok: true });
 }));
 
@@ -551,6 +594,310 @@ api.get('/admin/analytics', adminGuard, asyncHandler(async (_req, res) => {
     recentActivities,
     dashboardUsers,
   });
+}));
+
+// ---------- learning engine (server-authoritative, fase 1) ----------
+// Kontrak: client mengirim FAKTA attempt terobservasi
+// {exerciseId,questionId,answer,isCorrect,score,durationMs,
+//  clientAttemptId*,itemId,skill,kind,level,title}.
+// Server menghitung: XP, mastery (EMA), SRS, mistake, streak-seed.
+// Idempoten via UNIQUE(user_id, client_attempt_id): retry mengembalikan
+// hasil yang SAMA tanpa XP ganda.
+api.post('/attempts', authRequired, asyncHandler(async (req, res) => {
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const exerciseId = String(b.exerciseId || '').slice(0, 120);
+  const questionId = String(b.questionId || '').slice(0, 200);
+  const clientAttemptId = String(b.clientAttemptId || '').slice(0, 120);
+  const answer = String(b.answer ?? '').slice(0, 2000);
+  const isCorrect = b.isCorrect === true;
+  const score = Math.max(0, Math.min(100, Number(b.score ?? (isCorrect ? 100 : 0)) || 0));
+  const durationMs = Math.max(0, Math.min(3600000, Number(b.durationMs || 0) || 0));
+  const itemId = String(b.itemId || questionId || exerciseId || 'unknown').slice(0, 200);
+  const skill = ['kanji', 'vocabulary', 'grammar', 'listening', 'reading', 'speaking'].includes(b.skill)
+    ? b.skill : 'vocabulary';
+  const kind = ['kanji', 'vocabulary', 'grammar', 'listening', 'reading', 'speaking', 'exercise', 'lesson'].includes(b.kind)
+    ? b.kind : 'exercise';
+  const level = ['N5', 'N4', 'N3', 'N2', 'N1'].includes(b.level) ? b.level : 'N5';
+  const title = String(b.title || itemId).slice(0, 200);
+  if (!clientAttemptId) return fail(res, 400, 'VALIDATION', 'clientAttemptId wajib diisi (idempotency).');
+  const uid = req.auth.sub;
+  await pool.query('BEGIN');
+  try {
+    await pool.query(
+      `INSERT INTO learning_items(id,kind,level,title) VALUES($1,$2,$3,$4)
+       ON CONFLICT (id) DO NOTHING`,
+      [itemId, kind, level, title]
+    );
+    const ins = await pool.query(
+      `INSERT INTO attempts(user_id,exercise_id,question_id,client_attempt_id,
+        item_id,skill,answer,is_correct,score,duration_ms,result)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'{}') ON CONFLICT (user_id, client_attempt_id)
+       DO NOTHING RETURNING id`,
+      [uid, exerciseId, questionId, clientAttemptId, itemId, skill, answer, isCorrect, score, durationMs]
+    );
+    if (!ins.rowCount) {
+      // Retry/duplikat: kembalikan hasil tersimpan, tanpa efek ganda.
+      const prev = await pool.query(
+        'SELECT result FROM attempts WHERE user_id=$1 AND client_attempt_id=$2',
+        [uid, clientAttemptId]
+      );
+      await pool.query('COMMIT');
+      return res.json({ duplicate: true, ...(prev.rows[0]?.result || {}) });
+    }
+    const attemptDbId = ins.rows[0].id;
+    // Mastery EMA: benar -> mendekati 100, salah -> turun.
+    const m = await pool.query(
+      `INSERT INTO user_item_mastery(user_id,item_id,skill,mastery_score,confidence,
+        attempt_count,correct_count,incorrect_count,consecutive_correct,
+        consecutive_wrong,last_seen_at,last_correct_at)
+       VALUES($1,$2,$3,0,0,0,0,0,0,0,now(),NULL) ON CONFLICT (user_id, item_id)
+       DO UPDATE SET skill=EXCLUDED.skill RETURNING *`,
+      [uid, itemId, skill]
+    );
+    const cur = m.rows[0];
+    const target = isCorrect ? 100 : 0;
+    const mastery = Math.round(Number(cur.mastery_score) + (target - Number(cur.mastery_score)) * 0.2);
+    const attemptCount = Number(cur.attempt_count) + 1;
+    const correctCount = Number(cur.correct_count) + (isCorrect ? 1 : 0);
+    const incorrectCount = Number(cur.incorrect_count) + (isCorrect ? 0 : 1);
+    const cc = isCorrect ? Number(cur.consecutive_correct) + 1 : 0;
+    const cw = isCorrect ? 0 : Number(cur.consecutive_wrong) + 1;
+    await pool.query(
+      `UPDATE user_item_mastery SET mastery_score=$3, confidence=LEAST(100, $4*10),
+        attempt_count=$4, correct_count=$5, incorrect_count=$6,
+        consecutive_correct=$7, consecutive_wrong=$8, last_seen_at=now(),
+        last_correct_at=CASE WHEN $9 THEN now() ELSE last_correct_at END
+       WHERE user_id=$1 AND item_id=$2`,
+      [uid, itemId, mastery, attemptCount, correctCount, incorrectCount, cc, cw, isCorrect]
+    );
+    // SRS sederhana (abstraksi; algoritma dapat diganti tanpa ubah skema).
+    let nextDays = 1;
+    if (isCorrect) {
+      const prev = await pool.query(
+        'SELECT interval_days FROM review_states WHERE user_id=$1 AND item_id=$2',
+        [uid, itemId]
+      );
+      const base = prev.rowCount ? Number(prev.rows[0].interval_days) : 1;
+      nextDays = Math.min(base * 2.2 + 1, 180);
+      await pool.query(
+        `INSERT INTO review_states(user_id,item_id,stability_days,difficulty,
+          interval_days,next_review_at,repetitions,last_reviewed_at)
+         VALUES($1,$2,GREATEST(1.0,$3),5,$3,now()+($3 * interval '1 day'),1,now())
+         ON CONFLICT (user_id, item_id) DO UPDATE SET
+           stability_days=GREATEST(1,review_states.stability_days*1.4),
+           interval_days=EXCLUDED.interval_days,
+           next_review_at=EXCLUDED.next_review_at,
+           repetitions=review_states.repetitions+1, last_reviewed_at=now()`,
+        [uid, itemId, nextDays]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO review_states(user_id,item_id,stability_days,difficulty,
+          interval_days,next_review_at,lapses,last_reviewed_at)
+         VALUES($1,$2,1,5.8,1,now()+interval '1 day',1,now())
+         ON CONFLICT (user_id, item_id) DO UPDATE SET
+           difficulty=LEAST(10,review_states.difficulty+0.8),
+           stability_days=GREATEST(0.5,review_states.stability_days*0.55),
+           interval_days=1, next_review_at=now()+interval '1 day',
+           lapses=review_states.lapses+1, last_reviewed_at=now()`,
+        [uid, itemId]
+      );
+    }
+    // Error notebook.
+    if (!isCorrect) {
+      await pool.query(
+        `INSERT INTO user_mistakes(user_id,item_id,skill,prompt,user_answer,
+          correct_answer,mistake_count,last_occurred_at)
+         VALUES($1,$2,$3,$4,$5,$6,1,now())
+         ON CONFLICT (user_id, item_id, skill) DO UPDATE SET
+           mistake_count=user_mistakes.mistake_count+1,
+           user_answer=EXCLUDED.user_answer,
+           correct_answer=EXCLUDED.correct_answer,
+           last_occurred_at=now()`,
+        [uid, itemId, skill, '', answer, '']
+      );
+    }
+    // XP ledger (sumber audit; total = SUM).
+    const xpAwarded = isCorrect ? (score >= 100 ? 20 : 10) : 0;
+    if (xpAwarded > 0) {
+      await pool.query(
+        `INSERT INTO xp_transactions(user_id,amount,reason,ref_type,ref_id)
+         VALUES($1,$2,'exercise_correct','attempt',$3)`,
+        [uid, xpAwarded, String(attemptDbId)]
+      );
+    }
+    const total = await pool.query(
+      'SELECT COALESCE(SUM(amount),0)::int AS total FROM xp_transactions WHERE user_id=$1',
+      [uid]
+    );
+    const result = {
+      xpAwarded,
+      xpTotal: Number(total.rows[0].total),
+      mastery,
+      nextReviewInDays: Math.round(nextDays * 10) / 10,
+    };
+    await pool.query('UPDATE attempts SET result=$2 WHERE id=$1', [
+      attemptDbId,
+      JSON.stringify(result),
+    ]);
+    await pool.query('COMMIT');
+    res.status(201).json({ duplicate: false, ...result });
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    throw e;
+  }
+}));
+
+// Decision engine: apa yang harus dipelajari user ini SEKARANG?
+// Urutan: review jatuh tempo -> remedial skill terlemah -> lanjutkan.
+api.get('/learning/next', authRequired, asyncHandler(async (req, res) => {
+  const uid = req.auth.sub;
+  const due = await pool.query(
+    `SELECT r.item_id, COALESCE(m.skill, 'vocabulary') AS skill
+     FROM review_states r LEFT JOIN user_item_mastery m
+       ON m.user_id=r.user_id AND m.item_id=r.item_id
+     WHERE r.user_id=$1 AND r.next_review_at <= now()
+     ORDER BY r.next_review_at ASC LIMIT 5`,
+    [uid]
+  );
+  const weak = await pool.query(
+    `SELECT skill, ROUND(AVG(mastery_score))::int AS avg FROM user_item_mastery
+     WHERE user_id=$1 AND attempt_count > 0 GROUP BY skill
+     ORDER BY avg ASC LIMIT 1`,
+    [uid]
+  );
+  const mistakes = await pool.query(
+    'SELECT count(*)::int AS c FROM user_mistakes WHERE user_id=$1',
+    [uid]
+  );
+  if (due.rowCount) {
+    return res.json({
+      action: 'review',
+      itemIds: due.rows.map((r) => r.item_id),
+      reason: `${due.rowCount} review jatuh tempo — pertahankan sebelum hilang.`,
+      dueCount: due.rowCount,
+      mistakeCount: Number(mistakes.rows[0].c),
+    });
+  }
+  if (weak.rowCount && Number(weak.rows[0].avg) < 80) {
+    return res.json({
+      action: 'remedial',
+      skill: weak.rows[0].skill,
+      reason: `Skor ${weak.rows[0].skill} ${weak.rows[0].avg}% — perkuat dulu sebelum lanjut.`,
+      dueCount: 0,
+      mistakeCount: Number(mistakes.rows[0].c),
+    });
+  }
+  return res.json({
+    action: 'continue',
+    reason: 'Tidak ada review jatuh tempo. Lanjutkan kurikulum.',
+    dueCount: 0,
+    mistakeCount: Number(mistakes.rows[0].c),
+  });
+}));
+
+// Ringkasan mastery per skill + XP ledger + streak server.
+api.get('/learning/mastery', authRequired, asyncHandler(async (req, res) => {
+  const uid = req.auth.sub;
+  const bySkill = await pool.query(
+    `SELECT skill, ROUND(AVG(mastery_score))::int AS avg,
+       count(*)::int AS items, SUM(attempt_count)::int AS attempts
+     FROM user_item_mastery WHERE user_id=$1 GROUP BY skill ORDER BY skill`,
+    [uid]
+  );
+  const xp = await pool.query(
+    'SELECT COALESCE(SUM(amount),0)::int AS total FROM xp_transactions WHERE user_id=$1',
+    [uid]
+  );
+  res.json({
+    skills: bySkill.rows,
+    xpTotal: Number(xp.rows[0].total),
+  });
+}));
+
+// Entitlement: sumber kebenaran premium (jangan percaya klaim aplikasi).
+api.get('/me/entitlements', authRequired, asyncHandler(async (req, res) => {
+  const uid = req.auth.sub;
+  const me = await pool.query('SELECT role FROM app_users WHERE id=$1', [uid]);
+  if (!me.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
+  const sub = await pool.query('SELECT plan, status, expires_at FROM subscriptions WHERE user_id=$1', [uid]);
+  const plan = sub.rowCount ? sub.rows[0].plan : 'free';
+  const active = sub.rowCount
+    ? sub.rows[0].status === 'active' &&
+      (!sub.rows[0].expires_at || new Date(sub.rows[0].expires_at) > new Date())
+    : true;
+  const role = me.rows[0].role;
+  const isPremium =
+    role === 'admin' || role === 'premium' || (plan !== 'free' && active);
+  const xp = await pool.query(
+    'SELECT COALESCE(SUM(amount),0)::int AS total FROM xp_transactions WHERE user_id=$1',
+    [uid]
+  );
+  res.json({
+    plan, active, role, isPremium,
+    xpTotal: Number(xp.rows[0].total),
+  });
+}));
+
+// Sesi belajar harian (streak server-side; idempoten per tanggal).
+api.post('/sessions', authRequired, asyncHandler(async (req, res) => {
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const date = String(b.date || '').slice(0, 10);
+  const seconds = Math.max(0, Math.min(86400, Number(b.seconds || 0) || 0));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return fail(res, 400, 'VALIDATION', 'Format date harus YYYY-MM-DD.');
+  }
+  await pool.query(
+    `INSERT INTO study_sessions(user_id,session_date,seconds) VALUES($1,$2,$3)
+     ON CONFLICT (user_id, session_date) DO UPDATE SET
+       seconds = LEAST(86400, study_sessions.seconds + EXCLUDED.seconds)`,
+    [req.auth.sub, date, seconds]
+  );
+  const streak = await pool.query(
+    `WITH RECURSIVE s(d, n) AS (
+       SELECT CURRENT_DATE, 1
+       UNION ALL
+       SELECT d - 1, n + 1 FROM s WHERE EXISTS (
+         SELECT 1 FROM study_sessions
+         WHERE user_id=$1 AND session_date = s.d - 1)
+         AND n < 365
+     ) SELECT CASE WHEN EXISTS (
+       SELECT 1 FROM study_sessions WHERE user_id=$1
+         AND session_date IN (CURRENT_DATE, CURRENT_DATE - 1)
+     ) THEN (SELECT COALESCE(MAX(n),0) FROM s WHERE EXISTS (
+       SELECT 1 FROM study_sessions WHERE user_id=$1 AND session_date = s.d))
+     ELSE 0 END AS streak`,
+    [req.auth.sub]
+  );
+  res.json({ ok: true, streak: Number(streak.rows[0].streak) });
+}));
+
+// Ledger operasi sync (dedupe retry offline).
+api.post('/sync/operations', authRequired, asyncHandler(async (req, res) => {
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const operationId = String(b.operationId || '').slice(0, 120);
+  if (!operationId) return fail(res, 400, 'VALIDATION', 'operationId wajib diisi.');
+  const r = await pool.query(
+    `INSERT INTO sync_operations(user_id,operation_id,entity,entity_id,
+      operation,client_ts) VALUES($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (user_id, operation_id) DO NOTHING RETURNING server_ts`,
+    [
+      req.auth.sub,
+      operationId,
+      String(b.entity || '').slice(0, 60),
+      String(b.entityId || '').slice(0, 200),
+      String(b.operation || '').slice(0, 30),
+      b.clientTs ? new Date(b.clientTs) : null,
+    ]
+  );
+  if (!r.rowCount) {
+    const prev = await pool.query(
+      'SELECT server_ts FROM sync_operations WHERE user_id=$1 AND operation_id=$2',
+      [req.auth.sub, operationId]
+    );
+    return res.json({ applied: false, serverTs: prev.rows[0]?.server_ts || null });
+  }
+  res.status(201).json({ applied: true, serverTs: r.rows[0].server_ts });
 }));
 
 // Versioning: kontrak kanonis /api/v1, alias /api dipertahankan kompatibel.

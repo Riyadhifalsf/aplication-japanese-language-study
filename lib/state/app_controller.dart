@@ -1270,6 +1270,7 @@ class AppController extends ChangeNotifier {
       await _saveAuthPrefs();
       _setAuth(AuthStatus.authenticated);
       notifyListeners();
+      unawaited(refreshEntitlements());
       return null;
     } on ApiException catch (e) {
       _setAuth(AuthStatus.error,
@@ -1353,6 +1354,7 @@ class AppController extends ChangeNotifier {
       await _saveAuthPrefs();
       _setAuth(AuthStatus.authenticated);
       notifyListeners();
+      unawaited(refreshEntitlements());
       return null;
     } on ApiException catch (e) {
       // Server merespons: pesan dari server bersifat otoritatif.
@@ -1401,6 +1403,27 @@ class AppController extends ChangeNotifier {
       _preferences?.setBool('googleLinked', googleLinked) ??
           Future.value(false),
     ]);
+  }
+
+  /// Tarik entitlement dari server; server menang bila online.
+  /// Offline/gagal: pertahankan status lokal. Tidak pernah melempar.
+  Future<void> refreshEntitlements() async {
+    try {
+      final ent = await _api.entitlements();
+      if (ent == null) return;
+      final premium = ent['isPremium'] == true;
+      final plan = (ent['plan'] ?? 'free').toString();
+      // Hanya arah naik: lifetime/Play lokal tidak pernah diturunkan server.
+      // (Downgrade eksplisit butuh endpoint cancel — belum ada.)
+      if (premium && !isPremium) {
+        isPremium = true;
+        if (membershipPlan == 'free') membershipPlan = 'premium';
+        membershipTier = membershipPlan;
+      }
+      await _preferences?.setBool('isPremium', isPremium);
+      await _preferences?.setString('membershipPlan', membershipPlan);
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<bool> loginWithGoogle() async {

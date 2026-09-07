@@ -12,9 +12,16 @@
 - Komunitas/admin: `community_posts`, `admin_comments` (FK CASCADE),
   `complaint_reports`, `admin_activities`, `admin_announcements`.
 
-Aturan: perubahan skema HANYA via `backend/db/schema.sql` (idempoten,
-dieksekusi entrypoint). Sebelum ubahan besar: backup
-(`pg_dump`) → migrasi → validasi →rollback = restore file backup.
+Aturan: baseline via `backend/db/schema.sql` + versioned di
+`backend/api/db/migrations/` via `src/migrate.js` (tabel
+`schema_migrations`, transaksional per file). Sejarah:
+`002_learning.sql` (items, mastery PK(user,item), review PK(user,item),
+mistakes UNIQUE(user,item,skill), attempts UNIQUE(user,clientAttemptId),
+xp_transactions, study_sessions PK(user,date), sync_operations
+UNIQUE(user,operation), subscriptions) + `003_roles.sql`
+(user/premium/editor/moderator/admin).
+Sebelum ubahan besar: backup (`pg_dump`) → migrasi → validasi →
+rollback = restore file backup.
 Duplikat email: 0 (UNIQUE + audit berkala). Progress user = JSONB blob
 per-baris (cukup untuk mirror multi-device; mastery granular tetap di
 Firestore/SRS app).
