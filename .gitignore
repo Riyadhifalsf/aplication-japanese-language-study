@@ -82,3 +82,7 @@ checklist-konfigurasi.txt
 
 # Firebase Android config berisi API key — jangan push (ambil dari Console)
 android/app/google-services.json
+
+# APK rilis didistribusikan via GitHub Releases (bukan blob di repo)
+release/*.apk
+release/*.aab

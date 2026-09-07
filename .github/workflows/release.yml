@@ -1,9 +1,8 @@
 name: release-android
 
 on:
-  push:
-    tags:
-      - "v*"
+  # Rilis kurasi manual (APK/AAB signed lokal diunggah via `gh release`).
+  # Otomatisasi tag dimatikan agar tidak duplikat dengan rilis kurasi.
   workflow_dispatch:
 
 permissions:

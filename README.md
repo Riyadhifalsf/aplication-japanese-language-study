@@ -14,7 +14,7 @@ saat online via Firebase + backend mandiri.
 
 ## Unduh
 
-- **Android:** `release/japanese-study-v3.3.0-arm64.apk` di repo ini (rilis resmi).
+- **Android:** halaman [Releases](../../releases) — file `japanese-study-vX.X.X-arm64.apk` + AAB untuk Play Console.
 - **Play Store:** menyusul (track internal testing).
 
 ## Fitur Unggulan
