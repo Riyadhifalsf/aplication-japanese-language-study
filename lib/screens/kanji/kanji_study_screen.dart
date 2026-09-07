@@ -4,7 +4,6 @@ import '../../core/app_theme.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/entrance.dart';
-import '../../widgets/guest_preview_banner.dart';
 import 'kanji_hiragana_quiz_screen.dart';
 import 'kanji_library_screen.dart';
 import 'kanji_mastery_quiz_screen.dart';
@@ -40,8 +39,6 @@ class KanjiStudyScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
           children: [
-            const GuestPreviewBanner(),
-            if (app.isGuestPreview) const SizedBox(height: 12),
             Entrance(keyName: 'kanji-header', child: _Header(app: app)),
             const SizedBox(height: 16),
             _HeroCard(
@@ -78,10 +75,7 @@ class KanjiStudyScreen extends StatelessWidget {
                   '${app.dueKanjiReviewCount} kartu',
                   Icons.notifications_active_rounded,
                   AppTheme.seed,
-                  () => _open(
-                      context,
-                      KanjiReviewScreen(
-                          sessionSize: app.cappedSessionSize(20))),
+                  () => _open(context, const KanjiReviewScreen()),
                 ),
                 _ActionData(
                   'Latihan Kanji',
@@ -89,11 +83,7 @@ class KanjiStudyScreen extends StatelessWidget {
                   Icons.workspace_premium_rounded,
                   AppTheme.seed,
                   () => _open(
-                      context,
-                      KanjiMasteryQuizScreen(
-                        level: targetLevel,
-                        sessionSize: app.cappedSessionSize(10),
-                      )),
+                      context, KanjiMasteryQuizScreen(level: targetLevel)),
                 ),
                 _ActionData(
                   'Cari & Jelajah',

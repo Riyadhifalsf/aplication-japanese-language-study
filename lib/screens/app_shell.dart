@@ -59,15 +59,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Future<void> _select(int value) async {
     final app = _app ?? AppScope.of(context);
-    // Tamu: Beranda + Belajar bebas; Quiz + Kanji mode pratinjau terbatas.
-    // (Tab Profil sudah dihapus — akses lewat avatar beranda.)
-    // Kunci XP hanya berlaku untuk yang sudah login; tamu lewat pratinjau
-    // dengan batas sesi di tiap layar.
-    if (app.isAuthenticated && value == 2 && !app.canAccessFeature('quiz_center')) {
+    // Tamu: Beranda + Belajar bebas. Quiz + Kanji + Profil wajib login —
+    // cukup beri tahu user belum login (tanpa mode pratinjau).
+    if (!app.isAuthenticated && (value == 2 || value == 3)) {
+      const names = {2: 'Quiz', 3: 'Kanji'};
+      await requireLogin(context, feature: names[value] ?? 'fitur ini');
+      return;
+    }
+    if (value == 2 && !app.canAccessFeature('quiz_center')) {
       _lock(context, 'Quiz Center', app.featureXpRequirement('quiz_center'));
       return;
     }
-    if (app.isAuthenticated && value == 3 && !app.canAccessFeature('kanji')) {
+    if (value == 3 && !app.canAccessFeature('kanji')) {
       _lock(context, 'Kanji', app.featureXpRequirement('kanji'));
       return;
     }

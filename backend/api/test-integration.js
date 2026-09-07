@@ -240,10 +240,53 @@ test('attempt tanpa auth -> 401; tanpa clientAttemptId -> 400', async () => {
   assert.equal(bad.status, 400);
 });
 
+test('technical: JWT dioprek -> 401; SQLi -> 401/400 tanpa 500', async () => {
+  const bad = token.slice(0, -2) + (token.slice(-2) === 'ab' ? 'cd' : 'ab');
+  const t = await api('GET', '/api/me', { token: bad });
+  assert.equal(t.status, 401);
+  assert.equal(t.data.error.code, 'AUTH_BAD_TOKEN');
+  for (const payload of [`' OR '1'='1`, `admin@admin'--`, `'; DROP TABLE app_users;--`]) {
+    const r = await api('POST', '/api/auth/login', {
+      body: { email: payload, password: 'x'.repeat(10) },
+    });
+    assert.ok([400, 401].includes(r.status), `SQLi ${payload} -> ${r.status}`);
+    assert.notEqual(r.status, 500);
+  }
+  const users = await api('GET', '/api/admin/users', { token: ADMIN_TOKEN });
+  assert.equal(users.status, 200);
+});
+
+test('technical: mass-assignment role ditolak', async () => {
+  const p = await api('PUT', '/api/me/profile', {
+    token,
+    body: { display_name: 'ITest', role: 'admin', isPremium: true },
+  });
+  assert.equal(p.status, 200);
+  assert.equal(p.data.user.role, 'user');
+  const me = await api('GET', '/api/me', { token });
+  assert.equal(me.data.user.role, 'user');
+});
+
 test('hapus akun sendiri (bersih-bersih) -> ok; token jadi yatim 404', async () => {
   const del = await api('DELETE', '/api/me', { token });
   assert.equal(del.status, 200);
   const me = await api('GET', '/api/me', { token });
   assert.equal(me.status, 404);
   assert.equal(me.data.error.code, 'USER_NOT_FOUND');
+});
+
+test('BRUTEFORCE: 25x login salah cepat -> 429 RATE_LIMITED (terakhir)', async () => {
+  let limited = 0;
+  for (let i = 0; i < 25; i++) {
+    const r = await api('POST', '/api/auth/login', {
+      body: { email: `brute-${stamp}@example.com`, password: 'salah1234' },
+    });
+    if (r.status === 429) {
+      limited++;
+      assert.equal(r.data.error.code, 'RATE_LIMITED');
+    } else {
+      assert.equal(r.status, 401);
+    }
+  }
+  assert.ok(limited > 0, 'limiter wajib men-trip');
 });

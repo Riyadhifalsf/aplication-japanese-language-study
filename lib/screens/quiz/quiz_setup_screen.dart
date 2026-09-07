@@ -241,14 +241,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
       );
       return;
     }
-    final size = app.cappedSessionSize(count ?? _questionCount);
-    if (size < (count ?? _questionCount)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Mode pratinjau: 5 soal per sesi. Masuk untuk sesi penuh.')),
-      );
-    }
+    final size = count ?? _questionCount;
     if (_kanjiMode) {
       _open(
         context,
