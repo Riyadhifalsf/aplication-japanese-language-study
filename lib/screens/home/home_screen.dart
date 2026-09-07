@@ -6,6 +6,7 @@ import '../../models/kanji.dart';
 import '../../services/study_intelligence_service.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/admob_native_slot.dart';
+import '../../widgets/continue_learning_card.dart';
 import '../../widgets/entrance.dart';
 import '../../widgets/liquid_glass.dart';
 import '../kanji/kanji_detail_screen.dart';
@@ -118,6 +119,11 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        const Entrance(
+          keyName: 'home-continue',
+          child: ContinueLearningCard(),
+        ),
+        const SizedBox(height: 16),
         Entrance(
           keyName: 'home-mission',
           delay: const Duration(milliseconds: 45),

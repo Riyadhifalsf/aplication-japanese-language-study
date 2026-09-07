@@ -2,6 +2,18 @@
 
 Semua perubahan penting pada proyek ini dicatat di berkas ini.
 
+## [1.1.0] - 2026-09
+
+- Kurikulum ala LingoDeer: path melengkung zig-zag (satu node = satu unit),
+  garis putus-putus, badge bintang unit aktif, progres done/total per unit.
+- Banner promo premium (HEMAT 40% + hitung mundur + tombol upgrade).
+- Streak dihapus dari Profil (tetap ada di Beranda).
+- Backend: `POST /api/ai/chat` proxy Gemini "Sensei" (JWT + rate limit
+  khusus, `GEMINI_API_KEY` ganti `OPENAI_*` yang tak terpakai).
+- Flutter: `ApiService.askSensei()` + tes integrasi AI (401 guard).
+- Firebase: SHA debug+release terdaftar, `google-services.json` baru
+  (oauth_client terisi), `firestore.rules` ter-deploy.
+
 ## [3.3.0] - 2026-09
 
 - Tema merah Japanese Study + splash logo anti-kepotong + logo login transparan.

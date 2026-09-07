@@ -84,6 +84,30 @@ class ApiService {
   }
 
 
+  /// Tanya AI Sensei (proxy Gemini via backend; key aman di server).
+  /// [history] opsional: [{role:'user'|'model', text:...}] maks 10.
+  /// Throws [ApiException] berkode: AI_DISABLED (503, server belum isi key),
+  /// AI_RATE_LIMITED (429), AUTH_* bila belum login.
+  Future<String> askSensei({
+    required String message,
+    List<Map<String, String>> history = const [],
+    String level = '',
+  }) async {
+    final t = await token;
+    if (t == null) throw ApiException('Belum login.');
+    final r = await _client.post(_uri('/api/ai/chat'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $t'},
+        body: jsonEncode({'message': message, 'history': history, 'level': level}));
+    final data = _decode(r);
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw apiError(data, r.statusCode, 'Sensei tidak merespons (${r.statusCode}).');
+    }
+    final reply = data['reply']?.toString() ?? '';
+    if (reply.isEmpty) throw ApiException('Sensei memberi jawaban kosong.');
+    return reply;
+  }
+
+
   Future<List<Map<String,dynamic>>> adminUsers() async {
     final t=await token;
     if(t==null) throw ApiException('Belum login.');
@@ -103,6 +127,48 @@ class ApiService {
 
   /// Entitlement server-side: sumber kebenaran premium (jangan percaya
   /// klaim lokal). Null bila offline/belum login (fallback lokal dipakai).
+  /// Ganti password akun server. Wajib tahu password saat ini.
+  /// Token lama otomatis mati (backend menolak via AUTH_PASSWORD_CHANGED).
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final t = await token;
+    if (t == null) throw ApiException('Belum login.');
+    final r = await _client.post(_uri('/api/me/password'),
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $t'},
+        body: jsonEncode({'currentPassword': currentPassword, 'newPassword': newPassword}));
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw apiError(_decode(r), r.statusCode, 'Ganti password gagal (${r.statusCode}).');
+    }
+  }
+
+  /// Minta kode reset ke Gmail. Selalu sukses generik (anti-enumeration).
+  Future<String> requestPasswordReset({required String email}) async {
+    final r = await _client.post(_uri('/api/auth/forgot'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}));
+    final data = _decode(r);
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw apiError(data, r.statusCode, 'Gagal meminta kode reset (${r.statusCode}).');
+    }
+    return data['message']?.toString() ?? 'Bila email terdaftar, kode reset telah dikirim ke Gmail.';
+  }
+
+  /// Tukar kode 6 digit menjadi password baru (sekali pakai).
+  Future<void> confirmPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final r = await _client.post(_uri('/api/auth/reset'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'code': code, 'newPassword': newPassword}));
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw apiError(_decode(r), r.statusCode, 'Reset password gagal (${r.statusCode}).');
+    }
+  }
+
   Future<Map<String,dynamic>?> entitlements() async {
     final t=await token;
     if(t==null) return null;

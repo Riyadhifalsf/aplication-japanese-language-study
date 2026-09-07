@@ -7,6 +7,8 @@ const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
+const appConfig = require('./app_config');
+const mailer = require('./mailer');
 
 const app = express();
 app.disable('x-powered-by');
@@ -71,11 +73,30 @@ const fail = (res, status, code, message) =>
 const asyncHandler = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 
-const authRequired = (req, _res, next) => {
+const authRequired = async (req, _res, next) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
   if (!token) return next(new HttpError(401, 'Token tidak ada.', 'AUTH_MISSING_TOKEN'));
-  try { req.auth = jwt.verify(token, JWT_SECRET); return next(); }
-  catch (_) { return next(new HttpError(401, 'Token tidak valid atau sudah kedaluwarsa.', 'AUTH_BAD_TOKEN')); }
+  let payload;
+  try {
+    payload = jwt.verify(token, JWT_SECRET);
+  } catch (_) {
+    return next(new HttpError(401, 'Token tidak valid atau sudah kedaluwarsa.', 'AUTH_BAD_TOKEN'));
+  }
+  // Token yang diterbitkan SEBELUM password diganti otomatis mati.
+  // (1 query PK lookup; murah dan membuat ganti password benar-benar aman.)
+  try {
+    const r = await pool.query('SELECT password_changed_at FROM app_users WHERE id=$1', [payload.sub]);
+    if (!r.rowCount) return next(new HttpError(404, 'User tidak ditemukan.', 'USER_NOT_FOUND'));
+    const changed = r.rows[0].password_changed_at;
+    const iatMs = Number(payload.iat || 0) * 1000;
+    if (changed && iatMs < new Date(changed).getTime()) {
+      return next(new HttpError(401, 'Password telah diubah. Masuk lagi.', 'AUTH_PASSWORD_CHANGED'));
+    }
+  } catch (e) {
+    return next(e);
+  }
+  req.auth = payload;
+  return next();
 };
 
 const timingSafeEqualHex = (a, b) => {
@@ -119,6 +140,31 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Terlalu banyak permintaan. Coba lagi nanti.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan. Coba lagi nanti.' } },
 });
+
+// Password sensitif: lebih ketat dari auth biasa (anti brute-force kode).
+const passwordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak percobaan password. Coba lagi 15 menit lagi.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak percobaan password. Coba lagi 15 menit lagi.' } },
+});
+
+// AI Sensei lebih ketat (biaya per panggilan LLM). Batas dinamis dari
+// DB (AI_RATE_MAX) dengan fallback env; hard-cap 300/menit per IP.
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: async () => {
+    try {
+      return await appConfig.getAiRateMax(pool);
+    } catch (_) {
+      return Number(process.env.AI_RATE_MAX || 30);
+    }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Terlalu banyak pertanyaan ke Sensei. Coba lagi semenit lagi.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak pertanyaan ke Sensei. Coba lagi semenit lagi.' } },
+});
 app.use('/api', apiLimiter);
 app.use('/api/v1', apiLimiter);
 
@@ -135,7 +181,20 @@ const rawToJson = (row) => ({ ...row, raw: typeof row.raw === 'string' ? JSON.pa
 // ---------- health ----------
 api.get('/health', asyncHandler(async (_req, res) => {
   const r = await pool.query('SELECT now() AS time');
-  res.json({ ok: true, database: true, time: r.rows[0].time });
+  let aiConfigured = false;
+  let aiModel = '';
+  try {
+    aiConfigured = !!(await appConfig.getGeminiKey(pool));
+    aiModel = await appConfig.getGeminiModel(pool);
+  } catch (_) {
+    aiConfigured = !!(process.env.GEMINI_API_KEY || '').trim();
+  }
+  res.json({
+    ok: true,
+    database: true,
+    time: r.rows[0].time,
+    ai: { configured: aiConfigured, model: aiModel },
+  });
 }));
 
 // ---------- auth / akun ----------
@@ -300,6 +359,114 @@ api.post('/auth/google', authLimiter, asyncHandler(async (req, res) => {
   res.json({ token: issueToken(u), user: publicUser(u), progress: u.progress || {} });
 }));
 
+// ---------- password: ganti (wajib tahu yang lama) & lupa (via kode Gmail) ----------
+// Hash adaptif bcrypt cost 12 + salt otomatis (standar industri; password
+// plaintext TIDAK PERNAH disimpan atau dikirim balik ke client).
+
+const validateNewPassword = (password) => {
+  const s = String(password || '');
+  if (s.length < 8) return 'Password minimal 8 karakter.';
+  if (s.length > 128) return 'Password terlalu panjang.';
+  return null;
+};
+
+const RESET_CODE_TTL_MIN = Math.max(5, Math.min(60, Number(process.env.RESET_CODE_TTL_MIN || 15) || 15));
+const RESET_CODE_MAX_ATTEMPTS = 5;
+
+const sha256Hex = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+
+// Minta kode reset. SELALU 200 generik (anti user-enumeration): penyerang
+// tidak bisa membedakan email terdaftar vs tidak dari respons/API timing.
+api.post('/auth/forgot', passwordLimiter, asyncHandler(async (req, res) => {
+  const email = cleanEmail(req.body.email);
+  const done = () => res.json({ ok: true, message: 'Bila email terdaftar, kode reset telah dikirim ke Gmail.' });
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return done();
+  const u = await pool.query('SELECT id, display_name, password_hash FROM app_users WHERE email=$1', [email]);
+  if (!u.rowCount) return done();
+  const user = u.rows[0];
+  if (!user.password_hash) {
+    // Akun login Google: tidak punya password server. Beri tahu pemilik
+    // inbox (aman: hanya pemilik alamat yang membaca email ini).
+    const tpl = mailer.googleAccountNoticeTemplate({ name: user.display_name });
+    await mailer.sendMail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    await audit(user.id, 'password_forgot_google', req).catch(() => {});
+    return done();
+  }
+  const code = String(crypto.randomInt(100000, 1000000));
+  const expiresAt = new Date(Date.now() + RESET_CODE_TTL_MIN * 60 * 1000);
+  await pool.query(
+    `INSERT INTO password_resets(user_id, code_hash, expires_at) VALUES($1,$2,$3)`,
+    [user.id, sha256Hex(code), expiresAt]
+  );
+  const tpl = mailer.resetCodeTemplate({ name: user.display_name, code, minutes: RESET_CODE_TTL_MIN });
+  await mailer.sendMail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  await audit(user.id, 'password_forgot', req).catch(() => {});
+  return done();
+}));
+
+// Tukar kode menjadi password baru (sekali pakai, kedaluwarsa singkat).
+api.post('/auth/reset', passwordLimiter, asyncHandler(async (req, res) => {
+  const email = cleanEmail(req.body.email);
+  const code = String(req.body.code || '').replace(/\D/g, '').slice(0, 6);
+  const weak = validateNewPassword(req.body.newPassword);
+  if (!email || code.length !== 6) {
+    return fail(res, 400, 'RESET_INVALID', 'Email atau kode tidak valid.');
+  }
+  if (weak) return fail(res, 400, 'AUTH_WEAK_PASSWORD', weak);
+  const u = await pool.query('SELECT id, password_hash FROM app_users WHERE email=$1', [email]);
+  if (!u.rowCount || !u.rows[0].password_hash) {
+    // Respons generik: jangan bocorkan akun mana yang valid.
+    return fail(res, 400, 'RESET_INVALID', 'Kode salah atau sudah kedaluwarsa.');
+  }
+  const userId = u.rows[0].id;
+  const r = await pool.query(
+    `SELECT * FROM password_resets
+     WHERE user_id=$1 AND used_at IS NULL AND expires_at > now()
+     ORDER BY created_at DESC LIMIT 5`,
+    [userId]
+  );
+  let match = null;
+  for (const row of r.rows) {
+    if (Number(row.attempts) >= RESET_CODE_MAX_ATTEMPTS) continue;
+    const a = Buffer.from(String(row.code_hash));
+    const b = Buffer.from(sha256Hex(code));
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      match = row;
+      break;
+    }
+  }
+  if (!match) {
+    // Catat percobaan gagal pada kode terbaru yang masih hidup agar bisa
+    // dikunci setelah 5x salah (tanpa memberi tahu penyerang kode mana).
+    if (r.rows.length) {
+      await pool.query(
+        `UPDATE password_resets SET attempts = attempts + 1
+         WHERE id = $1`,
+        [r.rows[0].id]
+      );
+    }
+    return fail(res, 400, 'RESET_INVALID', 'Kode salah atau sudah kedaluwarsa.');
+  }
+  const hash = await bcrypt.hash(String(req.body.newPassword), 12);
+  await pool.query('BEGIN');
+  try {
+    await pool.query(
+      `UPDATE app_users SET password_hash=$2, password_changed_at=now() WHERE id=$1`,
+      [userId, hash]
+    );
+    await pool.query(
+      `UPDATE password_resets SET used_at=now() WHERE user_id=$1 AND used_at IS NULL`,
+      [userId]
+    );
+    await pool.query('COMMIT');
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    throw e;
+  }
+  await audit(userId, 'password_reset', req).catch(() => {});
+  res.json({ ok: true, message: 'Password berhasil diubah. Masuk dengan password baru.' });
+}));
+
 api.get('/me', authRequired, asyncHandler(async (req, res) => {
   const r = await pool.query('SELECT * FROM app_users WHERE id=$1', [req.auth.sub]);
   if (!r.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
@@ -330,6 +497,41 @@ api.put('/me/progress', authRequired, asyncHandler(async (req, res) => {
 api.delete('/me', authRequired, asyncHandler(async (req, res) => {
   await pool.query('DELETE FROM app_users WHERE id=$1', [req.auth.sub]);
   res.json({ ok: true });
+}));
+
+// Ganti password: WAJIB tahu password saat ini (konfirmasi identitas).
+// Token lama otomatis mati via password_changed_at; notifikasi dikirim ke Gmail.
+api.post('/me/password', authRequired, passwordLimiter, asyncHandler(async (req, res) => {
+  const currentPassword = String(req.body.currentPassword || req.body.current_password || '');
+  const newPassword = String(req.body.newPassword || req.body.new_password || '');
+  if (!currentPassword) {
+    return fail(res, 400, 'AUTH_MISSING_FIELDS', 'Password saat ini wajib diisi.');
+  }
+  const weak = validateNewPassword(newPassword);
+  if (weak) return fail(res, 400, 'AUTH_WEAK_PASSWORD', weak);
+  const r = await pool.query('SELECT * FROM app_users WHERE id=$1', [req.auth.sub]);
+  if (!r.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
+  const u = r.rows[0];
+  if (!u.password_hash) {
+    return fail(res, 400, 'AUTH_NO_PASSWORD', 'Akun ini login dengan Google dan tidak punya password. Kelola password via akun Google-mu.');
+  }
+  const ok = await bcrypt.compare(currentPassword, u.password_hash);
+  if (!ok) {
+    return fail(res, 401, 'AUTH_WRONG_PASSWORD', 'Password saat ini salah.');
+  }
+  const same = await bcrypt.compare(newPassword, u.password_hash);
+  if (same) {
+    return fail(res, 400, 'AUTH_SAME_PASSWORD', 'Password baru tidak boleh sama dengan yang lama.');
+  }
+  const hash = await bcrypt.hash(newPassword, 12);
+  await pool.query(
+    `UPDATE app_users SET password_hash=$2, password_changed_at=now() WHERE id=$1`,
+    [u.id, hash]
+  );
+  const tpl = mailer.passwordChangedTemplate({ name: u.display_name });
+  await mailer.sendMail({ to: u.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  await audit(u.id, 'password_change', req).catch(() => {});
+  res.json({ ok: true, message: 'Password berhasil diubah. Masuk ulang di perangkat lain.' });
 }));
 
 api.get('/admin/users', adminGuard, asyncHandler(async (_req, res) => {
@@ -870,6 +1072,126 @@ api.post('/sessions', authRequired, asyncHandler(async (req, res) => {
     [req.auth.sub]
   );
   res.json({ ok: true, streak: Number(streak.rows[0].streak) });
+}));
+
+// ---------- AI Sensei (proxy Gemini; key hanya di server) ----------
+// Key/model/timeout dibaca DINAMIS via app_config: override terenkripsi di
+// tabel app_settings menang, env jadi fallback. Tidak ada secret yang
+// dikirim ke client; endpoint admin hanya menampilkan mask.
+const SENSEI_SYSTEM = (level) =>
+  `Kamu adalah "Sensei", tutor bahasa Jepang yang ramah untuk murid Indonesia` +
+  `${level ? ` (target level murid: ${level})` : ''}. ` +
+  `Jawab dalam Bahasa Indonesia, sertakan contoh kalimat Jepang (kanji + furigana sederhana + romaji bila membantu) ` +
+  `dan artinya. Jelaskan grammar seperlunya dengan pola kalimat yang jelas. ` +
+  `Tetap pada topik belajar bahasa Jepang; tolak dengan sopan hal di luar itu. ` +
+  `Jawaban ringkas (maks ~250 kata) kecuali murid meminta detail.`;
+
+async function callGemini(message, history, level, opts) {
+  const apiKey = opts && opts.apiKey ? opts.apiKey : '';
+  const model = (opts && opts.model ? opts.model : 'gemini-2.0-flash').trim() || 'gemini-2.0-flash';
+  const timeoutMs = opts && opts.timeoutMs ? opts.timeoutMs : 25000;
+  const contents = [];
+  for (const h of history) {
+    const role = h.role === 'model' ? 'model' : 'user';
+    contents.push({ role, parts: [{ text: h.text }] });
+  }
+  contents.push({ role: 'user', parts: [{ text: message }] });
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SENSEI_SYSTEM(level) }] },
+        contents,
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    }
+  );
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = (data.error && data.error.message) || `Gemini HTTP ${r.status}`;
+    if (r.status === 429) throw new HttpError(429, 'Sensei sedang sibuk. Coba lagi sebentar lagi.', 'AI_RATE_LIMITED');
+    if (r.status === 400) throw new HttpError(400, `Pertanyaan ditolak upstream: ${String(msg).slice(0, 200)}`, 'AI_BAD_REQUEST');
+    throw new HttpError(502, 'Sensei tidak merespons. Coba lagi nanti.', 'AI_UPSTREAM');
+  }
+  const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  const reply = parts.map((p) => p.text || '').join('').trim();
+  if (!reply) throw new HttpError(502, 'Sensei memberi jawaban kosong. Coba lagi.', 'AI_EMPTY');
+  return reply;
+}
+
+api.post('/ai/chat', authRequired, aiLimiter, asyncHandler(async (req, res) => {
+  const apiKey = await appConfig.getGeminiKey(pool);
+  if (!apiKey) {
+    return fail(res, 503, 'AI_DISABLED', 'AI Sensei belum aktif di server (kunci Gemini kosong).');
+  }
+  const model = await appConfig.getGeminiModel(pool);
+  const timeoutMs = await appConfig.getGeminiTimeoutMs(pool);
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const message = String(b.message || '').trim().slice(0, 2000);
+  if (!message) return fail(res, 400, 'VALIDATION', 'message wajib diisi (maks 2000 karakter).');
+  const level = ['N5', 'N4', 'N3', 'N2', 'N1'].includes(String(b.level || '').toUpperCase())
+    ? String(b.level).toUpperCase() : '';
+  const history = Array.isArray(b.history) ? b.history.slice(0, 10).flatMap((h) => {
+    if (!h || typeof h !== 'object') return [];
+    const text = String(h.text || '').trim().slice(0, 2000);
+    if (!text) return [];
+    return [{ role: h.role === 'model' ? 'model' : 'user', text }];
+  }) : [];
+  const reply = await callGemini(message, history, level, { apiKey, model, timeoutMs });
+  await audit(req.auth.sub, 'ai_chat', req);
+  res.json({ reply, model });
+}));
+
+// ---------- pengaturan runtime di DB (pengganti sebagian .env) ----------
+// allowlist di src/app_config.js. Secret tidak pernah dikembalikan plaintext.
+// PUT value kosong = hapus override (kembali fallback env).
+api.get('/admin/settings', adminGuard, asyncHandler(async (_req, res) => {
+  res.json({ settings: await appConfig.listSettings(pool) });
+}));
+
+api.put('/admin/settings/:key', adminGuard, asyncHandler(async (req, res) => {
+  const key = String(req.params.key || '').trim();
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  try {
+    const saved = await appConfig.setSetting(
+      pool,
+      key,
+      b.value == null ? '' : String(b.value),
+      (req.auth && (req.auth.email || req.auth.sub)) || 'admin'
+    );
+    await audit(req.auth && req.auth.sub ? req.auth.sub : null, `settings_put:${key}`, req).catch(() => {});
+    res.json({ ok: true, setting: saved });
+  } catch (e) {
+    if (e && typeof e.status === 'number' && typeof e.code === 'string') {
+      return fail(res, e.status, e.code, e.message);
+    }
+    throw e;
+  }
+}));
+
+api.delete('/admin/settings/:key', adminGuard, asyncHandler(async (req, res) => {
+  const key = String(req.params.key || '').trim();
+  try {
+    const saved = await appConfig.setSetting(
+      pool,
+      key,
+      '',
+      (req.auth && (req.auth.email || req.auth.sub)) || 'admin'
+    );
+    await audit(req.auth && req.auth.sub ? req.auth.sub : null, `settings_clear:${key}`, req).catch(() => {});
+    res.json({ ok: true, setting: saved });
+  } catch (e) {
+    if (e && typeof e.status === 'number' && typeof e.code === 'string') {
+      return fail(res, e.status, e.code, e.message);
+    }
+    throw e;
+  }
 }));
 
 // Ledger operasi sync (dedupe retry offline).

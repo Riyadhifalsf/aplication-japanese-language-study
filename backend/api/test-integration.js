@@ -117,6 +117,15 @@ test('google tanpa idToken -> 400', async () => {
   assert.equal(data.error.code, 'AUTH_GOOGLE_NO_TOKEN');
 });
 
+test('ai/chat tanpa token -> 401 (alias v1 sama)', async () => {
+  const a = await api('POST', '/api/ai/chat', { body: { message: 'Apa itu partikel は?' } });
+  assert.equal(a.status, 401);
+  assert.equal(a.data.error.code, 'AUTH_MISSING_TOKEN');
+  const b = await api('POST', '/api/v1/ai/chat', { body: { message: 'Apa itu partikel は?' } });
+  assert.equal(b.status, 401);
+  assert.equal(b.data.error.code, 'AUTH_MISSING_TOKEN');
+});
+
 test('admin guard: tanpa token 401, user biasa 403', async () => {
   const anon = await api('GET', '/api/admin/users');
   assert.equal(anon.status, 401);
@@ -265,6 +274,78 @@ test('technical: mass-assignment role ditolak', async () => {
   assert.equal(p.data.user.role, 'user');
   const me = await api('GET', '/api/me', { token });
   assert.equal(me.data.user.role, 'user');
+});
+
+const NEWPASS = 'baru-password456';
+
+test('ganti password: validasi berlapis', async () => {
+  const noCurrent = await api('POST', '/api/me/password', {
+    token, body: { newPassword: NEWPASS },
+  });
+  assert.equal(noCurrent.status, 400);
+  const wrong = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: 'salah1234', newPassword: NEWPASS },
+  });
+  assert.equal(wrong.status, 401);
+  assert.equal(wrong.data.error.code, 'AUTH_WRONG_PASSWORD');
+  const weak = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: PASS, newPassword: 'pendek' },
+  });
+  assert.equal(weak.status, 400);
+  assert.equal(weak.data.error.code, 'AUTH_WEAK_PASSWORD');
+  const same = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: PASS, newPassword: PASS },
+  });
+  assert.equal(same.status, 400);
+  assert.equal(same.data.error.code, 'AUTH_SAME_PASSWORD');
+});
+
+test('ganti password sukses -> token lama mati, login baru jalan', async () => {
+  const ok = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: PASS, newPassword: NEWPASS },
+  });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.ok, true);
+  const stale = await api('GET', '/api/me', { token });
+  assert.equal(stale.status, 401);
+  assert.equal(stale.data.error.code, 'AUTH_PASSWORD_CHANGED');
+  const oldLogin = await api('POST', '/api/auth/login', {
+    body: { email: EMAIL, password: PASS },
+  });
+  assert.equal(oldLogin.status, 401);
+  const fresh = await api('POST', '/api/auth/login', {
+    body: { email: EMAIL, password: NEWPASS },
+  });
+  assert.equal(fresh.status, 200);
+  assert.ok(fresh.data.token);
+  token = fresh.data.token;
+});
+
+test('lupa password: selalu 200 generik (anti-enumeration)', async () => {
+  const unknown = await api('POST', '/api/auth/forgot', {
+    body: { email: `tak-ada-${stamp}@example.com` },
+  });
+  assert.equal(unknown.status, 200);
+  assert.equal(unknown.data.ok, true);
+  const known = await api('POST', '/api/auth/forgot', {
+    body: { email: EMAIL },
+  });
+  assert.equal(known.status, 200);
+  assert.equal(known.data.ok, true);
+  assert.equal(known.data.message, unknown.data.message);
+});
+
+test('reset password: kode salah -> 400 tanpa bocor info', async () => {
+  const bad = await api('POST', '/api/auth/reset', {
+    body: { email: EMAIL, code: '000000', newPassword: 'reset-baru789' },
+  });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.data.error.code, 'RESET_INVALID');
+  const weak = await api('POST', '/api/auth/reset', {
+    body: { email: EMAIL, code: '000000', newPassword: 'x' },
+  });
+  assert.equal(weak.status, 400);
+  assert.equal(weak.data.error.code, 'AUTH_WEAK_PASSWORD');
 });
 
 test('hapus akun sendiri (bersih-bersih) -> ok; token jadi yatim 404', async () => {

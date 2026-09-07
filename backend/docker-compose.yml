@@ -29,6 +29,21 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_NAME: ${ADMIN_NAME:-Administrator}
       CORS_ORIGIN: "*"
+      # AI Sensei + enkripsi pengaturan DB (fallback bila tidak ada override
+      # di tabel app_settings; lihat backend/.env.example).
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      AI_RATE_MAX: ${AI_RATE_MAX:-30}
+      GEMINI_TIMEOUT_MS: ${GEMINI_TIMEOUT_MS:-25000}
+      CONFIG_KEK: ${CONFIG_KEK:-}
+      # Email reset password (Gmail SMTP App Password; kosong = log-only).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      APP_NAME: ${APP_NAME:-Japanese Study}
+      RESET_CODE_TTL_MIN: ${RESET_CODE_TTL_MIN:-15}
     depends_on:
       db:
         condition: service_healthy

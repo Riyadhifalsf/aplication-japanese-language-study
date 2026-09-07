@@ -8,7 +8,6 @@ import '../../widgets/reward_ad_card.dart';
 import '../../services/hidden_quests.dart';
 import '../../widgets/brand_icons.dart';
 import '../auth/login_screen.dart';
-import '../streak/streak_screen.dart';
 import 'premium_screen.dart';
 import 'profile_settings_screen.dart';
 import 'study_stats_screen.dart';
@@ -250,25 +249,6 @@ class ProfileScreen extends StatelessWidget {
                   : 'Upload, follow, dan komentar masih dalam tahap beta dan belum aktif.',
             ),
             trailing: const Icon(Icons.lock_clock_rounded),
-          ),
-        ),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.local_fire_department_rounded),
-            title: const Text(
-              'Rentetan',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-            subtitle: Text('${app.streak} hari · ${app.streakTierName}'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const StreakScreen(),
-                ),
-              );
-            },
           ),
         ),
         const SizedBox(height: 14),

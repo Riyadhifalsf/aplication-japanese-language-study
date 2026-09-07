@@ -224,6 +224,63 @@ class FirebaseAuthService {
     }
   }
 
+  /// Ganti password akun Firebase email/password.
+  /// Wajib re-autentikasi dulu (konfirmasi password saat ini) — standar
+  /// Firebase agar sesi yang dibajak tidak bisa mengambil alih akun.
+  /// Melempar [FirebaseAuthFailure] dengan pesan Indonesia siap tampil.
+  Future<void> reauthenticateAndUpdatePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _ensureAvailable();
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw FirebaseAuthFailure('Sesi berakhir. Masuk lagi lalu coba ganti password.');
+    }
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+      await user.updatePassword(newPassword);
+      await user.reload();
+    } on FirebaseAuthException catch (e) {
+      throw _passwordFailure(e);
+    }
+  }
+
+  /// Kirim link reset password Firebase ke Gmail.
+  Future<void> sendPasswordResetEmail(String email) async {
+    _ensureAvailable();
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      throw FirebaseAuthFailure.fromCode(e);
+    }
+  }
+
+  static FirebaseAuthFailure _passwordFailure(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'wrong-password':
+      case 'invalid-credential':
+      case 'invalid-login-credentials':
+        return FirebaseAuthFailure('Password saat ini salah.');
+      case 'weak-password':
+        return FirebaseAuthFailure('Password baru terlalu lemah (minimal 6 karakter).');
+      case 'requires-recent-login':
+        return FirebaseAuthFailure(
+            'Sesi login terlalu lama. Keluar lalu masuk lagi, kemudian ganti password.');
+      case 'too-many-requests':
+        return FirebaseAuthFailure('Terlalu banyak percobaan. Coba lagi beberapa menit.');
+      case 'network-request-failed':
+        return FirebaseAuthFailure('Tidak ada koneksi internet.', isNetworkError: true);
+      default:
+        return FirebaseAuthFailure.fromCode(e);
+    }
+  }
+
   Future<void> signOut() async {
     try {
       await _signIn.signOut();

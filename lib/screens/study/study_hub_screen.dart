@@ -23,6 +23,7 @@ import '../phrases/phrase_screen.dart';
 import '../readings/reading_screen.dart';
 import '../sentences/sentence_screen.dart';
 import '../vocab/vocabulary_screen.dart';
+import '../curriculum/curriculum_path_screen.dart';
 import 'learning_path_screen.dart';
 import 'today_learning_screen.dart';
 import 'learning_tracks_screen.dart';
@@ -77,11 +78,23 @@ class StudyHubScreen extends StatelessWidget {
               screen: TodayLearningScreen(),
             ),
             _StudyCardData(
-              title: 'Path Belajar',
-              subtitle: 'N5 → N4 → N3 → N2 → N1',
+              title: 'Learning Path',
+              subtitle: 'Beginner → N5 → N1 + Work Path',
               icon: Icons.route_rounded,
               color: const Color(0xFFD92D20),
-              badge: 'Mulai di sini',
+              badge: 'Recommended',
+              progress: app
+                  .curriculumLevelProgress(app.curriculumActiveLevelId)
+                  .percent,
+              screen: CurriculumPathScreen(
+                  initialLevel: app.curriculumActiveLevelId),
+            ),
+            _StudyCardData(
+              title: 'Path Belajar (lama)',
+              subtitle: 'N5 → N4 → N3 → N2 → N1',
+              icon: Icons.timeline_rounded,
+              color: const Color(0xFFB42318),
+              badge: 'Klasik',
               progress: app.completedLearningStepIds.length / 25,
               screen: LearningPathScreen(initialLevel: app.selectedStudyLevel),
             ),

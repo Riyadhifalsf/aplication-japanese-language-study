@@ -132,6 +132,7 @@ class ProgressSyncService {
     for (final k in [
       'placementBestScores',
       'examBestScores',
+      'curriculumFinalScores',
       'kanjiMasteryStreaks',
       'kanjiReviewSteps',
       'kanjiNextReviewDays'
@@ -170,6 +171,17 @@ class ProgressSyncService {
       l['learningEngineState'],
       r['learningEngineState'],
     );
+
+    // Curriculum progress: merge per-lesson (union aktivitas, max skor,
+    // newer status menang). Mencegah HP kedua menghapus progress HP pertama.
+    out['curriculumProgress'] = _mergeCurriculumProgress(
+      l['curriculumProgress'],
+      r['curriculumProgress'],
+    );
+    out['curriculumActiveLessonId'] = lastWriteWins(
+        'curriculumActiveLessonId', l['curriculumActiveLessonId']);
+    out['curriculumActiveLevelId'] = lastWriteWins(
+        'curriculumActiveLevelId', l['curriculumActiveLevelId'] ?? 'N5');
 
     // Journal: gabung unik по id/waktu, cap 2000 terbaru.
     final journal = <String, Map<String, Object?>>{};
@@ -267,6 +279,58 @@ class ProgressSyncService {
       'mistakes': recordsFor('mistakes'),
       'lessonProgress': lessonProgress,
     };
+  }
+
+  static Map<String, dynamic> _mergeCurriculumProgress(
+    dynamic local,
+    dynamic remote,
+  ) {
+    final l =
+        local is Map ? Map<String, dynamic>.from(local) : <String, dynamic>{};
+    final r =
+        remote is Map ? Map<String, dynamic>.from(remote) : <String, dynamic>{};
+    final out = <String, dynamic>{};
+    for (final id in {...l.keys, ...r.keys}) {
+      final key = id.toString();
+      final a = l[id];
+      final b = r[id];
+      if (a is! Map) {
+        out[key] = b;
+        continue;
+      }
+      if (b is! Map) {
+        out[key] = a;
+        continue;
+      }
+      final aMap = Map<String, dynamic>.from(a);
+      final bMap = Map<String, dynamic>.from(b);
+      final newer =
+          _recordUpdatedAt(bMap) > _recordUpdatedAt(aMap) ? bMap : aMap;
+      final merged = <String, dynamic>{...aMap, ...bMap, ...newer};
+      merged['completedActivityIds'] = <Object?>{
+        ...(aMap['completedActivityIds'] as List? ?? const []),
+        ...(bMap['completedActivityIds'] as List? ?? const []),
+      }.toList();
+      merged['bestScore'] =
+          _maxNumber(aMap['bestScore'], bMap['bestScore']);
+      merged['attempts'] = _maxNumber(aMap['attempts'], bMap['attempts']);
+      merged['mastered'] =
+          aMap['mastered'] == true || bMap['mastered'] == true;
+      // Status: mastered > completed > inProgress > available > locked.
+      const rank = {
+        'locked': 0,
+        'available': 1,
+        'inProgress': 2,
+        'in_progress': 2,
+        'completed': 3,
+        'mastered': 4,
+      };
+      final aRank = rank['${aMap['status']}'] ?? 0;
+      final bRank = rank['${bMap['status']}'] ?? 0;
+      merged['status'] = bRank >= aRank ? bMap['status'] : aMap['status'];
+      out[key] = merged;
+    }
+    return out;
   }
 
   static int _recordUpdatedAt(Map<String, dynamic> record) =>

@@ -9,6 +9,10 @@ import '../models/admin_models.dart';
 import '../models/app_notification.dart';
 import '../services/hidden_quests.dart';
 import '../models/exam_question.dart';
+import '../features/curriculum/curriculum_catalog.dart';
+import '../features/curriculum/curriculum_engine.dart';
+import '../features/curriculum/curriculum_models.dart';
+import '../features/curriculum/curriculum_store.dart';
 import '../features/learning/data/japanese_curriculum.dart';
 import '../features/learning/domain/learning_engine.dart';
 import '../features/learning/domain/learning_models.dart';
@@ -169,6 +173,15 @@ class AppController extends ChangeNotifier {
   final Set<String> completedPhraseIds = {};
   final Set<String> completedSentenceIds = {};
   final Set<String> completedCultureIds = {};
+
+  /// Learning Path / Curriculum System (Level -> Unit -> Lesson -> Activity).
+  /// Offline-first: disimpan di SharedPreferences lalu di-merge ke Firestore.
+  /// Katalog (curriculum data) ada di CurriculumCatalogData — tidak di-hardcode
+  /// di UI sehingga N5..N1/JFT/SSW bisa ditambah tanpa ubah widget.
+  final Map<String, UserLessonProgress> curriculumProgressById = {};
+  final Map<String, int> curriculumFinalScores = {};
+  String? curriculumActiveLessonId;
+  String curriculumActiveLevelId = 'N5';
 
   /// State akademik baru. Terpisah dari statistik lama agar completion,
   /// mastery, SRS, dan error notebook tidak saling tertukar.
@@ -429,6 +442,28 @@ class AppController extends ChangeNotifier {
     completedCultureIds.addAll(
       prefs.getStringList('completedCulture') ?? const [],
     );
+    // Learning Path progress (offline-first).
+    try {
+      curriculumProgressById
+        ..clear()
+        ..addAll(CurriculumStore.decodeProgress(
+            prefs.getString(CurriculumStore.storageKey)));
+      curriculumFinalScores
+        ..clear()
+        ..addAll(CurriculumStore.decodeScores(
+            prefs.getString(CurriculumStore.finalScoresKey)));
+      curriculumActiveLessonId =
+          prefs.getString(CurriculumStore.activeLessonKey);
+      final savedLevel = prefs.getString(CurriculumStore.activeLevelKey);
+      if (savedLevel != null && savedLevel.isNotEmpty) {
+        curriculumActiveLevelId = savedLevel;
+      } else if ({'N5', 'N4', 'N3', 'N2', 'N1'}.contains(selectedStudyLevel)) {
+        curriculumActiveLevelId = selectedStudyLevel;
+      }
+    } catch (_) {
+      curriculumProgressById.clear();
+      curriculumFinalScores.clear();
+    }
     try {
       final rawLearningState = prefs.getString('learningEngineStateV1');
       if (rawLearningState != null && rawLearningState.isNotEmpty) {
@@ -1444,6 +1479,174 @@ class AppController extends ChangeNotifier {
     return true;
   }
 
+  /// Validasi aturan password baru (sama dengan backend: min 8, maks 128).
+  /// Null = valid. Dipakai layar ganti/reset sebelum panggil server.
+  static String? validateNewPassword(String password, {String? oldPassword}) {
+    if (password.length < 8) return 'Password minimal 8 karakter.';
+    if (password.length > 128) return 'Password terlalu panjang.';
+    if (oldPassword != null &&
+        oldPassword.isNotEmpty &&
+        password == oldPassword) {
+      return 'Password baru tidak boleh sama dengan yang lama.';
+    }
+    return null;
+  }
+
+  /// Akun email Firebase (bukan Google) — satu-satunya yang punya password
+  /// Firebase yang bisa diganti dari aplikasi.
+  bool get canChangeFirebasePassword {
+    if (!isAuthenticated || authProvider != 'email') return false;
+    try {
+      final user = firebaseAuth.currentUser;
+      if (user == null) return false;
+      return user.providerData
+          .any((p) => p.providerId == 'password' || (p.email?.isNotEmpty ?? false));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Akun login Google murni tidak punya password (di Firebase maupun server).
+  bool get isGoogleOnlyAccount {
+    if (!isAuthenticated) return false;
+    if (authProvider == 'google' || googleLinked) return true;
+    try {
+      final user = firebaseAuth.currentUser;
+      if (user == null) return false;
+      final providers = user.providerData.map((p) => p.providerId).toSet();
+      return providers.contains('google.com') && !providers.contains('password');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Ganti password akun. Wajib tahu password saat ini.
+  /// Urutan: Firebase (bila sesi email aktif) → backend API (bila ada token)
+  /// → akun lokal offline (SHA-256). Null = sukses, string = pesan error ID.
+  Future<String?> changeAccountPassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (currentPassword.isEmpty) return 'Password saat ini wajib diisi.';
+    final weak = validateNewPassword(newPassword, oldPassword: currentPassword);
+    if (weak != null) return weak;
+    if (!isAuthenticated) return 'Masuk dulu untuk ganti password.';
+
+    // 1. Firebase (backend utama) bila sesi email aktif.
+    if (canChangeFirebasePassword) {
+      try {
+        await firebaseAuth.reauthenticateAndUpdatePassword(
+          email: profileEmail,
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+        recordActivity('password_change', 'Password Firebase diubah');
+        return null;
+      } on FirebaseAuthFailure catch (e) {
+        if (!e.isNetworkError && !e.isConfigError) return e.message;
+      } catch (_) {}
+    }
+    if (isGoogleOnlyAccount) {
+      return 'Akun ini login dengan Google dan tidak punya password. Kelola password via akun Google-mu.';
+    }
+
+    // 2. Backend API bila token tersimpan.
+    try {
+      final hasToken = await _api.token != null;
+      if (hasToken) {
+        await _api.changePassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+        recordActivity('password_change', 'Password server diubah');
+        return null;
+      }
+    } on ApiException catch (e) {
+      if (e.message.isNotEmpty) return e.message;
+      return 'Ganti password gagal.';
+    } catch (_) {}
+
+    // 3. Akun lokal offline (SHA-256).
+    final normalizedEmail = profileEmail.trim().toLowerCase();
+    final stored = _localAccounts[normalizedEmail];
+    if (stored != null) {
+      if (stored != _hashPassword(currentPassword)) {
+        return 'Password saat ini salah.';
+      }
+      _localAccounts[normalizedEmail] = _hashPassword(newPassword);
+      final prefs = _preferences ?? await SharedPreferences.getInstance();
+      _preferences ??= prefs;
+      await _persistLocalAccounts(prefs);
+      recordActivity('password_change', 'Password lokal diubah');
+      return null;
+    }
+    return 'Tidak ada sesi password aktif. Periksa koneksi lalu coba lagi.';
+  }
+
+  /// Minta kode reset ke Gmail. Mengembalikan metode yang dipakai:
+  /// 'code' (kode 6 digit backend) atau 'link' (link Firebase, offline fallback).
+  /// Pesan selalu generik agar tidak membocorkan akun terdaftar.
+  Future<({String method, String message})> requestAccountPasswordReset(
+    String email,
+  ) async {
+    final normalized = email.trim();
+    if (!normalized.contains('@') || !normalized.contains('.')) {
+      return (method: 'none', message: 'Format email tidak valid.');
+    }
+    // 1. Backend dulu (kode 6 digit, cocok untuk mobile).
+    try {
+      final message = await _api.requestPasswordReset(email: normalized);
+      return (method: 'code', message: message);
+    } catch (_) {
+      // Server tak terjangkau: lanjut ke fallback Firebase.
+    }
+    // 2. Fallback Firebase (link reset ke Gmail).
+    if (FirebaseBootstrap.isAvailable) {
+      try {
+        await firebaseAuth.sendPasswordResetEmail(normalized);
+        return (
+          method: 'link',
+          message: 'Link reset dikirim ke Gmail via Firebase. Buka email lalu ikuti tautannya.'
+        );
+      } on FirebaseAuthFailure catch (e) {
+        if (!e.isNetworkError && !e.isConfigError) {
+          return (method: 'none', message: e.message);
+        }
+      } catch (_) {}
+    }
+    return (
+      method: 'none',
+      message: 'Server tak terjangkau. Periksa koneksi lalu coba lagi.'
+    );
+  }
+
+  /// Tukar kode 6 digit backend menjadi password baru.
+  Future<String?> confirmAccountPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final weak = validateNewPassword(newPassword);
+    if (weak != null) return weak;
+    if (code.replaceAll(RegExp(r'\D'), '').length != 6) {
+      return 'Kode harus 6 digit angka.';
+    }
+    try {
+      await _api.confirmPasswordReset(
+        email: email.trim(),
+        code: code,
+        newPassword: newPassword,
+      );
+      recordActivity('password_reset', 'Password direset via kode email');
+      return null;
+    } on ApiException catch (e) {
+      if (e.message.isNotEmpty) return e.message;
+      return 'Reset password gagal.';
+    } catch (_) {
+      return 'Server tak terjangkau. Periksa koneksi lalu coba lagi.';
+    }
+  }
+
   Future<void> logout() async {
     if (googleLinked) await disconnectGoogleProfile();
     try {
@@ -2111,6 +2314,396 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  // ---------- Learning Path / Curriculum System ----------
+  //
+  // Recommended curriculum (jalur utama). Dictionary/Kanji/Vocabulary/Grammar
+  // tetap bebas dibuka di luar path — path hanya menentukan rekomendasi
+  // urutan + unlock + review adaptif.
+
+  CurriculumLevel? curriculumLevel(String levelId) =>
+      CurriculumCatalogData.levelById(levelId);
+
+  Map<String, CurriculumLessonStatus> curriculumStatuses(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return {};
+    return CurriculumEngine.statusesForLevel(
+      level: level,
+      progressById: curriculumProgressById,
+    );
+  }
+
+  CurriculumLessonStatus curriculumLessonStatus(CurriculumLesson lesson) {
+    final level = curriculumLevel(lesson.levelId);
+    if (level == null) {
+      return curriculumProgressById[lesson.id]?.status ??
+          CurriculumLessonStatus.locked;
+    }
+    final ordered = CurriculumEngine.orderedLessons(level);
+    return CurriculumEngine.lessonStatus(
+      lesson: lesson,
+      ordered: ordered,
+      progressById: curriculumProgressById,
+    );
+  }
+
+  UserLevelProgress curriculumLevelProgress(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) {
+      return UserLevelProgress(
+          levelId: levelId,
+          completedLessons: 0,
+          totalLessons: 0,
+          percent: 0,
+          unlocked: false,
+          completed: false);
+    }
+    return CurriculumEngine.levelProgress(
+      level: level,
+      progressById: curriculumProgressById,
+      unlocked: isCurriculumLevelUnlocked(levelId),
+    );
+  }
+
+  ({int done, int total, double percent}) curriculumUnitProgress(
+      CurriculumUnit unit) =>
+      CurriculumEngine.unitProgress(
+          unit: unit, progressById: curriculumProgressById);
+
+  CurriculumLesson? curriculumNextLesson(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return null;
+    return CurriculumEngine.nextLesson(
+        level: level, progressById: curriculumProgressById);
+  }
+
+  /// Untuk kartu "Continue Learning" di Home: level + unit + lesson aktif.
+  ({CurriculumLevel level, CurriculumUnit? unit, CurriculumLesson? lesson,
+      UserLevelProgress progress})?
+      curriculumContinue() {
+    final levelId = {'N5', 'N4', 'N3', 'N2', 'N1', 'JFT-A1', 'JFT-A2', 'SSW'}
+            .contains(curriculumActiveLevelId)
+        ? curriculumActiveLevelId
+        : selectedStudyLevel;
+    final level = curriculumLevel(levelId) ?? curriculumLevel('N5')!;
+    final lesson = CurriculumEngine.currentLesson(
+      level: level,
+      progressById: curriculumProgressById,
+      activeLessonId: curriculumActiveLessonId,
+    );
+    CurriculumUnit? unit;
+    if (lesson != null) {
+      for (final u in level.units) {
+        if (u.id == lesson.unitId) {
+          unit = u;
+          break;
+        }
+      }
+    }
+    final progress = curriculumLevelProgress(level.id);
+    return (level: level, unit: unit, lesson: lesson, progress: progress);
+  }
+
+  LevelUnlockState curriculumUnlockState(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) {
+      return const LevelUnlockState(
+          unlocked: false,
+          allLessonsDone: false,
+          finalPassed: false,
+          finalScore: 0,
+          requiredScore: 70,
+          reason: 'Level tidak ditemukan.');
+    }
+    return CurriculumEngine.unlockStateFor(
+      level: level,
+      progressById: curriculumProgressById,
+      finalScores: curriculumFinalScores,
+    );
+  }
+
+  /// Unlock memakai kombinasi completion + final test + mastery.
+  /// Untuk N5..N1 tetap menghormati sistem lama (unlockedLevels/placement)
+  /// agar fitur lama tidak rusak; untuk JFT/SSW memakai unlock baru.
+  bool isCurriculumLevelUnlocked(String levelId) {
+    if (levelId == 'N5' || levelId == 'JFT-A1') return true;
+    if ({'N5', 'N4', 'N3', 'N2', 'N1'}.contains(levelId)) {
+      // Jalur lama: placement ≥80 atau final lama membuka level.
+      if (isLevelUnlocked(levelId)) return true;
+      // Jalur baru: lulus final curriculum level sebelumnya.
+      final state = curriculumUnlockState(levelId);
+      return state.unlocked;
+    }
+    return curriculumUnlockState(levelId).unlocked;
+  }
+
+  void setCurriculumActiveLevel(String levelId) {
+    if (CurriculumCatalogData.levelById(levelId) == null) return;
+    curriculumActiveLevelId = levelId;
+    _preferences?.setString(CurriculumStore.activeLevelKey, levelId);
+    if ({'N5', 'N4', 'N3', 'N2', 'N1', 'JFT'}.contains(levelId)) {
+      // Sinkron ringan dengan selector lama bila relevan.
+      if ({'N5', 'N4', 'N3', 'N2', 'N1'}.contains(levelId)) {
+        selectedStudyLevel = levelId;
+        _preferences?.setString('selectedStudyLevel', levelId);
+      }
+    }
+    notifyListeners();
+  }
+
+  void setCurriculumActiveLesson(String? lessonId) {
+    curriculumActiveLessonId = lessonId;
+    if (lessonId == null) {
+      _preferences?.remove(CurriculumStore.activeLessonKey);
+    } else {
+      _preferences?.setString(CurriculumStore.activeLessonKey, lessonId);
+      final lesson = CurriculumCatalogData.lessonById(lessonId);
+      if (lesson != null) {
+        curriculumActiveLevelId = lesson.levelId;
+        _preferences?.setString(
+            CurriculumStore.activeLevelKey, lesson.levelId);
+      }
+    }
+    notifyListeners();
+  }
+
+  void _persistCurriculum() {
+    _preferences?.setString(CurriculumStore.storageKey,
+        CurriculumStore.encodeProgress(curriculumProgressById));
+    _preferences?.setString(CurriculumStore.finalScoresKey,
+        CurriculumStore.encodeScores(curriculumFinalScores));
+    markProgressDirty(const [
+      'curriculumProgress',
+      'curriculumFinalScores',
+      'xp',
+      'dailyXp',
+      'streak',
+    ]);
+  }
+
+  /// Selesaikan satu aktivitas. Mengembalikan XP yang didapat.
+  /// Otomatis: streak + XP (recordStudy), persist offline, jadwal sync.
+  /// Lesson berikutnya terbuka hanya setelah lesson ini completed.
+  int completeCurriculumActivity(
+    String lessonId,
+    String activityId, {
+    int score = 0,
+  }) {
+    final lesson = CurriculumCatalogData.lessonById(lessonId);
+    if (lesson == null) return 0;
+    if (curriculumLessonStatus(lesson) == CurriculumLessonStatus.locked) {
+      return 0;
+    }
+    final now = DateTime.now();
+    final result = CurriculumEngine.completeActivity(
+      lesson: lesson,
+      progressById: curriculumProgressById,
+      activityId: activityId,
+      score: score,
+      now: now,
+    );
+    setCurriculumActiveLesson(lessonId);
+    if (result.xpGained > 0) {
+      recordStudy(xpGained: result.xpGained, notify: false);
+    } else {
+      _refreshDailyCounter();
+    }
+    if (result.lessonJustCompleted) {
+      recordActivity('curriculum_lesson', 'Lesson selesai: ${lesson.title}',
+          meta: {'lessonId': lesson.id, 'level': lesson.levelId});
+      // Jembatani ke sistem lama agar StudyHub/Home lama ikut ter-update
+      // tanpa duplikasi XP besar (sudah diberi via aktivitas).
+      completedLearningStepIds.add('curriculum-${lesson.id}');
+      _preferences?.setStringList(
+          'completedLearningSteps', completedLearningStepIds.toList());
+      if (lesson.isFinalTest) {
+        final best = curriculumProgressById[lesson.id]?.bestScore ?? score;
+        curriculumFinalScores[lesson.id] = best;
+        curriculumFinalScores[lesson.levelId] = best;
+        _tryUnlockNextCurriculumLevel(lesson.levelId, best);
+      }
+      // Otomatis tandai mastered bila skor sempurna.
+      final bestScore = curriculumProgressById[lesson.id]?.bestScore ?? 0;
+      if (bestScore >= 90) {
+        CurriculumEngine.markMastered(curriculumProgressById, lesson.id,
+            now: now);
+      }
+    }
+    _persistCurriculum();
+    notifyListeners();
+    return result.xpGained;
+  }
+
+  /// Catat skor final/mock/placement. Dipakai Final Test & JLPT Simulation.
+  /// Mengembalikan true bila lulus (≥ requiredScore).
+  bool recordCurriculumFinalTest(String lessonId, int score) {
+    final lesson = CurriculumCatalogData.lessonById(lessonId);
+    if (lesson == null) return false;
+    final clamped = score.clamp(0, 100).toInt();
+    final now = DateTime.now();
+    final existing = curriculumProgressById[lessonId] ??
+        UserLessonProgress(lessonId: lessonId);
+    existing.attempts++;
+    if (clamped > existing.bestScore) existing.bestScore = clamped;
+    existing.updatedAt = now;
+    // Tandai semua aktivitas lesson ini selesai agar alur tidak macet
+    // bila user langsung mengambil final test dari JLPT area.
+    existing.completedActivityIds = {
+      ...existing.completedActivityIds,
+      ...lesson.activities.map((a) => a.id),
+    };
+    final required =
+        lesson.requiredScore == 0 ? 70 : lesson.requiredScore;
+    final passed = clamped >= required;
+    if (passed) {
+      existing.status = clamped >= 90
+          ? CurriculumLessonStatus.mastered
+          : CurriculumLessonStatus.completed;
+      existing.mastered = clamped >= 90 ? true : existing.mastered;
+    } else if (existing.status == CurriculumLessonStatus.locked ||
+        existing.status == CurriculumLessonStatus.available) {
+      existing.status = CurriculumLessonStatus.inProgress;
+    }
+    curriculumProgressById[lessonId] = existing;
+    curriculumFinalScores[lessonId] = clamped > (curriculumFinalScores[lessonId] ?? 0)
+        ? clamped
+        : (curriculumFinalScores[lessonId] ?? 0);
+    if (passed && lesson.isFinalTest) {
+      final bestForLevel = curriculumFinalScores[lesson.levelId] ?? 0;
+      if (clamped > bestForLevel) {
+        curriculumFinalScores[lesson.levelId] = clamped;
+      }
+      _tryUnlockNextCurriculumLevel(lesson.levelId, clamped);
+    }
+    // XP: final lulus dapat reward aktivitas + bonus (di dalam engine
+    // untuk completeActivity; di sini beri setara mock/final).
+    recordStudy(xpGained: passed ? lesson.totalXp : 5, notify: false);
+    recordQuiz(correct: (clamped / 10).round(), total: 10);
+    _persistCurriculum();
+    notifyListeners();
+    return passed;
+  }
+
+  void _tryUnlockNextCurriculumLevel(String levelId, int score) {
+    const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+    final index = order.indexOf(levelId);
+    if (index < 0 || index >= order.length - 1) return;
+    // Syarat baru: semua lesson level ini selesai + final ≥70.
+    final level = curriculumLevel(levelId);
+    if (level == null) return;
+    final state = CurriculumEngine.unlockStateFor(
+      level: CurriculumCatalogData.levelById(order[index + 1])!,
+      progressById: curriculumProgressById,
+      finalScores: {
+        ...curriculumFinalScores,
+        levelId: score,
+        ...{
+          for (final l in level.allLessons.where((l) => l.isFinalTest))
+            l.id: score
+        },
+      },
+    );
+    if (state.unlocked) {
+      unlockLevel(order[index + 1]);
+    }
+  }
+
+  /// Placement test menentukan titik awal (Beginner / N5 Beginner /
+  /// N5 Intermediate / N4 Beginner / ...). Tetap boleh mulai dari awal.
+  /// Memakai recordPlacement lama agar tidak duplikasi logika unlock.
+  void recordCurriculumPlacement(String levelId, int score) {
+    recordPlacement(levelId, score);
+    if (score >= 80) {
+      // Tandai level placement sebagai lulus di peta baru juga.
+      curriculumFinalScores[levelId] = score;
+      const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+      final i = order.indexOf(levelId);
+      if (i >= 0 && i < order.length - 1) {
+        // Buka level berikutnya di kedua sistem.
+        unlockLevel(order[i + 1]);
+        setCurriculumActiveLevel(order[i + 1]);
+      } else if (i == order.length - 1) {
+        setCurriculumActiveLevel(levelId);
+      }
+      _persistCurriculum();
+    }
+    notifyListeners();
+  }
+
+  Map<String, int> curriculumMistakeBySkill() {
+    final out = <String, int>{};
+    for (final mistake in learningEngine.mistakes()) {
+      final key = mistake.skill.name;
+      // Petakan skill engine lama ke skillKey kurikulum baru.
+      final mapped = switch (mistake.skill) {
+        LearningSkill.vocabulary => 'vocabulary',
+        LearningSkill.grammar => 'grammar',
+        LearningSkill.kanji => 'kanji',
+        LearningSkill.listening => 'listening',
+        LearningSkill.reading => 'reading',
+        LearningSkill.speaking => 'speaking',
+        LearningSkill.writing => 'kanji',
+      };
+      out[mapped] = (out[mapped] ?? 0) + mistake.mistakeCount;
+      out[key] = (out[key] ?? 0) + 0; // pastikan key ada bila dipakai UI lama
+    }
+    return out;
+  }
+
+  Map<String, double> curriculumMasteryBySkill() {
+    final out = <String, double>{};
+    final bySkill = <String, List<double>>{};
+    for (final entry in learningEngine.state.masteryByKey.entries) {
+      final record = entry.value;
+      if (record.attemptCount == 0) continue;
+      final key = switch (record.skill) {
+        LearningSkill.vocabulary => 'vocabulary',
+        LearningSkill.grammar => 'grammar',
+        LearningSkill.kanji => 'kanji',
+        LearningSkill.listening => 'listening',
+        LearningSkill.reading => 'reading',
+        LearningSkill.speaking => 'speaking',
+        LearningSkill.writing => 'kanji',
+      };
+      (bySkill[key] ??= []).add(record.score);
+    }
+    for (final entry in bySkill.entries) {
+      final values = entry.value;
+      out[entry.key] =
+          values.reduce((a, b) => a + b) / values.length;
+    }
+    return out;
+  }
+
+  List<CurriculumLesson> curriculumReviewQueue(String levelId,
+      {int limit = 5}) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return [];
+    return CurriculumEngine.reviewQueue(
+      level: level,
+      progressById: curriculumProgressById,
+      mistakeBySkill: curriculumMistakeBySkill(),
+      limit: limit,
+    );
+  }
+
+  AdaptiveRecommendation? curriculumAdaptive(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return null;
+    return CurriculumEngine.adaptiveRecommendation(
+      level: level,
+      progressById: curriculumProgressById,
+      mistakeBySkill: curriculumMistakeBySkill(),
+      masteryBySkill: curriculumMasteryBySkill(),
+    );
+  }
+
+  bool curriculumShouldShowPersonalReview(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return false;
+    return CurriculumEngine.shouldInsertPersonalReview(
+        level: level, progressById: curriculumProgressById);
+  }
+
   // ---------- Structured learning engine ----------
 
   /// Rencana harian yang menjawab apa yang perlu dilakukan, alasannya, dan
@@ -2394,6 +2987,11 @@ class AppController extends ChangeNotifier {
         'completedSentences': completedSentenceIds.toList()..sort(),
         'completedCulture': completedCultureIds.toList()..sort(),
         'learningEngineState': learningEngine.state.toJson(),
+        'curriculumProgress':
+            curriculumProgressById.map((k, v) => MapEntry(k, v.toJson())),
+        'curriculumFinalScores': Map<String, dynamic>.from(curriculumFinalScores),
+        'curriculumActiveLessonId': curriculumActiveLessonId,
+        'curriculumActiveLevelId': curriculumActiveLevelId,
       });
 
   Future<bool> importProgress(String source) async {
@@ -2603,6 +3201,27 @@ class AppController extends ChangeNotifier {
         learningEngine
             .restore(LearnerState.fromJson(json['learningEngineState']));
       }
+      if (json['curriculumProgress'] is Map) {
+        curriculumProgressById
+          ..clear()
+          ..addAll(CurriculumStore.decodeProgress(
+              jsonEncode(json['curriculumProgress'])));
+      }
+      if (json['curriculumFinalScores'] is Map) {
+        curriculumFinalScores
+          ..clear()
+          ..addAll(CurriculumStore.decodeScores(
+              jsonEncode(json['curriculumFinalScores'])));
+      }
+      final importedActiveLesson = json['curriculumActiveLessonId'] as String?;
+      if (importedActiveLesson != null) {
+        curriculumActiveLessonId =
+            importedActiveLesson.isEmpty ? null : importedActiveLesson;
+      }
+      final importedActiveLevel = json['curriculumActiveLevelId'] as String?;
+      if (importedActiveLevel != null && importedActiveLevel.isNotEmpty) {
+        curriculumActiveLevelId = importedActiveLevel;
+      }
       final prefs = _preferences;
       if (prefs != null) {
         await Future.wait([
@@ -2701,7 +3320,25 @@ class AppController extends ChangeNotifier {
             'learningEngineStateV1',
             jsonEncode(learningEngine.state.toJson()),
           ),
+          prefs.setString(
+            CurriculumStore.storageKey,
+            CurriculumStore.encodeProgress(curriculumProgressById),
+          ),
+          prefs.setString(
+            CurriculumStore.finalScoresKey,
+            CurriculumStore.encodeScores(curriculumFinalScores),
+          ),
+          prefs.setString(
+            CurriculumStore.activeLevelKey,
+            curriculumActiveLevelId,
+          ),
         ]);
+        final activeLesson = curriculumActiveLessonId;
+        if (activeLesson == null || activeLesson.isEmpty) {
+          await prefs.remove(CurriculumStore.activeLessonKey);
+        } else {
+          await prefs.setString(CurriculumStore.activeLessonKey, activeLesson);
+        }
       }
       notifyListeners();
       return true;
@@ -2738,6 +3375,10 @@ class AppController extends ChangeNotifier {
     completedPhraseIds.clear();
     completedSentenceIds.clear();
     completedCultureIds.clear();
+    curriculumProgressById.clear();
+    curriculumFinalScores.clear();
+    curriculumActiveLessonId = null;
+    curriculumActiveLevelId = 'N5';
     learningEngine.restore(LearnerState());
     final prefs = _preferences;
     if (prefs != null) {
@@ -2764,6 +3405,10 @@ class AppController extends ChangeNotifier {
         'completedSentences',
         'completedCulture',
         'learningEngineStateV1',
+        'curriculumProgressV1',
+        'curriculumFinalScoresV1',
+        'curriculumActiveLessonId',
+        'curriculumActiveLevelId',
         'progressFieldUpdatedAt',
         'lastCloudSyncAt',
       ]) {
