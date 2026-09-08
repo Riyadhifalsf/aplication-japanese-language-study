@@ -2,6 +2,17 @@
 
 Semua perubahan penting pada proyek ini dicatat di berkas ini.
 
+## [1.2.0] - 2026-09
+
+- Navigasi baru: Home / Learn (Learning Path murni) / Practice (Quiz+Review) /
+  Library (Independent Study via StudyHub). Profil tetap via avatar.
+- Lesson inline content: tujuan + ringkasan vocabulary/grammar/kanji dari
+  ContentRepository tampil di dalam lesson (tanpa duplikasi data).
+- XP idempotent: aktivitas yang sama tidak memberi XP dua kali.
+- Daily goal configurable (20/50/100/150, default 100) + ikut Firebase sync.
+- Badge Player Level dibedakan dari JLPT level; subscription/AI tetap nonaktif.
+- Semua materi tetap gratis; progres lama aman (backward compatible).
+
 ## [1.1.0] - 2026-09
 
 - Kurikulum ala LingoDeer: path melengkung zig-zag (satu node = satu unit),
