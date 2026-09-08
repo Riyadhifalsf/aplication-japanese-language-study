@@ -21,7 +21,7 @@ import '../vocab/vocabulary_screen.dart';
 
 /// Detail satu lesson: daftar aktivitas bervariasi + navigasi ke materi
 /// yang SUDAH ADA (reuse, tanpa duplikasi). Setiap aktivitas yang selesai
-/// memberi XP + membuka lesson berikutnya bila semua selesai.
+/// memberi XP + memperbarui progres bila semua aktivitas selesai.
 class CurriculumLessonDetailScreen extends StatefulWidget {
   const CurriculumLessonDetailScreen({required this.lessonId, super.key});
 
@@ -279,7 +279,7 @@ class _CurriculumLessonDetailScreenState
                     fontSize: 19, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
             Text(
-              'Menyelesaikan aktivitas memberi +${activity.xp} XP dan memperbarui streak harianmu. Lesson berikutnya terbuka setelah semua aktivitas lesson ini selesai.',
+              'Menyelesaikan aktivitas memberi +${activity.xp} XP dan memperbarui streak harianmu. Progresmu diperbarui dan materi yang masih perlu diulang bisa masuk ke review.',
               style: const TextStyle(height: 1.4),
             ),
             const SizedBox(height: 16),
@@ -332,8 +332,8 @@ class _CurriculumLessonDetailScreenState
         title: Text(passed ? 'Lulus $score%' : 'Skor $score%'),
         content: Text(passed
             ? (lesson.isFinalTest
-                ? 'Final test lulus (≥${lesson.requiredScore == 0 ? 70 : lesson.requiredScore}%). Level berikutnya terbuka bila semua lesson selesai. +${lesson.totalXp} XP.'
-                : 'Unit test lulus. Lesson berikutnya terbuka. +${lesson.totalXp} XP.')
+                ? 'Final test lulus (≥${lesson.requiredScore == 0 ? 70 : lesson.requiredScore}%). Level berikutnya bisa dibuka setelah checkpoint level terpenuhi. +${lesson.totalXp} XP.'
+                : 'Unit test lulus. Progres unit diperbarui. +${lesson.totalXp} XP.')
             : 'Belum mencapai ${lesson.requiredScore == 0 ? 70 : lesson.requiredScore}%. Pelajari lagi aktivitas di atas lalu coba lagi. Materi yang sering salah masuk antrean review.'),
         actions: [
           FilledButton(
@@ -514,7 +514,7 @@ class _LessonInlineContent extends StatelessWidget {
                 ? lesson.subtitle
                 : (unitDescription.isNotEmpty
                     ? unitDescription
-                    : 'Selesaikan semua aktivitas untuk membuka lesson berikutnya.'),
+                    : 'Selesaikan semua aktivitas untuk menandai sub-bab ini selesai dan memperbarui progres.'),
             style: TextStyle(height: 1.45, color: cs.onSurfaceVariant),
           ),
         if (unitTitle.isNotEmpty) ...[
@@ -1406,7 +1406,7 @@ class _ActivityTile extends StatelessWidget {
         CurriculumActivityType.conversation => Icons.forum_rounded,
         CurriculumActivityType.quiz => Icons.quiz_rounded,
         CurriculumActivityType.review => Icons.refresh_rounded,
-        CurriculumActivityType.writing => Icons.edit_rounded,
+        CurriculumActivityType.writing => Icons.draw_rounded,
         CurriculumActivityType.unitTest => Icons.shield_rounded,
         CurriculumActivityType.bossTest => Icons.castle_rounded,
         CurriculumActivityType.finalTest => Icons.workspace_premium_rounded,
@@ -1535,7 +1535,7 @@ class _CelebrationCardState extends State<_CelebrationCard>
                             fontSize: 19,
                             fontWeight: FontWeight.w900)),
                     Text(
-                      '${widget.lesson.title} · +${widget.lesson.totalXp} XP. Lesson berikutnya terbuka.',
+                      '${widget.lesson.title} · +${widget.lesson.totalXp} XP. Progresmu diperbarui.',
                       style: const TextStyle(
                           color: Colors.white70, height: 1.35),
                     ),
