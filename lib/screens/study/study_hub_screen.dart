@@ -23,6 +23,7 @@ import '../vocab/vocabulary_screen.dart';
 import '../curriculum/curriculum_path_screen.dart';
 import 'today_learning_screen.dart';
 import 'learning_tracks_screen.dart';
+import 'learning_path_screen.dart';
 import '../profile/study_stats_screen.dart';
 import '../games/game_hub_screen.dart';
 import '../review/mistake_review_screen.dart';
