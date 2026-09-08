@@ -86,15 +86,3 @@ android/app/google-services.json
 # APK rilis didistribusikan via GitHub Releases (bukan blob di repo)
 release/*.apk
 release/*.aab
-
-# Local/runtime secrets and generated artifacts
-.env
-.env.*
-!.env.example
-**/node_modules/
-**/.gradle/
-**/build/
-**/__pycache__/
-*.jks
-*.keystore
-android/key.properties
