@@ -9,11 +9,11 @@ import '../../widgets/kana_foundation_section.dart';
 import 'curriculum_lesson_detail_screen.dart';
 import 'curriculum_winding_path.dart';
 
-/// Learning Path vertikal: perjalanan Beginner → N5 → N4 → N3 → N2 → N1
+/// Learning hub: perjalanan Beginner → N5 → N4 → N3 → N2 → N1
 /// plus cabang Work in Japan (JFT-A1 → JFT-A2 → SSW).
 ///
 /// - Recommended curriculum (jalur utama), bukan kumpulan menu.
-/// - Dictionary/Kanji/Vocab/Grammar tetap bebas dibuka di luar path.
+/// - Dictionary/Kanji/Vocab/Grammar tetap bebas dibuka di luar Learning.
 /// - Node: lingkaran/card dengan status ✓ ▶ 🔒 ★ + animasi sederhana.
 /// - Desain modern & clean, tidak childish.
 class CurriculumPathScreen extends StatefulWidget {
@@ -58,7 +58,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
               message: 'Katalog kurikulum belum tersedia.'));
     }
     final current = level;
-    final unlocked = true;
+    final unlocked = app.isCurriculumLevelUnlocked(current.id);
     final progress = app.curriculumLevelProgress(current.id);
     final statuses = app.curriculumStatuses(current.id);
     final adaptive = app.curriculumAdaptive(current.id);
@@ -80,32 +80,33 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
           const SizedBox(height: 14),
           const PromoBanner(),
           const SizedBox(height: 14),
-          // Track selector: Japanese Path vs Work in Japan Path.
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(
-                  value: 'jlpt',
-                  label: Text('Japanese Path'),
-                  icon: Icon(Icons.school_rounded)),
-              ButtonSegment(
-                  value: 'work',
-                  label: Text('Work Path'),
-                  icon: Icon(Icons.badge_rounded)),
-            ],
-            selected: {_track},
-            onSelectionChanged: (selected) {
+          // Dua jalur utama tetap jelas tanpa menampilkan istilah “Path” pada UI.
+          _TrackSelector(
+            track: _track,
+            onChanged: (value) {
               setState(() {
-                _track = selected.first;
-                final first =
-                    CurriculumCatalogData.levelsForTrack(_track).firstOrNull;
-                if (first != null) {
-                  _levelId = first.id;
-                  app.setCurriculumActiveLevel(first.id);
-                }
+                _track = value;
+                final candidates = CurriculumCatalogData.levelsForTrack(value);
+                final firstUnlocked = candidates.where((item) => app.isCurriculumLevelUnlocked(item.id)).firstOrNull;
+                final fallback = candidates.firstOrNull;
+                _levelId = (firstUnlocked ?? fallback)?.id ?? _levelId;
+                app.setCurriculumActiveLevel(_levelId);
               });
             },
           ),
           const SizedBox(height: 12),
+          if (_track == 'jlpt') _LevelSelectorRail(
+            levels: levels,
+            selectedId: _levelId,
+            app: app,
+            onTap: (id) {
+              final selected = levels.firstWhere((item) => item.id == id);
+              if (!app.isCurriculumLevelUnlocked(selected.id)) return;
+              setState(() => _levelId = id);
+              app.setCurriculumActiveLevel(id);
+            },
+          ),
+          if (_track == 'jlpt') const SizedBox(height: 14),
           if (_track == 'jlpt') const KanaFoundationSection(),
           if (_track == 'jlpt') const SizedBox(height: 14),
           // Adaptive recommendation (jalur utama tetap, saran personal).
@@ -123,7 +124,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
           const SizedBox(height: 18),
           if (unlocked)
             Text(
-              '${current.units.length} Unit · ${progress.completedLessons}/${progress.totalLessons} lesson · ${(progress.percent * 100).round()}%',
+              '${current.units.length} Bab · ${progress.completedLessons}/${progress.totalLessons} sub-bab · ${(progress.percent * 100).round()}%',
               style: Theme.of(context)
                   .textTheme
                   .titleLarge
@@ -132,7 +133,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
           if (unlocked) ...[
             const SizedBox(height: 4),
             Text(
-              'Semua lesson di level ini terbuka. Jalur menyorot rekomendasi berikutnya, tetapi kamu bebas melompat ke bab mana pun.',
+              'Semua sub-bab di level aktif tersedia sejak awal. Urutannya membantu belajar bertahap, tetapi kamu tetap bebas memilih bab yang paling relevan sekarang.',
               style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.4),
@@ -268,6 +269,88 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
   }
 }
 
+class _TrackSelector extends StatelessWidget {
+  const _TrackSelector({required this.track, required this.onChanged});
+  final String track;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'jlpt', label: Text('Japanese'), icon: Icon(Icons.school_rounded)),
+              ButtonSegment(value: 'work', label: Text('Work in Japan'), icon: Icon(Icons.work_outline_rounded)),
+            ],
+            selected: {track},
+            onSelectionChanged: (value) => onChanged(value.first),
+          ),
+        ),
+      );
+}
+
+class _LevelSelectorRail extends StatelessWidget {
+  const _LevelSelectorRail({required this.levels, required this.selectedId, required this.app, required this.onTap});
+  final List<CurriculumLevel> levels;
+  final String selectedId;
+  final AppController app;
+  final ValueChanged<String> onTap;
+
+  Color _tone(BuildContext context, String id) {
+    final colors = Theme.of(context).colorScheme;
+    return switch (id) {
+      'N5' => colors.primary,
+      'N4' => const Color(0xFF0E7490),
+      'N3' => const Color(0xFF7C3AED),
+      'N2' => const Color(0xFFB45309),
+      'N1' => const Color(0xFFBE123C),
+      _ => colors.primary,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 108,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: levels.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (context, index) {
+            final level = levels[index];
+            final unlocked = app.isCurriculumLevelUnlocked(level.id);
+            final selected = selectedId == level.id;
+            final progress = app.curriculumLevelProgress(level.id);
+            final tone = _tone(context, level.id);
+            return SizedBox(
+              width: 132,
+              child: Material(
+                color: selected ? tone : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(22),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(22),
+                  onTap: unlocked ? () => onTap(level.id) : null,
+                  child: Padding(
+                    padding: const EdgeInsets.all(13),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Expanded(child: Text(level.id, style: TextStyle(color: selected ? Colors.white : Theme.of(context).colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.w900))),
+                        if (!unlocked) Icon(Icons.lock_outline_rounded, size: 16, color: selected ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant),
+                      ]),
+                      const Spacer(),
+                      Text('${progress.completedLessons}/${progress.totalLessons} lessons', style: TextStyle(color: selected ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 5),
+                      ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: progress.percent.clamp(0.0, 1.0).toDouble(), minHeight: 5, backgroundColor: selected ? Colors.white24 : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .4), valueColor: AlwaysStoppedAnimation<Color>(selected ? Colors.white : tone))),
+                    ]),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+}
+
 class _PathHero extends StatelessWidget {
   const _PathHero(
       {required this.level,
@@ -299,7 +382,7 @@ class _PathHero extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.route_rounded,
+                const Icon(Icons.auto_stories_rounded,
                     color: Colors.white, size: 28),
                 const Spacer(),
                 _Pill(icon: Icons.local_fire_department_rounded, text: '$streak'),
@@ -332,7 +415,7 @@ class _PathHero extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Recommended curriculum: ikuti node dari atas ke bawah. Menu Dictionary/Kanji/Vocab/Grammar tetap bebas dibuka kapan saja.',
+              'Urutan ini memberi arah, bukan batasan. Pilih unit sesuai kebutuhanmu; materi Library tetap bisa dicari kapan saja.',
               style: TextStyle(color: Colors.white70, height: 1.35),
             ),
           ],
@@ -601,8 +684,8 @@ class _FinalArea extends StatelessWidget {
                         fontWeight: FontWeight.w900)),
                 Text(
                   next == null
-                      ? 'Kamu menuntaskan seluruh JLPT path. Pertahankan dengan review.'
-                      : '$next sudah terbuka. Lanjutkan perjalananmu.',
+                      ? 'Kamu sudah menuntaskan seluruh level JLPT. Pertahankan kemampuanmu dengan review rutin.'
+                      : '$next sudah tersedia. Lanjutkan saat kamu merasa siap.',
                   style: const TextStyle(color: Colors.white70, height: 1.35),
                 ),
               ],
