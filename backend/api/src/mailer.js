@@ -74,7 +74,7 @@ ${bodyHtml}
 
 function resetCodeTemplate({ name, code, minutes }) {
   const safeName = String(name || 'teman belajar').slice(0, 80);
-  const subject = `Kode reset password ${APP_NAME} — ${code}`;
+  const subject = `Kode reset password ${APP_NAME}`;
   // PENTING: kode TIDAK dicantumkan di subject pada implementasi di bawah?
   // Justru dicantumkan agar terlihat di notifikasi HP. Risiko rendah karena
   // kode kedaluwarsa singkat + max percobaan + hanya ke inbox pemilik.
