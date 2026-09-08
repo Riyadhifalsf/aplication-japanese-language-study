@@ -183,6 +183,14 @@ class AppController extends ChangeNotifier {
   String? curriculumActiveLessonId;
   String curriculumActiveLevelId = 'N5';
 
+  /// Mastery per item kurikulum ('v:313' / 'g:n5-wa' / 'k:42'): -5..+10.
+  /// +1 tiap jawaban benar, -1 tiap salah (dicatat saat latihan/tes
+  /// selesai, tanpa XP agar tidak bisa di-farm). ≥3 = ●, ≥1 = ◑.
+  final Map<String, int> lessonItemMastery = {};
+
+  /// Skor persen terbaik per lesson latihan/tes ('n5-u01-l01' -> 0..100).
+  final Map<String, int> practiceBest = {};
+
   /// State akademik baru. Terpisah dari statistik lama agar completion,
   /// mastery, SRS, dan error notebook tidak saling tertukar.
   final LearningEngine learningEngine =
@@ -363,6 +371,12 @@ class AppController extends ChangeNotifier {
     examBestScores
       ..clear()
       ..addAll(_readStringIntMap('examBestScores'));
+    lessonItemMastery
+      ..clear()
+      ..addAll(_readLessonMastery());
+    practiceBest
+      ..clear()
+      ..addAll(_readStringIntMap('practiceBest'));
     lastStudyDate = prefs.getString('lastStudyDate') ?? '';
     studyDateKeys.addAll(prefs.getStringList('studyDateKeys') ?? const []);
     if (lastStudyDate.isNotEmpty) studyDateKeys.add(lastStudyDate);
@@ -2559,6 +2573,8 @@ class AppController extends ChangeNotifier {
     final lesson = CurriculumCatalogData.lessonById(lessonId);
     if (lesson == null) return false;
     final clamped = score.clamp(0, 100).toInt();
+    // Best SEBELUM update (untuk gerbang XP anti-farm di bawah).
+    final prevBest = curriculumFinalScores[lessonId] ?? 0;
     final now = DateTime.now();
     final existing = curriculumProgressById[lessonId] ??
         UserLessonProgress(lessonId: lessonId);
@@ -2594,13 +2610,120 @@ class AppController extends ChangeNotifier {
       }
       _tryUnlockNextCurriculumLevel(lesson.levelId, clamped);
     }
-    // XP: final lulus dapat reward aktivitas + bonus (di dalam engine
-    // untuk completeActivity; di sini beri setara mock/final).
-    recordStudy(xpGained: passed ? lesson.totalXp : 5, notify: false);
-    recordQuiz(correct: (clamped / 10).round(), total: 10);
+    // XP ANTI-FARM: hanya skor terbaik BARU yang lulus yang dapat XP.
+    // Ulangi dengan skor sama/rendah/gagal = 0 XP. Statistik attempt
+    // tetap dicatat (tanpa XP) agar akurasi jujur.
+    recordStudy(
+        xpGained: CurriculumEngine.finalTestXpReward(
+            passed: passed,
+            score: clamped,
+            prevBest: prevBest,
+            totalXp: lesson.totalXp),
+        notify: false);
+    recordQuiz(
+        correct: (clamped / 10).round(),
+        total: 10,
+        grantXp: passed && clamped > prevBest);
     _persistCurriculum();
     notifyListeners();
     return passed;
+  }
+
+  /// Catat hasil latihan/tes per item kurikulum ('v:313' / 'g:n5-wa' /
+  /// 'k:42'): +1 benar, -1 salah, clamp -5..+10. TANPA XP (XP hanya dari
+  /// penyelesaian aktivitas) sehingga tidak bisa di-farm. ≥3 = ●, ≥1 = ◑.
+  void recordLessonMastery({
+    required List<String> correctKeys,
+    required List<String> wrongKeys,
+  }) {
+    var changed = false;
+    for (final key in correctKeys) {
+      final next = ((lessonItemMastery[key] ?? 0) + 1).clamp(-5, 10);
+      if (lessonItemMastery[key] != next) {
+        lessonItemMastery[key] = next;
+        changed = true;
+      }
+    }
+    for (final key in wrongKeys) {
+      final next = ((lessonItemMastery[key] ?? 0) - 1).clamp(-5, 10);
+      if (lessonItemMastery[key] != next) {
+        lessonItemMastery[key] = next;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    _preferences?.setString(
+        'lessonItemMastery', jsonEncode(lessonItemMastery));
+    markProgressDirty(const ['lessonItemMastery']);
+    notifyListeners();
+  }
+
+  int lessonMasteryScore(String key) => lessonItemMastery[key] ?? 0;
+
+  /// Tier tampilan mastery: 2 = ●, 1 = ◑, 0 = ○.
+  static int masteryTier(
+          {required int score, required bool mastered, bool learned = false}) =>
+      (mastered || score >= 3) ? 2 : (learned || score >= 1) ? 1 : 0;
+
+  /// Skor persen terbaik per lesson (0..100). Hanya naik, tak pernah turun.
+  void recordPracticeBest(String lessonId, int percent) {
+    final clamped = percent.clamp(0, 100);
+    if (clamped <= (practiceBest[lessonId] ?? 0)) return;
+    practiceBest[lessonId] = clamped;
+    _preferences?.setString('practiceBest', jsonEncode(practiceBest));
+    markProgressDirty(const ['practiceBest']);
+    notifyListeners();
+  }
+
+  /// Reset progres satu unit/bab (debug/testing + "mulai bab dari nol").
+  /// Menghapus: status lesson unit, skor final lesson, best latihan, dan
+  /// mastery item unit. XP dikurangi totalXp lesson yang completed
+  /// (APROKSIMASI terdokumentasi, tidak pernah negatif). Mastery toggle
+  /// Library (pilihan eksplisit user) TIDAK disentuh. Unit lain aman.
+  Future<void> resetUnitProgress(String unitId) async {
+    final unit = CurriculumCatalogData.unitById(unitId);
+    if (unit == null) return;
+    final ids = unit.lessons.map((lesson) => lesson.id).toSet();
+    var refund = 0;
+    for (final id in ids) {
+      final progress = curriculumProgressById.remove(id);
+      if (progress != null &&
+          (progress.status == CurriculumLessonStatus.completed ||
+              progress.status == CurriculumLessonStatus.mastered)) {
+        refund += CurriculumCatalogData.lessonById(id)?.totalXp ?? 0;
+      }
+      curriculumFinalScores.remove(id);
+      practiceBest.remove(id);
+    }
+    final masteryKeys = <String>{};
+    for (final lesson in unit.lessons) {
+      for (final id in lesson.vocabularyIds) {
+        masteryKeys.add('v:$id');
+      }
+      for (final id in lesson.grammarIds) {
+        masteryKeys.add('g:$id');
+      }
+      for (final id in lesson.kanjiIds) {
+        masteryKeys.add('k:$id');
+      }
+    }
+    for (final key in masteryKeys) {
+      lessonItemMastery.remove(key);
+    }
+    xp = (xp - refund).clamp(0, 1 << 31);
+    _preferences?.setInt('xp', xp);
+    _persistCurriculum();
+    _preferences?.setString(
+        'lessonItemMastery', jsonEncode(lessonItemMastery));
+    _preferences?.setString('practiceBest', jsonEncode(practiceBest));
+    markProgressDirty(const [
+      'curriculumProgress',
+      'curriculumFinalScores',
+      'practiceBest',
+      'lessonItemMastery',
+      'xp',
+    ]);
+    notifyListeners();
   }
 
   void _tryUnlockNextCurriculumLevel(String levelId, int score) {
@@ -2855,7 +2978,8 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void recordQuiz({required int correct, required int total}) {
+  void recordQuiz(
+      {required int correct, required int total, bool grantXp = true}) {
     if (total <= 0) return;
     lastQuizPerfect = correct == total && total >= 5;
     recordActivity('quiz', 'Kuis diselesaikan',
@@ -2864,9 +2988,14 @@ class AppController extends ChangeNotifier {
     quizAnswered += total;
     _preferences?.setInt('quizCorrect', quizCorrect);
     _preferences?.setInt('quizAnswered', quizAnswered);
-    recordStudy(
-      xpGained: correct * 10 + (correct == total ? 20 : 0),
-    );
+    // grantXp=false: catat statistik tanpa XP (anti-farm pengulangan).
+    if (grantXp) {
+      recordStudy(
+        xpGained: correct * 10 + (correct == total ? 20 : 0),
+      );
+    } else {
+      _refreshDailyCounter();
+    }
   }
 
   String examKey(ExamType examType, String level, int stage) =>
@@ -2970,6 +3099,8 @@ class AppController extends ChangeNotifier {
         'xp': xp,
         'dailyXp': dailyXp,
         'dailyGoalXp': dailyGoalXp,
+        'lessonItemMastery': lessonItemMastery,
+        'practiceBest': practiceBest,
         'streak': streak,
         'lastStudyDate': lastStudyDate,
         'studyDateKeys': studyDateKeys.toList()..sort(),
@@ -3085,6 +3216,12 @@ class AppController extends ChangeNotifier {
           (json['lastDriveBackupLabel'] as String?) ?? lastDriveBackupLabel;
       xp = (json['xp'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();
       dailyXp = (json['dailyXp'] as num? ?? 0).toInt().clamp(0, 100000).toInt();
+      lessonItemMastery
+        ..clear()
+        ..addAll(_jsonLessonMastery(json['lessonItemMastery']));
+      practiceBest
+        ..clear()
+        ..addAll(_jsonStringIntMap(json['practiceBest']));
       final syncedGoal =
           (json['dailyGoalXp'] as num? ?? defaultDailyGoal).toInt();
       dailyGoalXp = allowedDailyGoals.contains(syncedGoal)
@@ -3464,6 +3601,42 @@ class AppController extends ChangeNotifier {
     if (value == null || value.isEmpty) return {};
     try {
       return _jsonStringIntMap(jsonDecode(value));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Map<String, int> _jsonLessonMastery(dynamic value) {
+    if (value is! Map) return {};
+    final output = <String, int>{};
+    for (final entry in value.entries) {
+      final score = entry.value is num
+          ? (entry.value as num).toInt()
+          : int.tryParse('${entry.value}');
+      if (score != null) {
+        output['${entry.key}'] = score.clamp(-5, 10);
+      }
+    }
+    return output;
+  }
+
+  /// Mastery per item kurikulum (-5..+10). Format sama, clamp berbeda.
+  Map<String, int> _readLessonMastery() {
+    final value = _preferences?.getString('lessonItemMastery');
+    if (value == null || value.isEmpty) return {};
+    try {
+      final raw = jsonDecode(value);
+      if (raw is! Map) return {};
+      final output = <String, int>{};
+      for (final entry in raw.entries) {
+        final score = entry.value is num
+            ? (entry.value as num).toInt()
+            : int.tryParse('${entry.value}');
+        if (score != null) {
+          output['${entry.key}'] = score.clamp(-5, 10);
+        }
+      }
+      return output;
     } catch (_) {
       return {};
     }

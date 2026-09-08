@@ -115,6 +115,16 @@ class ProfileSettingsScreen extends StatelessWidget {
                   onTap: () => _confirmReset(context, app),
                 ),
                 const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.refresh_rounded),
+                  title: const Text('Reset progres Bab 1 (debug)',
+                      style: TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: const Text(
+                      'Kembalikan Bab 1 ke awal: lesson terkunci ulang, skor & mastery bab dihapus. Unit lain aman.'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _confirmUnitReset(context, app),
+                ),
+                const Divider(height: 1),
                 ListTile(leading: const Icon(Icons.privacy_tip_outlined), title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w900)), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
                 const Divider(height: 1),
                 ListTile(leading: const Icon(Icons.bug_report_outlined), title: const Text('Laporkan bug', style: TextStyle(fontWeight: FontWeight.w900)), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BugReportScreen()))),
@@ -226,6 +236,37 @@ class ProfileSettingsScreen extends StatelessWidget {
               : 'Gagal menghapus data server (${app.lastSyncError ?? 'offline'}). Coba lagi saat online.',
         ),
       ),
+    );
+  }
+
+  Future<void> _confirmUnitReset(
+      BuildContext context, AppController app) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Reset Bab 1?'),
+        content: const Text(
+          'Lesson Bab 1 kembali terkunci (kecuali Lesson 1), skor tes, '
+          'best latihan, dan mastery item Bab 1 dihapus. XP dikurangi '
+          'setara lesson yang sudah selesai. Unit lain tidak tersentuh.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Ya, reset Bab 1'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await app.resetUnitProgress('n5-u01');
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bab 1 direset ke awal.')),
     );
   }
 

@@ -2,6 +2,15 @@
 
 Semua perubahan penting pada proyek ini dicatat di berkas ini.
 
+## [1.5.0] - 2026-09
+
+- Audio TTS nyata (flutter_tts): listening lesson berbunyi beneran.
+- Final Tes Bab 1: 26+ soal (grammar 5, listening 4, reading, susun 2).
+- Soal susun-kalimat interaktif + soal grammar lengkap Bab 1.
+- Mastery per item (●/◑/○) tersimpan + tersinkron; best latihan.
+- XP anti-farm: tes ulang hanya dapat XP bila skor terbaik baru.
+- Reset progres Bab 1 (debug) di Pengaturan.
+
 ## [1.4.0] - 2026-09
 
 - Bab 1 N5 jadi 11 micro-lesson berurutan: salam, pola です/は,

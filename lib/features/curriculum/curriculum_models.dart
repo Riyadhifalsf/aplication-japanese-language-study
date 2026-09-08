@@ -230,6 +230,9 @@ class LessonNote {
 /// Dipakai bila item soal (mis. nama orang, negara) tidak ada ID-nya
 /// tetapi REQUIRED oleh kurikulum bab. Opsi pengecoh harus dari materi
 /// bab yang sama (jangan acak global).
+/// [tokens]: bila diisi = soal susun-kalimat; urutan BENAR; UI mengacak
+/// tampilannya secara deterministik. [masteryKey]: kunci mastery
+/// ('v:313'/'g:n5-wa'/'k:42'), kosong = tidak dicatat.
 class AuthoredQuestion {
   const AuthoredQuestion({
     required this.prompt,
@@ -239,6 +242,8 @@ class AuthoredQuestion {
     this.reading = '',
     this.meaning = '',
     this.audio = '',
+    this.tokens = const [],
+    this.masteryKey = '',
   });
 
   final String prompt;
@@ -248,6 +253,8 @@ class AuthoredQuestion {
   final String reading;
   final String meaning;
   final String audio;
+  final List<String> tokens;
+  final String masteryKey;
 }
 
 /// Satu lesson: kombinasi 1-4 aktivitas yang bervariasi.

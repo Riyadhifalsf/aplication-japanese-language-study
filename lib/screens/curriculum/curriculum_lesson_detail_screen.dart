@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/curriculum/curriculum_catalog.dart';
 import '../../features/curriculum/curriculum_models.dart';
+import '../../features/curriculum/lesson_questions.dart';
 import '../../models/grammar_point.dart';
 import '../../models/kanji.dart';
 import '../../models/phrase_item.dart';
@@ -124,7 +125,7 @@ class _CurriculumLessonDetailScreenState
           // tersedia; _TestPanel dipertahankan sebagai fallback legacy.
           if ((lesson.isFinalTest || lesson.isBossTest || lesson.isTest) &&
               !(lesson.isTest &&
-                  _buildUnitQuestions(app.repository, unit?.lessons ?? const [])
+                  buildUnitQuestions(app.repository, unit?.lessons ?? const [])
                           .length >=
                       6))
             _TestPanel(
@@ -379,19 +380,19 @@ class _LessonInlineContent extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final repo = app.repository;
     // Resolusi referensi kurikulum (skip ID yang tidak ada — tanpa crash).
-    final resolved = _resolveLessonContent(repo, lesson);
+    final resolved = resolveLessonContent(repo, lesson);
     final phrases = resolved.phrases;
     final vocabs = resolved.vocabs;
     final grammars = resolved.grammars;
     final kanjis = resolved.kanjis;
     // Pool Tes Bab: gabungan konten ter-mapping seluruh lesson unit ini.
     final unitQuestions = lesson.isTest
-        ? _buildUnitQuestions(repo, unitLessons)
-        : const <_PracticeQuestion>[];
+        ? buildUnitQuestions(repo, unitLessons)
+        : const <PracticeQuestion>[];
     final showChapterTest = lesson.isTest && unitQuestions.length >= 6;
     final lessonQuestions = lesson.isTest
-        ? const <_PracticeQuestion>[]
-        : _buildLessonQuestions(
+        ? const <PracticeQuestion>[]
+        : buildLessonQuestions(
             phrases: phrases,
             vocabs: vocabs,
             grammars: grammars,
@@ -614,10 +615,10 @@ class _LessonInlineContent extends StatelessWidget {
                   for (final v in showVocabs)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
-                      // Mastery jujur 2-state dari data user (toggle di
-                      // Library): ● dikuasai, ○ baru. Tanpa progres palsu.
+                      // Mastery jujur dari data user: toggle Library +
+                      // skor latihan (±, tanpa XP). ●/◑/○, tanpa palsu.
                       child: Text(
-                          '${app.masteredVocabularyIds.contains(v.id) ? '●' : '○'} ${v.word} (${v.reading}) — ${v.meaning}',
+                          '${_masteryGlyph(AppController.masteryTier(score: app.lessonMasteryScore('v:${v.id}'), mastered: app.masteredVocabularyIds.contains(v.id)))} ${v.word} (${v.reading}) — ${v.meaning}',
                           style: const TextStyle(height: 1.35)),
                     ),
                 ],
@@ -644,7 +645,7 @@ class _LessonInlineContent extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                          '${app.completedGrammarIds.contains(grammar.id) ? '●' : '○'} Grammar: ${grammar.pattern}',
+                          '${_masteryGlyph(AppController.masteryTier(score: app.lessonMasteryScore('g:${grammar.id}'), mastered: app.completedGrammarIds.contains(grammar.id)))} Grammar: ${grammar.pattern}',
                           style:
                               const TextStyle(fontWeight: FontWeight.w900)),
                       Text(grammar.title,
@@ -696,11 +697,11 @@ class _LessonInlineContent extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      // ● mastered, ◑ dipelajari, ○ baru — dari data user.
+                      // ●/◑/○ dari data user (toggle + skor latihan).
                       for (final k in showKanjis)
                         Chip(
                             label: Text(
-                                '${app.masteredKanjiIds.contains(k.id) ? '●' : (app.learnedKanjiIds.contains(k.id) ? '◑' : '○')} ${k.character} · ${k.meaning}')),
+                                '${_masteryGlyph(AppController.masteryTier(score: app.lessonMasteryScore('k:${k.id}'), mastered: app.masteredKanjiIds.contains(k.id), learned: app.learnedKanjiIds.contains(k.id)))} ${k.character} · ${k.meaning}')),
                     ],
                   ),
                 ],
@@ -847,6 +848,10 @@ class _LessonInlineContent extends StatelessWidget {
     );
   }
 
+  /// Glif tier mastery: 2 = ●, 1 = ◑, 0 = ○.
+  String _masteryGlyph(int tier) =>
+      tier >= 2 ? '●' : (tier == 1 ? '◑' : '○');
+
   /// Kelompokkan phrase sesuai kategori data (Salam / Perkenalan, ...),
   /// menjaga urutan kemunculan pertama.
   Map<String, List<dynamic>> _groupPhrases(List<dynamic> items) {
@@ -860,259 +865,92 @@ class _LessonInlineContent extends StatelessWidget {
   }
 }
 
-/// Satu soal latihan terpandu: seluruh teks berasal dari konten lesson
-/// yang sudah di-resolve (tanpa soal random global, tanpa mengarang).
-/// [audio]: bila diisi, soal adalah listening — putar via TTS, teks
-/// Jepang pertanyaan disembunyikan agar benar-benar melatih dengar.
-class _PracticeQuestion {
-  const _PracticeQuestion({
-    required this.prompt,
-    required this.options,
-    required this.correctIndex,
-    required this.explanation,
-    this.reading = '',
-    this.meaning = '',
-    this.audio = '',
-  });
-
-  final String prompt;
-  final List<String> options;
-  final int correctIndex;
-  final String explanation;
-  final String reading;
-  final String meaning;
-  final String audio;
-}
-
-/// Hasil resolusi referensi satu lesson: list-model asli dari repository
-/// (tanpa duplikasi objek). ID tak dikenal di-skip diam-diam.
-class _ResolvedLesson {
-  const _ResolvedLesson({
-    required this.phrases,
-    required this.vocabs,
-    required this.grammars,
-    required this.kanjis,
-  });
-
-  final List<PhraseItem> phrases;
-  final List<Vocabulary> vocabs;
-  final List<GrammarPoint> grammars;
-  final List<Kanji> kanjis;
-
-  bool get isEmpty =>
-      phrases.isEmpty &&
-      vocabs.isEmpty &&
-      grammars.isEmpty &&
-      kanjis.isEmpty;
-}
-
-/// Resolve vocabularyIds/grammarIds/kanjiIds/phraseIds lesson via
-/// repository. Urutan = urutan ID di katalog (deterministik).
-_ResolvedLesson _resolveLessonContent(
-    ContentRepository repo, CurriculumLesson lesson) {
-  final phrases = <PhraseItem>[];
-  for (final id in lesson.phraseIds) {
-    final item = repo.phraseById(id);
-    if (item != null) phrases.add(item);
-  }
-  final vocabs = <Vocabulary>[];
-  for (final id in lesson.vocabularyIds) {
-    final parsed = int.tryParse(id);
-    final item = parsed == null ? null : repo.vocabularyById(parsed);
-    if (item != null) vocabs.add(item);
-  }
-  final grammars = <GrammarPoint>[];
-  for (final id in lesson.grammarIds) {
-    final item = repo.grammarById(id);
-    if (item != null) grammars.add(item);
-  }
-  final kanjis = <Kanji>[];
-  for (final id in lesson.kanjiIds) {
-    final parsed = int.tryParse(id);
-    final item = parsed == null ? null : repo.kanjiById(parsed);
-    if (item != null) kanjis.add(item);
-  }
-  return _ResolvedLesson(
-      phrases: phrases, vocabs: vocabs, grammars: grammars, kanjis: kanjis);
-}
-
-/// Gabungkan konten ter-resolve seluruh lesson satu unit (dedupe per ID,
-/// urutan = urutan lesson). Dipakai Tes Bab agar soal berasal dari materi
-/// unit tersebut saja — bukan random global.
-_ResolvedLesson _resolveUnitContent(
-    ContentRepository repo, List<CurriculumLesson> lessons) {
-  final phrases = <String, PhraseItem>{};
-  final vocabs = <int, Vocabulary>{};
-  final grammars = <String, GrammarPoint>{};
-  final kanjis = <int, Kanji>{};
-  for (final lesson in lessons) {
-    final resolved = _resolveLessonContent(repo, lesson);
-    for (final item in resolved.phrases) {
-      phrases.putIfAbsent(item.id, () => item);
-    }
-    for (final item in resolved.vocabs) {
-      vocabs.putIfAbsent(item.id, () => item);
-    }
-    for (final item in resolved.grammars) {
-      grammars.putIfAbsent(item.id, () => item);
-    }
-    for (final item in resolved.kanjis) {
-      kanjis.putIfAbsent(item.id, () => item);
-    }
-  }
-  return _ResolvedLesson(
-    phrases: phrases.values.toList(growable: false),
-    vocabs: vocabs.values.toList(growable: false),
-    grammars: grammars.values.toList(growable: false),
-    kanjis: kanjis.values.toList(growable: false),
-  );
-}
-
-/// Soal Tes Bab: dari pool unit (deterministik: ID ter-mapping + soal
-/// authored tiap lesson). ≥6 soal = tes nyata layak.
-List<_PracticeQuestion> _buildUnitQuestions(
-    ContentRepository repo, List<CurriculumLesson> lessons) {
-  final pool = _resolveUnitContent(repo, lessons);
-  final authored = [
-    for (final lesson in lessons) ...lesson.authoredQuestions,
-  ];
-  return _buildLessonQuestions(
-    phrases: pool.phrases,
-    vocabs: pool.vocabs,
-    grammars: pool.grammars,
-    kanjis: pool.kanjis,
-    listening: true,
-    authored: authored,
-  );
-}
-
-/// Bangun soal deterministik (urutan tetap: mudah → sulit) dari konten
-/// lesson yang sudah di-resolve. Hanya memakai item yang ADA (guard
-/// panjang) — tidak pernah mengarang opsi. [listening]: tambah soal dengar
-/// (butuh phrases ≥ 3).
-List<_PracticeQuestion> _buildLessonQuestions({
-  required List<PhraseItem> phrases,
-  required List<Vocabulary> vocabs,
-  required List<GrammarPoint> grammars,
-  required List<Kanji> kanjis,
-  bool listening = false,
-  List<AuthoredQuestion> authored = const [],
-}) {
-  final qs = <_PracticeQuestion>[];
-  // 1. Arti salam (mudah).
-  if (phrases.length >= 3) {
-    qs.add(_PracticeQuestion(
-      prompt: '「${phrases[0].japanese}」 artinya?',
-      options: [phrases[0].meaning, phrases[1].meaning, phrases[2].meaning],
-      correctIndex: 0,
-      explanation: 'Hafalkan pasangan salam–artinya di Bagian 1.',
-      reading: phrases[0].reading,
-      meaning: phrases[0].meaning,
-    ));
-    // 2. Penggunaan sesuai situasi.
-    qs.add(_PracticeQuestion(
-      prompt: 'Bertemu guru di pagi hari, salam yang tepat?',
-      options: [
-        phrases[0].japanese,
-        phrases[1].japanese,
-        phrases[2].japanese
-      ],
-      correctIndex: 0,
-      explanation: phrases[0].note,
-      reading: phrases[0].reading,
-      meaning: phrases[0].meaning,
-    ));
-  }
-  // 3. Tingkat kesopanan (butuh varian Sopan).
-  if (phrases.length >= 6) {
-    qs.add(_PracticeQuestion(
-      prompt: 'Menyapa teman dekat dengan santai, pilih yang tepat?',
-      options: [
-        phrases[3].japanese,
-        phrases[0].japanese,
-        phrases[1].japanese
-      ],
-      correctIndex: 0,
-      explanation: phrases[3].note,
-      reading: phrases[3].reading,
-      meaning: phrases[3].meaning,
-    ));
-  }
-  // 4-5. Kotoba (butuh ≥5 agar opsi pengecoh valid).
-  if (vocabs.length >= 5) {
-    qs.add(_PracticeQuestion(
-      prompt: '「${vocabs[2].word}」 dibaca?',
-      options: [vocabs[2].reading, vocabs[3].reading, vocabs[4].reading],
-      correctIndex: 0,
-      explanation: 'Perhatikan bacaan di Bagian 2.',
-      reading: vocabs[2].reading,
-      meaning: vocabs[2].meaning,
-    ));
-    // 5. Arti kotoba.
-    qs.add(_PracticeQuestion(
-      prompt: '「${vocabs[4].word}」 artinya?',
-      options: [vocabs[4].meaning, vocabs[2].meaning, vocabs[3].meaning],
-      correctIndex: 0,
-      explanation: 'Pasangan kata–arti ada di Bagian 2.',
-      reading: vocabs[4].reading,
-      meaning: vocabs[4].meaning,
-    ));
-  }
-  // 6. Pola grammar.
-  if (grammars.isNotEmpty) {
-    qs.add(_PracticeQuestion(
-      prompt: 'Lengkapi: わたし ___ がくせいです。',
-      options: const ['は', 'の', 'か'],
-      correctIndex: 0,
-      explanation:
-          'Pola ${grammars[0].pattern}: ${grammars[0].formation}.',
-    ));
-  }
-  // 7. Arti kanji.
-  if (kanjis.length >= 3) {
-    qs.add(_PracticeQuestion(
-      prompt: 'Kanji「${kanjis[2].character}」 artinya?',
-      options: [kanjis[2].meaning, kanjis[0].meaning, kanjis[1].meaning],
-      correctIndex: 0,
-      explanation: 'Kanji penyusun kata bab ini (Bagian 4).',
-    ));
-  }
-  // 8. Listening: dengar via TTS, pilih arti.
-  if (listening && phrases.length >= 3) {
-    qs.add(_PracticeQuestion(
-      prompt: 'Dengarkan, lalu pilih artinya.',
-      options: [phrases[1].meaning, phrases[0].meaning, phrases[2].meaning],
-      correctIndex: 0,
-      explanation: 'Dengarkan ulang di Bagian 1 bila ragu.',
-      reading: phrases[1].reading,
-      meaning: phrases[1].meaning,
-      audio: phrases[1].japanese,
-    ));
-  }
-  // 9. Soal authored kurikulum (lesson tanpa ID dataset).
-  for (final a in authored) {
-    if (a.options.length >= 2 &&
-        a.correctIndex >= 0 &&
-        a.correctIndex < a.options.length) {
-      qs.add(_PracticeQuestion(
-        prompt: a.prompt,
-        options: a.options,
-        correctIndex: a.correctIndex,
-        explanation: a.explanation,
-        reading: a.reading,
-        meaning: a.meaning,
-        audio: a.audio,
-      ));
-    }
-  }
-  return qs;
-}
-
 /// Latihan/tes terpandu di dalam lesson: mudah → sulit, soalnya HANYA dari
 /// materi yang diberikan via [questions] (deterministik, tanpa random
 /// global). Mode latihan: selesai → aktivitas quiz ditandai (+XP,
 /// idempotent). Mode tes ([isTest]): nilai persen → [onSubmitTestScore]
 /// (recordCurriculumFinalTest: bestScore + unlock + review).
+/// Hasil resolusi referensi satu lesson: model asli dari repository
+/// (tanpa duplikasi objek). ID tak dikenal di-skip diam-diam.
+/// Papan susun-kalimat: ketuk keping bank sesuai urutan, ketuk jawaban
+/// untuk mengembalikan. Murni presentasi; penilaian di state induk.
+class _OrderingBoard extends StatelessWidget {
+  const _OrderingBoard({
+    required this.tokens,
+    required this.bankOrder,
+    required this.picked,
+    required this.answered,
+    required this.correct,
+    required this.onPick,
+    required this.onUnpick,
+  });
+
+  final List<String> tokens;
+  final List<int> bankOrder;
+  final List<int> picked;
+  final bool answered;
+  final bool correct;
+  final ValueChanged<int>? onPick;
+  final ValueChanged<int>? onUnpick;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final remaining = [
+      for (final i in bankOrder)
+        if (!picked.contains(i)) i,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: answered
+                    ? (correct ? Colors.green : Colors.red)
+                    : cs.outlineVariant),
+            color: answered
+                ? (correct
+                    ? Colors.green.withValues(alpha: .12)
+                    : Colors.red.withValues(alpha: .08))
+                : null,
+          ),
+          child: picked.isEmpty
+              ? Text('Ketuk kata di bawah sesuai urutan…',
+                  style: TextStyle(color: cs.onSurfaceVariant))
+              : Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final i in picked)
+                      ActionChip(
+                        label: Text(tokens[i]),
+                        onPressed:
+                            onUnpick == null ? null : () => onUnpick!(i),
+                      ),
+                  ],
+                ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final i in remaining)
+              ActionChip(
+                label: Text(tokens[i]),
+                onPressed: onPick == null ? null : () => onPick!(i),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _LessonGuidedPractice extends StatefulWidget {
   const _LessonGuidedPractice({
     required this.lesson,
@@ -1126,7 +964,7 @@ class _LessonGuidedPractice extends StatefulWidget {
   });
 
   final CurriculumLesson lesson;
-  final List<_PracticeQuestion> questions;
+  final List<PracticeQuestion> questions;
   final String quizActivityId;
   final int quizXp;
   final bool alreadyDone;
@@ -1139,35 +977,94 @@ class _LessonGuidedPractice extends StatefulWidget {
 }
 
 class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
-  List<_PracticeQuestion> get _questions => widget.questions;
+  List<PracticeQuestion> get _questions => widget.questions;
   int _index = 0;
   int _selected = -1;
   int _correct = 0;
   final List<String> _wrong = [];
+  final List<String> _wrongKeys = [];
+  final List<String> _correctKeys = [];
   bool _finished = false;
   bool _claimed = false;
+  bool _recorded = false;
+
+  /// Token terpilih (susun kalimat) sesuai urutan ketuk.
+  final List<int> _picked = [];
+
+  void _record(bool ok, String masteryKey, String wrongLabel) {
+    if (ok) {
+      _correct++;
+      if (masteryKey.isNotEmpty) _correctKeys.add(masteryKey);
+    } else {
+      _wrong.add(wrongLabel);
+      if (masteryKey.isNotEmpty) _wrongKeys.add(masteryKey);
+    }
+  }
 
   void _answer(int i) {
     if (_selected != -1 || _finished) return;
     final q = _questions[_index];
     setState(() {
       _selected = i;
-      if (i == q.correctIndex) {
-        _correct++;
-      } else {
-        _wrong.add(q.prompt);
-      }
+      _record(i == q.correctIndex, q.masteryKey, q.prompt);
     });
+  }
+
+  /// Urutan bank deterministik per soal (seed dari token).
+  List<int> _bankOrder(PracticeQuestion q) {
+    final order = List<int>.generate(q.tokens.length, (i) => i);
+    var seed = q.tokens.join('|').hashCode;
+    for (var i = order.length - 1; i > 0; i--) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      final j = seed % (i + 1);
+      final tmp = order[i];
+      order[i] = order[j];
+      order[j] = tmp;
+    }
+    return order;
+  }
+
+  void _checkOrdering() {
+    if (_selected != -1 || _finished) return;
+    final q = _questions[_index];
+    final picked = [for (final i in _picked) q.tokens[i]];
+    var ok = picked.length == q.tokens.length;
+    if (ok) {
+      for (var i = 0; i < picked.length; i++) {
+        if (picked[i] != q.tokens[i]) {
+          ok = false;
+          break;
+        }
+      }
+    }
+    setState(() {
+      _selected = ok ? 0 : 1;
+      _record(ok, q.masteryKey, q.prompt);
+    });
+  }
+
+  void _finishRecording(AppController app) {
+    if (_recorded) return;
+    _recorded = true;
+    app.recordLessonMastery(
+        correctKeys: _correctKeys, wrongKeys: _wrongKeys);
+    final total = _questions.length;
+    if (total > 0) {
+      app.recordPracticeBest(
+          widget.lesson.id, ((_correct / total) * 100).round());
+    }
   }
 
   void _next() {
     if (_index >= _questions.length - 1) {
+      _finishRecording(AppScope.of(context));
       setState(() => _finished = true);
       return;
     }
     setState(() {
       _index++;
       _selected = -1;
+      _picked.clear();
     });
   }
 
@@ -1177,7 +1074,12 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
       _selected = -1;
       _correct = 0;
       _wrong.clear();
+      _wrongKeys.clear();
+      _correctKeys.clear();
+      _picked.clear();
       _finished = false;
+      // Run ulang yang selesai tercatat sebagai attempt baru.
+      _recorded = false;
     });
   }
 
@@ -1206,11 +1108,25 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Soal ${_index + 1}/${_questions.length}',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: Theme.of(context).colorScheme.primary)),
+            Row(
+              children: [
+                Text('Soal ${_index + 1}/${_questions.length}',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).colorScheme.primary)),
+                const Spacer(),
+                if ((app.practiceBest[widget.lesson.id] ?? 0) > 0)
+                  Text(
+                      'Terbaik: ${app.practiceBest[widget.lesson.id]}%',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant)),
+              ],
+            ),
             const SizedBox(height: 6),
             Text(q.prompt,
                 style:
@@ -1225,41 +1141,70 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
               ),
             ],
             const SizedBox(height: 12),
-            for (var i = 0; i < q.options.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: answered ? null : () => _answer(i),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: !answered
-                          ? null
-                          : (i == q.correctIndex
-                              ? Colors.green.withValues(alpha: .15)
-                              : (i == _selected
-                                  ? Colors.red.withValues(alpha: .12)
-                                  : null)),
-                      alignment: Alignment.centerLeft,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(q.options[i],
-                          style: const TextStyle(fontSize: 15)),
+            if (q.isOrdering)
+              _OrderingBoard(
+                tokens: q.tokens,
+                bankOrder: _bankOrder(q),
+                picked: _picked,
+                answered: answered,
+                correct: answered && _selected == 0,
+                onPick: answered
+                    ? null
+                    : (i) => setState(() => _picked.add(i)),
+                onUnpick: answered
+                    ? null
+                    : (i) => setState(() => _picked.remove(i)),
+              )
+            else
+              for (var i = 0; i < q.options.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: answered ? null : () => _answer(i),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: !answered
+                            ? null
+                            : (i == q.correctIndex
+                                ? Colors.green.withValues(alpha: .15)
+                                : (i == _selected
+                                    ? Colors.red.withValues(alpha: .12)
+                                    : null)),
+                        alignment: Alignment.centerLeft,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(q.options[i],
+                            style: const TextStyle(fontSize: 15)),
+                      ),
                     ),
                   ),
                 ),
+            if (q.isOrdering && !answered) ...[
+              const SizedBox(height: 4),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _picked.length == q.tokens.length
+                      ? _checkOrdering
+                      : null,
+                  child: const Text('Periksa susunan'),
+                ),
               ),
+            ],
             if (answered) ...[
               const SizedBox(height: 4),
-              if (_selected == q.correctIndex)
+              if (_selected == q.correctIndex || (q.isOrdering && _selected == 0))
                 AnswerFeedback.correct(
                     reading: q.reading,
                     meaning: q.meaning,
                     explanation: q.explanation)
               else
                 AnswerFeedback.wrong(
-                    answer: q.options[q.correctIndex],
+                    answer: q.isOrdering
+                        ? q.tokens.join(' ')
+                        : q.options[q.correctIndex],
                     reading: q.reading,
                     meaning: q.meaning,
                     explanation: q.explanation),
@@ -1279,15 +1224,6 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
       ),
     );
   }
-
-  /// Nilai huruf tes bab: 90+ Excellent, 80+ Great, 70+ Passed.
-  static String gradeFor(int percent) => percent >= 90
-      ? 'Excellent'
-      : percent >= 80
-          ? 'Great'
-          : percent >= 70
-              ? 'Passed'
-              : 'Review required';
 
   Widget _resultCard(BuildContext context, AppController app) {
     final total = _questions.length;

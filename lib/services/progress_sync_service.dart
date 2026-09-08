@@ -133,6 +133,7 @@ class ProgressSyncService {
       'placementBestScores',
       'examBestScores',
       'curriculumFinalScores',
+      'practiceBest',
       'kanjiMasteryStreaks',
       'kanjiReviewSteps',
       'kanjiNextReviewDays'
@@ -140,8 +141,10 @@ class ProgressSyncService {
       out[k] = maxMap(k);
     }
 
-    // Config/profil: last-write-wins.
+    // Config/profil + mastery item lesson (nilai naik-turun, menang versi
+    // terbaru utuh): last-write-wins.
     for (final k in [
+      'lessonItemMastery',
       'profileName',
       'profileEmail',
       'profilePhotoUrl',

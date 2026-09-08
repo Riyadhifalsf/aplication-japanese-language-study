@@ -154,7 +154,16 @@ List<CurriculumUnit> _n5Units() => [
               ],
               vocabularyIds: ['123', '313', '377'],
               grammarIds: ['n5-wa'],
-              kanjiIds: ['42', '41', '40']),
+              kanjiIds: ['42', '41', '40'],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'Susun menjadi kalimat yang benar.',
+                  options: ['わたしは がくせいです'],
+                  correctIndex: 0,
+                  explanation: 'Pola A は B です.',
+                  tokens: ['わたし', 'は', 'がくせい', 'です'],
+                ),
+              ]),
           // Micro-lesson: orang & profesi. Vocab/kanji verified di data
           // (医者 295 + kanji 医 179/者 138 N5).
           _l('n5-u01-l03', 'n5-u01', 'N5', 3, 'Orang & Profesi', [
@@ -182,7 +191,16 @@ List<CurriculumUnit> _n5Units() => [
                 'Mengenali kanji penyusun kata orang/profesi.',
               ],
               vocabularyIds: ['313', '377', '93', '295'],
-              kanjiIds: ['42', '41', '40', '29', '179', '138']),
+              kanjiIds: ['42', '41', '40', '29', '179', '138'],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'Susun menjadi kalimat yang benar.',
+                  options: ['わたしは せんせいです'],
+                  correctIndex: 0,
+                  explanation: 'Pola A は B です.',
+                  tokens: ['わたし', 'は', 'せんせい', 'です'],
+                ),
+              ]),
           // Micro-lesson: asal & bahasa + partikel の (ID terverifikasi).
           _l('n5-u01-l04a', 'n5-u01', 'N5', 4, 'Asal & Bahasa', [
             _a('n5-u01-l04a-a1', CurriculumActivityType.grammar,
@@ -206,7 +224,19 @@ List<CurriculumUnit> _n5Units() => [
                 'Memahami の sebagai penghubung kata benda.',
                 'Mendengar dan memahami frasa kepemilikan sederhana.',
               ],
-              grammarIds: ['n5-no']),
+              grammarIds: ['n5-no'],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'Pilih kalimat yang benar.',
+                  options: [
+                    'わたしは がくせいです',
+                    'わたしのがくせいです',
+                    'わたしがくせいです'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'Pola A は B です (review Bab 1).',
+                ),
+              ]),
           // Micro-lesson: sapaan ～さん. Pola standar spesifikasi kurikulum
           // (Minna Bab 1); belum ada ID dataset-nya sehingga memakai notes
           // + soal authored dari materi bab ini saja.
@@ -532,6 +562,16 @@ List<CurriculumUnit> _n5Units() => [
               subtitle: 'Review',
               objectives: [
                 'Mengulang materi Bab 1 yang sudah dipelajari.',
+              ],
+              // Pool review = seluruh materi Bab 1 yang sudah dibuka
+              // (salam + kotoba + grammar + kanji). Bukan global N5.
+              phraseIds: [
+                'ph-0001',
+                'ph-0002',
+                'ph-0003',
+                'ph-0011',
+                'ph-0012',
+                'ph-0013'
               ],
               vocabularyIds: [
                 '123',

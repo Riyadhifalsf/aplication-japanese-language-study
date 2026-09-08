@@ -285,6 +285,17 @@ class CurriculumEngine {
     return (progress: existing, xpGained: xp, lessonJustCompleted: justCompleted);
   }
 
+  /// XP final test ANTI-FARM (murni, mudah dites): hanya skor terbaik BARU
+  /// yang lulus yang memberi XP. Ulangi dengan skor sama/lebih rendah atau
+  /// gagal = 0 XP (statistik attempt tetap dicatat pemanggil).
+  static int finalTestXpReward({
+    required bool passed,
+    required int score,
+    required int prevBest,
+    required int totalXp,
+  }) =>
+      (passed && score > prevBest) ? totalXp : 0;
+
   /// Tandai mastered (mis. skor ≥90% dua kali atau review sempurna).
   static void markMastered(
     Map<String, UserLessonProgress> progressById,
