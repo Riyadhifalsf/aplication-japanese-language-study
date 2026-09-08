@@ -23,11 +23,12 @@ void main() {
     test('n5-u01-l01 punya kurikulum inline nyata', () {
       final lesson = CurriculumCatalogData.lessonById('n5-u01-l01')!;
       expect(lesson.hasInlineContent, true);
-      expect(lesson.objectives.length, 4);
-      expect(lesson.phraseIds, ['ph-0001', 'ph-0002', 'ph-0003']);
-      expect(lesson.vocabularyIds, ['313', '377', '405']);
+      expect(lesson.objectives.length, 6);
+      expect(lesson.phraseIds,
+          ['ph-0001', 'ph-0002', 'ph-0003', 'ph-0011', 'ph-0012', 'ph-0013']);
+      expect(lesson.vocabularyIds, ['123', '124', '313', '377', '405', '93']);
       expect(lesson.grammarIds, ['n5-wa', 'n5-ka']);
-      expect(lesson.kanjiIds, ['56', '48', '42', '41', '40']);
+      expect(lesson.kanjiIds, ['56', '48', '42', '41', '40', '29']);
     });
 
     test('phraseIds ada di phrases.json', () {

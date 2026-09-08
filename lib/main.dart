@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import 'core/app_theme.dart';
 import 'screens/app_shell.dart';
-import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/api_security.dart';
 import 'services/ads_service.dart';
@@ -90,9 +89,6 @@ class _BootstrapGate extends StatelessWidget {
     if (!controller.ready) {
       page = const _StartupSplash();
       pageKey = const ValueKey('startup-splash');
-    } else if (controller.isAdmin) {
-      page = const AdminDashboardScreen();
-      pageKey = const ValueKey('admin');
     } else if (controller.isAuthenticated && !controller.onboardingComplete) {
       page = const OnboardingScreen();
       pageKey = const ValueKey('onboarding');

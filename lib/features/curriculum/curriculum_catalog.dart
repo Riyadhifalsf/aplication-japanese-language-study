@@ -84,10 +84,11 @@ List<CurriculumUnit> _n5Units() => [
         lessons: [
           // Lesson kurikulum inline: objectives + referensi konten nyata
           // (terverifikasi di bundled data, tanpa mengarang).
-          // Phrases Resmi Salam/Perkenalan: ph-0001/0002/0003.
-          // Vocab N5 perkenalan: 313 学生, 377 先生, 405 名前.
+          // Phrases Salam/Perkenalan Resmi + Sopan (kontras kesopanan):
+          // ph-0001/0002/0003 (Resmi), ph-0011/0012/0013 (Sopan).
+          // Vocab N5: 私 123/124, 学生 313, 先生 377, 名前 405, 人 93.
           // Grammar: n5-wa (～は～です identitas), n5-ka (～ですか tanya).
-          // Kanji N5 penyusun kata lesson: 名 前 学 生 先.
+          // Kanji N5 penyusun kata lesson: 名 前 学 生 先 人.
           _l('n5-u01-l01', 'n5-u01', 'N5', 1, 'Salam & Perkenalan', [
             _a('n5-u01-l01-a1', CurriculumActivityType.vocabulary,
                 'Kosakata salam',
@@ -101,17 +102,26 @@ List<CurriculumUnit> _n5Units() => [
                 contentRef: 'level:N5;quiz:salam',
                 routeHint: 'quiz'),
           ],
-              subtitle: 'Vocabulary + Quiz',
+              subtitle: 'Materi + Latihan + Quiz',
               objectives: [
-                'Memilih salam berdasarkan waktu dan situasi (pagi/siang).',
-                'Mengucapkan salam formal dengan tingkat kesopanan tepat.',
-                'Menyebutkan identitas dasar (nama, status pelajar).',
+                'Memilih salam berdasarkan waktu (pagi/siang) dan situasi.',
+                'Membedakan salam Resmi dan Sopan serta kapan dipakai.',
+                'Menyebutkan identitas dasar (saya, pelajar, guru, nama).',
                 'Memahami pola A は B です untuk perkenalan.',
+                'Bertanya identitas dengan pola ～ですか.',
+                'Mengenali kanji penyusun kata perkenalan.',
               ],
-              vocabularyIds: ['313', '377', '405'],
+              vocabularyIds: ['123', '124', '313', '377', '405', '93'],
               grammarIds: ['n5-wa', 'n5-ka'],
-              kanjiIds: ['56', '48', '42', '41', '40'],
-              phraseIds: ['ph-0001', 'ph-0002', 'ph-0003']),
+              kanjiIds: ['56', '48', '42', '41', '40', '29'],
+              phraseIds: [
+                'ph-0001',
+                'ph-0002',
+                'ph-0003',
+                'ph-0011',
+                'ph-0012',
+                'ph-0013'
+              ]),
           _l('n5-u01-l02', 'n5-u01', 'N5', 2, 'Pola です & は', [
             _a('n5-u01-l02-a1', CurriculumActivityType.grammar,
                 'Materi です & は',

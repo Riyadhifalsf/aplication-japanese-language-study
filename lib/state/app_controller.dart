@@ -574,10 +574,6 @@ class AppController extends ChangeNotifier {
   bool get communityEnabled => featureEnabled(FeatureFlagsService.community);
   bool get followersEnabled => featureEnabled(FeatureFlagsService.followers);
   bool get commentsEnabled => featureEnabled(FeatureFlagsService.comments);
-  /// AI Sensei / AI Coach DINONAKTIFKAN sementara (Phase 1 redesign).
-  /// Service internal tetap ada untuk future development, tetapi UI tidak
-  /// boleh menggunakannya. Selalu false agar tidak ada tombol AI yang muncul.
-  bool get aiCoachEnabled => false;
   bool get speakingEnabled => featureEnabled(FeatureFlagsService.speaking);
 
   Future<void> setFeatureFlag(String key, bool enabled) async {
@@ -797,11 +793,11 @@ class AppController extends ChangeNotifier {
         _ => 0,
       };
 
-  /// Phase 1: subscription/paywall dinonaktifkan. Unlock berbasis progression
-  /// (XP / lesson), bukan pembayaran. `hasFullAccess` tidak lagi dipakai
-  /// untuk bypass agar progression tetap bermakna.
-  bool canAccessFeature(String feature) =>
-      xp >= featureXpRequirement(feature);
+  /// Semua fitur terbuka: tidak ada paywall, tidak ada XP gate, tidak ada
+  /// level gate. Satu-satunya urutan yang tersisa adalah pedagogis:
+  /// lesson berikutnya terbuka setelah lesson sebelumnya selesai
+  /// (ditangani CurriculumEngine, bukan di sini).
+  bool canAccessFeature(String feature) => true;
 
   /// Akun dianggap terverifikasi bila login via Google atau emailnya
   /// sudah diverifikasi Firebase. Tamu tidak pernah terverifikasi.
@@ -1212,15 +1208,9 @@ class AppController extends ChangeNotifier {
   /// Selalu true agar tidak ada paywall.
   bool get hasFullAccess => true;
 
-  bool isLevelUnlocked(String level) {
-    // Gratis berbasis progression: N5 selalu terbuka.
-    if (level == 'N5') return true;
-    // N4-N1 terbuka untuk user login (progression lesson mengatur urutan
-    // detail, bukan paywall). Tamu tetap N5 saja agar didorong login.
-    if (!isAuthenticated) return false;
-    if (['N4', 'N3', 'N2', 'N1'].contains(level)) return true;
-    return unlockedLevels.contains(level);
-  }
+  /// Semua level terbuka untuk semua pengguna (tamu maupun login).
+  /// Urutan belajar tetap dipandu lesson-per-lesson di dalam path.
+  bool isLevelUnlocked(String level) => true;
 
   void unlockLevel(String level) {
     if (['N5', 'N4', 'N3', 'N2', 'N1'].contains(level)) {

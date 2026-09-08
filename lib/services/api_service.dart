@@ -84,30 +84,6 @@ class ApiService {
   }
 
 
-  /// Tanya AI Sensei (proxy Gemini via backend; key aman di server).
-  /// [history] opsional: [{role:'user'|'model', text:...}] maks 10.
-  /// Throws [ApiException] berkode: AI_DISABLED (503, server belum isi key),
-  /// AI_RATE_LIMITED (429), AUTH_* bila belum login.
-  Future<String> askSensei({
-    required String message,
-    List<Map<String, String>> history = const [],
-    String level = '',
-  }) async {
-    final t = await token;
-    if (t == null) throw ApiException('Belum login.');
-    final r = await _client.post(_uri('/api/ai/chat'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $t'},
-        body: jsonEncode({'message': message, 'history': history, 'level': level}));
-    final data = _decode(r);
-    if (r.statusCode < 200 || r.statusCode >= 300) {
-      throw apiError(data, r.statusCode, 'Sensei tidak merespons (${r.statusCode}).');
-    }
-    final reply = data['reply']?.toString() ?? '';
-    if (reply.isEmpty) throw ApiException('Sensei memberi jawaban kosong.');
-    return reply;
-  }
-
-
   Future<List<Map<String,dynamic>>> adminUsers() async {
     final t=await token;
     if(t==null) throw ApiException('Belum login.');

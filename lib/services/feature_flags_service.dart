@@ -13,14 +13,12 @@ class FeatureFlagsService {
   static const community = 'community';
   static const followers = 'followers';
   static const comments = 'comments';
-  static const aiCoach = 'ai_coach';
   static const speaking = 'speaking';
 
   static const definitions = <FeatureFlagDefinition>[
     FeatureFlagDefinition(key: community, name: 'Komunitas & posting', description: 'Feed komunitas dan upload posting pengguna.'),
     FeatureFlagDefinition(key: followers, name: 'Pengikut / mengikuti', description: 'Relasi follower dan following antar pengguna.'),
     FeatureFlagDefinition(key: comments, name: 'Komentar', description: 'Komentar pada posting komunitas.'),
-    FeatureFlagDefinition(key: aiCoach, name: 'AI Coach', description: 'Tutor AI personal.'),
     FeatureFlagDefinition(key: speaking, name: 'Speaking Practice', description: 'Latihan speaking dan shadowing.'),
   ];
 

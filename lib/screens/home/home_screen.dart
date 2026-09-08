@@ -3,20 +3,17 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../models/kanji.dart';
-import '../../services/study_intelligence_service.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/admob_native_slot.dart';
 import '../../widgets/continue_learning_card.dart';
 import '../../widgets/entrance.dart';
 import '../../widgets/learning_components.dart';
 import '../../widgets/liquid_glass.dart';
-import '../curriculum/curriculum_path_screen.dart';
 import '../kanji/kanji_detail_screen.dart';
 import '../kanji/kanji_study_screen.dart';
 import '../notifications/notification_center_screen.dart';
-import '../profile/study_stats_screen.dart';
 import '../review/mistake_review_screen.dart';
-import '../study/learning_path_screen.dart';
+import '../streak/streak_screen.dart';
 import '../study/today_learning_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -34,7 +31,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final recommendation = StudyIntelligenceService.recommend(app);
     final today = DateTime.now();
     ImageProvider? headerPhoto;
     try {
@@ -174,94 +170,37 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 16),
         AdmobNativeSlot(hidden: false),
         const SizedBox(height: 18),
-        // LEARNING PATH preview.
-        const Text(
-          'Jalur JLPT',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final level in const ['N5', 'N4', 'N3', 'N2', 'N1'])
-              ChoiceChip(
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(level),
-                    if (!app.isLevelUnlocked(level))
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4),
-                        child: Icon(Icons.lock_rounded, size: 13),
-                      ),
-                  ],
+        // Dua tombol dibuat SIMETRIS: tinggi sama via IntrinsicHeight.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _ActionCard(
+                  icon: Icons.auto_stories_rounded,
+                  title: 'Misi hari ini',
+                  subtitle: 'Ikuti urutan yang direkomendasikan',
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const TodayLearningScreen())),
                 ),
-                selected: app.selectedStudyLevel == level,
-                onSelected: (_) {
-                  if (!app.isLevelUnlocked(level)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Login untuk membuka level yang terkunci.',
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-                  app.setSelectedStudyLevel(level);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LearningPathScreen(initialLevel: level),
-                    ),
-                  );
-                },
               ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: _ActionCard(
-                icon: Icons.auto_stories_rounded,
-                title: 'Misi hari ini',
-                subtitle: 'Ikuti urutan yang direkomendasikan',
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const TodayLearningScreen())),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ActionCard(
+                  icon: Icons.quiz_rounded,
+                  title: 'Pusat Quiz',
+                  subtitle: 'Akurasi ${(app.quizAccuracy * 100).round()}%',
+                  onTap: onOpenQuiz,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ActionCard(
-                icon: Icons.quiz_rounded,
-                title: 'Pusat Quiz',
-                subtitle: 'Akurasi ${(app.quizAccuracy * 100).round()}%',
-                onTap: onOpenQuiz,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         // RECENT ACTIVITY (belajar terakhir yang tercatat).
         _RecentActivityCard(app: app),
-        const SizedBox(height: 16),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.auto_awesome_rounded),
-            title: const Text(
-              'Rekomendasi cerdas',
-              style: TextStyle(fontWeight: FontWeight.w900),
-            ),
-            subtitle: Text(recommendation.reason),
-            trailing: const Icon(Icons.chevron_right_rounded),
-          ),
-        ),
-        const SizedBox(height: 14),
-        _HomeProgressCard(app: app),
       ],
     );
   }
@@ -347,10 +286,17 @@ class _StreakCard extends StatelessWidget {
     final today = DateTime.now();
     final monday = today.subtract(Duration(days: today.weekday - 1));
 
-    return LiquidGlass(
-      padding: const EdgeInsets.all(18),
-      tint: cs.primaryContainer,
-      child: Column(
+    // Ketuk untuk membuka kalender streak (Rentetan Belajar).
+    return InkWell(
+      borderRadius: BorderRadius.circular(26),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const StreakScreen()),
+      ),
+      child: LiquidGlass(
+        padding: const EdgeInsets.all(18),
+        tint: cs.primaryContainer,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -378,6 +324,7 @@ class _StreakCard extends StatelessWidget {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -582,101 +529,6 @@ class _KanjiTodayCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _HomeProgressCard extends StatelessWidget {
-  const _HomeProgressCard({required this.app});
-
-  final AppController app;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final photo = app.profilePhotoData.isNotEmpty
-        ? MemoryImage(base64Decode(app.profilePhotoData))
-        : null;
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const StudyStatsScreen(),
-            ),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 27,
-                backgroundColor: cs.primaryContainer,
-                backgroundImage: photo,
-                child: photo == null
-                    ? Text(
-                        app.profileName.isEmpty
-                            ? '日'
-                            : app.profileName.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Progress kamu',
-                      style: TextStyle(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _Mini('XP', '${app.xp}'),
-                        _Mini('Streak', '${app.streak}'),
-                        _Mini('Kanji', '${app.learnedKanjiCount}'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Mini extends StatelessWidget {
-  const _Mini(this.label, this.value);
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }

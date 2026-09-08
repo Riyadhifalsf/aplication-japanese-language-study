@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../state/app_controller.dart';
 import '../../widgets/brand_icons.dart';
-import '../admin/admin_dashboard_screen.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 import '../app_shell.dart';
@@ -55,16 +54,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _facebookSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login Facebook segera hadir — butuh App ID Facebook di konfigurasi.')),
-    );
-  }
-
   void _goNext() {
     final app = AppScope.of(context);
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => app.isAdmin ? const AdminDashboardScreen() : (app.onboardingComplete ? const AppShell() : const OnboardingScreen())),
+      MaterialPageRoute(builder: (_) => app.onboardingComplete ? const AppShell() : const OnboardingScreen()),
       (_) => false,
     );
   }
@@ -78,8 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       const SizedBox(height: 24),
       FilledButton.icon(onPressed: _busy ? null : _googleLogin, icon: const GoogleGIcon(), label: const Text('Lanjut dengan Google'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: Colors.white, foregroundColor: Colors.black87)),
-      const SizedBox(height: 10),
-      OutlinedButton.icon(onPressed: _busy ? null : _facebookSoon, icon: const FacebookFIcon(), label: const Text('Lanjut dengan Facebook'), style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52))),
       const SizedBox(height: 20),
       Row(children: [Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)), const Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('atau')), Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant))]),
       const SizedBox(height: 18),

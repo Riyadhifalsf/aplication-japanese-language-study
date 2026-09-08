@@ -57,40 +57,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     ));
   }
 
-  /// IA baru: 0 Home, 1 Learn (Learning Path murni), 2 Practice
-  /// (Quiz/Review/Mistakes), 3 Library (Independent Study via StudyHub).
-  /// Learn vs Library dipisah tegas; Review masuk Home + Practice.
+  /// IA: 0 Home, 1 Learn (Learning Path), 2 Practice (Quiz/Review),
+  /// 3 Library (Independent Study). SEMUA tab terbuka untuk semua pengguna
+  /// (tamu maupun login) — tidak ada lock fitur. Satu-satunya urutan adalah
+  /// pedagogis di dalam Learning Path (lesson-per-lesson).
   Future<void> _select(int value) async {
-    final app = _app ?? AppScope.of(context);
-    // Tamu: Home + Learn bebas. Practice wajib login. Library bebas agar
-    // belajar kosakata/kanji mandiri tetap terbuka.
-    if (!app.isAuthenticated && value == 2) {
-      await requireLogin(context, feature: 'Practice');
-      return;
-    }
-    if (value == 2 && !app.canAccessFeature('quiz_center')) {
-      _lock(context, 'Practice', app.featureXpRequirement('quiz_center'));
-      return;
-    }
     setState(() => _index = value);
-    // Phase 1: iklan tetap jalan, tidak tergantung status premium.
+    // Iklan tetap jalan, tidak tergantung status apapun.
     unawaited(AdsService.instance.onTabChange());
-  }
-
-  void _lock(BuildContext context, String feature, int xp) {
-    showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-              title: Text('$feature belum terbuka'),
-              // Phase 1: tidak ada paywall. Lock murni progression XP.
-              content: Text(
-                  'Kumpulkan $xp XP untuk membuka $feature. Terus belajar untuk unlock.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Tutup'))
-              ],
-            ));
   }
 
   @override

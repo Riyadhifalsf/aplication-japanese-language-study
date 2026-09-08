@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../features/curriculum/curriculum_catalog.dart';
 import '../../features/curriculum/curriculum_models.dart';
+import '../../models/grammar_point.dart';
+import '../../models/kanji.dart';
+import '../../models/phrase_item.dart';
+import '../../models/vocabulary.dart';
 import '../../state/app_controller.dart';
+import '../../widgets/learning_components.dart';
 import '../exams/exam_hub_screen.dart';
 import '../grammar/grammar_screen.dart';
 import '../kana/kana_screen.dart';
@@ -84,7 +89,11 @@ class _CurriculumLessonDetailScreenState
               unitSequence: unit?.sequence ?? 0,
               unitDescription: unit == null ? '' : unit.description,
               doneCount: doneIds.length,
-              totalCount: lesson.activities.length),
+              totalCount: lesson.activities.length,
+              quizActivityId: _quizActivityId(lesson),
+              quizXp: _quizXp(lesson, _quizActivityId(lesson)),
+              doneIds: doneIds,
+              onProgressChanged: () => setState(() {})),
           const SizedBox(height: 16),
           const Text('Aktivitas lesson',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -170,6 +179,30 @@ class _CurriculumLessonDetailScreenState
 
   String _jlptOrNull(String levelId) =>
       {'N5', 'N4', 'N3', 'N2', 'N1'}.contains(levelId) ? levelId : 'Semua';
+
+  /// XP aktivitas quiz untuk info hasil latihan terpandu.
+  static int _quizXp(CurriculumLesson lesson, String activityId) {
+    for (final activity in lesson.activities) {
+      if (activity.id == activityId) return activity.xp;
+    }
+    return 0;
+  }
+
+  /// Aktivitas quiz/assessment pertama untuk penyelesaian via latihan
+  /// terpandu. '' bila lesson tidak punya aktivitas assessment.
+  static String _quizActivityId(CurriculumLesson lesson) {
+    const testTypes = {
+      CurriculumActivityType.quiz,
+      CurriculumActivityType.unitTest,
+      CurriculumActivityType.finalTest,
+      CurriculumActivityType.bossTest,
+      CurriculumActivityType.mockTest,
+    };
+    for (final activity in lesson.activities) {
+      if (testTypes.contains(activity.type)) return activity.id;
+    }
+    return '';
+  }
 
   void _askComplete(BuildContext context, AppController app,
       CurriculumLesson lesson, LessonActivity activity) {
@@ -309,7 +342,11 @@ class _LessonInlineContent extends StatelessWidget {
       required this.unitSequence,
       required this.unitDescription,
       required this.doneCount,
-      required this.totalCount});
+      required this.totalCount,
+      required this.quizActivityId,
+      required this.quizXp,
+      required this.doneIds,
+      required this.onProgressChanged});
 
   final CurriculumLesson lesson;
   final String unitTitle;
@@ -317,6 +354,10 @@ class _LessonInlineContent extends StatelessWidget {
   final String unitDescription;
   final int doneCount;
   final int totalCount;
+  final String quizActivityId;
+  final int quizXp;
+  final Set<String> doneIds;
+  final VoidCallback onProgressChanged;
 
   int? _intId(String raw) => int.tryParse(raw);
 
@@ -413,16 +454,24 @@ class _LessonInlineContent extends StatelessWidget {
                   TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ],
         const SizedBox(height: 12),
-        const Text('Materi lesson ini',
+        const Text('Bagian 1 — Materi',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
         const SizedBox(height: 4),
         const Text(
-            'Materi dipelajari di sini — detail bebas tetap di Library. Progres lesson terpisah dari mastery library.',
+            'Pelajari dulu di sini — detail bebas tetap di Library. Progres lesson terpisah dari mastery library.',
             style: TextStyle(fontSize: 12, height: 1.4)),
         const SizedBox(height: 8),
-        // Bagian 1 — Materi salam/perkenalan (phrases + catatan pakai).
+        // Materi salam/perkenalan (phrases + catatan pakai).
+        // Dikelompokkan sesuai kategori data (Salam / Perkenalan).
         if (phrases.isNotEmpty)
-          for (final phrase in phrases)
+          for (final entry in _groupPhrases(phrases).entries) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(entry.key,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w900)),
+            ),
+            for (final phrase in entry.value)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Card(
@@ -464,7 +513,16 @@ class _LessonInlineContent extends StatelessWidget {
                 ),
               ),
             ),
-        if (showVocabs.isNotEmpty)
+          ],
+        if (showVocabs.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Bagian 2 — Kotoba Bab ini',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text(
+              'Kosakata pilihan khusus bab ini (bukan seluruh library).',
+              style: TextStyle(fontSize: 12, height: 1.4)),
+          const SizedBox(height: 8),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -484,7 +542,15 @@ class _LessonInlineContent extends StatelessWidget {
               ),
             ),
           ),
+        ],
         if (showGrammars.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Bagian 3 — Bunpou Bab ini',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text(
+              'Grammar yang memang diperlukan bab ini, dijelaskan di sini.',
+              style: TextStyle(fontSize: 12, height: 1.4)),
           const SizedBox(height: 8),
           for (final grammar in showGrammars)
             Padding(
@@ -522,6 +588,13 @@ class _LessonInlineContent extends StatelessWidget {
             ),
         ],
         if (showKanjis.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Bagian 4 — Kanji Bab ini',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text(
+              'Hanya kanji penyusun kata bab ini (bukan seluruh kanji).',
+              style: TextStyle(fontSize: 12, height: 1.4)),
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -549,7 +622,390 @@ class _LessonInlineContent extends StatelessWidget {
             ),
           ),
         ],
+        // Bagian 5 — Latihan terpandu dari materi bab ini saja.
+        if (useMapped &&
+            phrases.length >= 3 &&
+            vocabs.length >= 3 &&
+            quizActivityId.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Bagian 5 — Latihan Terpandu',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text(
+              'Mudah ke sulit, soalnya dari materi bab ini saja.',
+              style: TextStyle(fontSize: 12, height: 1.4)),
+          const SizedBox(height: 8),
+          _LessonGuidedPractice(
+            lesson: lesson,
+            phrases: phrases,
+            vocabs: vocabs,
+            grammars: grammars,
+            kanjis: kanjis,
+            quizActivityId: quizActivityId,
+            quizXp: quizXp,
+            alreadyDone: doneIds.contains(quizActivityId),
+            onCompleted: onProgressChanged,
+          ),
+        ],
+        // Bagian 6 — Review ringkasan bab.
+        const SizedBox(height: 12),
+        const Text('Bagian 6 — Review',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    'Bab ini mengajarkan: ${phrases.length} salam, ${vocabs.length} kosakata, ${grammars.length} pola grammar, ${kanjis.length} kanji.',
+                    style: const TextStyle(height: 1.45)),
+                const SizedBox(height: 4),
+                const Text(
+                    'Selesaikan latihan + quiz di bawah, item yang salah tampil di hasil latihan untuk direview.',
+                    style: TextStyle(fontSize: 12, height: 1.4)),
+              ],
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  /// Kelompokkan phrase sesuai kategori data (Salam / Perkenalan, ...),
+  /// menjaga urutan kemunculan pertama.
+  Map<String, List<dynamic>> _groupPhrases(List<dynamic> items) {
+    final grouped = <String, List<dynamic>>{};
+    for (final item in items) {
+      final category = (item.category as String?)?.trim();
+      final key = (category == null || category.isEmpty) ? 'Materi' : category;
+      grouped.putIfAbsent(key, () => []).add(item);
+    }
+    return grouped;
+  }
+}
+
+/// Satu soal latihan terpandu: seluruh teks berasal dari konten lesson
+/// yang sudah di-resolve (tanpa soal random global, tanpa mengarang).
+class _PracticeQuestion {
+  const _PracticeQuestion({
+    required this.prompt,
+    required this.options,
+    required this.correctIndex,
+    required this.explanation,
+    this.reading = '',
+    this.meaning = '',
+  });
+
+  final String prompt;
+  final List<String> options;
+  final int correctIndex;
+  final String explanation;
+  final String reading;
+  final String meaning;
+}
+
+/// Latihan terpandu di dalam lesson: mudah → sulit, soalnya HANYA dari
+/// materi bab ini (phrases/vocab/grammar/kanji lesson). Urutan tetap
+/// (deterministik) sebagai panduan 0 → mahir. Selesai → aktivitas quiz
+/// lesson ditandai selesai (+XP, idempotent via engine).
+class _LessonGuidedPractice extends StatefulWidget {
+  const _LessonGuidedPractice({
+    required this.lesson,
+    required this.phrases,
+    required this.vocabs,
+    required this.grammars,
+    required this.kanjis,
+    required this.quizActivityId,
+    required this.quizXp,
+    required this.alreadyDone,
+    required this.onCompleted,
+  });
+
+  final CurriculumLesson lesson;
+  final List<PhraseItem> phrases;
+  final List<Vocabulary> vocabs;
+  final List<GrammarPoint> grammars;
+  final List<Kanji> kanjis;
+  final String quizActivityId;
+  final int quizXp;
+  final bool alreadyDone;
+  final VoidCallback onCompleted;
+
+  @override
+  State<_LessonGuidedPractice> createState() => _LessonGuidedPracticeState();
+}
+
+class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
+  late final List<_PracticeQuestion> _questions = _buildQuestions();
+  int _index = 0;
+  int _selected = -1;
+  int _correct = 0;
+  final List<String> _wrong = [];
+  bool _finished = false;
+  bool _claimed = false;
+
+  List<_PracticeQuestion> _buildQuestions() {
+    final qs = <_PracticeQuestion>[];
+    final phrases = widget.phrases;
+    final vocabs = widget.vocabs;
+    final grammars = widget.grammars;
+    final kanjis = widget.kanjis;
+    // 1. Arti salam (mudah).
+    qs.add(_PracticeQuestion(
+      prompt: '「${phrases[0].japanese}」 artinya?',
+      options: [phrases[0].meaning, phrases[1].meaning, phrases[2].meaning],
+      correctIndex: 0,
+      explanation: 'Hafalkan pasangan salam–artinya di Bagian 1.',
+      reading: phrases[0].reading,
+      meaning: phrases[0].meaning,
+    ));
+    // 2. Penggunaan sesuai situasi.
+    qs.add(_PracticeQuestion(
+      prompt: 'Bertemu guru di pagi hari, salam yang tepat?',
+      options: [phrases[0].japanese, phrases[1].japanese, phrases[2].japanese],
+      correctIndex: 0,
+      explanation: phrases[0].note,
+      reading: phrases[0].reading,
+      meaning: phrases[0].meaning,
+    ));
+    // 3. Tingkat kesopanan (butuh varian Sopan).
+    if (phrases.length >= 6) {
+      qs.add(_PracticeQuestion(
+        prompt: 'Menyapa teman dekat dengan santai, pilih yang tepat?',
+        options: [
+          phrases[3].japanese,
+          phrases[0].japanese,
+          phrases[1].japanese
+        ],
+        correctIndex: 0,
+        explanation: phrases[3].note,
+        reading: phrases[3].reading,
+        meaning: phrases[3].meaning,
+      ));
+    }
+    // 4. Bacaan kotoba.
+    qs.add(_PracticeQuestion(
+      prompt: '「${vocabs[2].word}」 dibaca?',
+      options: [vocabs[2].reading, vocabs[3].reading, vocabs[4].reading],
+      correctIndex: 0,
+      explanation: 'Perhatikan bacaan di Bagian 2.',
+      reading: vocabs[2].reading,
+      meaning: vocabs[2].meaning,
+    ));
+    // 5. Arti kotoba.
+    qs.add(_PracticeQuestion(
+      prompt: '「${vocabs[4].word}」 artinya?',
+      options: [vocabs[4].meaning, vocabs[2].meaning, vocabs[3].meaning],
+      correctIndex: 0,
+      explanation: 'Pasangan kata–arti ada di Bagian 2.',
+      reading: vocabs[4].reading,
+      meaning: vocabs[4].meaning,
+    ));
+    // 6. Pola grammar.
+    if (grammars.isNotEmpty) {
+      qs.add(_PracticeQuestion(
+        prompt: 'Lengkapi: わたし ___ がくせいです。',
+        options: const ['は', 'の', 'か'],
+        correctIndex: 0,
+        explanation:
+            'Pola ${grammars[0].pattern}: ${grammars[0].formation}.',
+      ));
+    }
+    // 7. Arti kanji.
+    if (kanjis.length >= 3) {
+      qs.add(_PracticeQuestion(
+        prompt: 'Kanji「${kanjis[2].character}」 artinya?',
+        options: [kanjis[2].meaning, kanjis[0].meaning, kanjis[1].meaning],
+        correctIndex: 0,
+        explanation: 'Kanji penyusun kata bab ini (Bagian 4).',
+      ));
+    }
+    return qs;
+  }
+
+  void _answer(int i) {
+    if (_selected != -1 || _finished) return;
+    final q = _questions[_index];
+    setState(() {
+      _selected = i;
+      if (i == q.correctIndex) {
+        _correct++;
+      } else {
+        _wrong.add(q.prompt);
+      }
+    });
+  }
+
+  void _next() {
+    if (_index >= _questions.length - 1) {
+      setState(() => _finished = true);
+      return;
+    }
+    setState(() {
+      _index++;
+      _selected = -1;
+    });
+  }
+
+  void _restart() {
+    setState(() {
+      _index = 0;
+      _selected = -1;
+      _correct = 0;
+      _wrong.clear();
+      _finished = false;
+    });
+  }
+
+  Future<void> _claim(BuildContext context, AppController app) async {
+    if (_claimed || widget.alreadyDone) return;
+    setState(() => _claimed = true);
+    final xp = app.completeCurriculumActivity(
+        widget.lesson.id, widget.quizActivityId);
+    widget.onCompleted();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('+$xp XP · Latihan ${widget.lesson.title} selesai')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    if (_questions.isEmpty) return const SizedBox.shrink();
+    if (_finished) return _resultCard(context, app);
+    final q = _questions[_index];
+    final answered = _selected != -1;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Soal ${_index + 1}/${_questions.length}',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.primary)),
+            const SizedBox(height: 6),
+            Text(q.prompt,
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            for (var i = 0; i < q.options.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: answered ? null : () => _answer(i),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: !answered
+                          ? null
+                          : (i == q.correctIndex
+                              ? Colors.green.withValues(alpha: .15)
+                              : (i == _selected
+                                  ? Colors.red.withValues(alpha: .12)
+                                  : null)),
+                      alignment: Alignment.centerLeft,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(q.options[i],
+                          style: const TextStyle(fontSize: 15)),
+                    ),
+                  ),
+                ),
+              ),
+            if (answered) ...[
+              const SizedBox(height: 4),
+              if (_selected == q.correctIndex)
+                AnswerFeedback.correct(
+                    reading: q.reading,
+                    meaning: q.meaning,
+                    explanation: q.explanation)
+              else
+                AnswerFeedback.wrong(
+                    answer: q.options[q.correctIndex],
+                    reading: q.reading,
+                    meaning: q.meaning,
+                    explanation: q.explanation),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _next,
+                  child: Text(_index >= _questions.length - 1
+                      ? 'Lihat Hasil'
+                      : 'Lanjut'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resultCard(BuildContext context, AppController app) {
+    final total = _questions.length;
+    final percent =
+        total == 0 ? 0 : ((_correct / total) * 100).round();
+    final done = widget.alreadyDone || _claimed;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Hasil Latihan',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            Text('Skor: $percent% ($_correct/$total benar)',
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            Text('+${widget.quizXp} XP bila ditandai selesai',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            if (_wrong.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              const Text('Perlu direview:',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
+              for (final w in _wrong)
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text('• $w',
+                      style: const TextStyle(height: 1.35)),
+                ),
+            ] else ...[
+              const SizedBox(height: 8),
+              const Text('Sempurna! Lanjut ke quiz bab.'),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _restart,
+                    child: const Text('Ulangi'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: done ? null : () => _claim(context, app),
+                    child: Text(done
+                        ? 'Selesai ✓'
+                        : 'Tandai selesai +${widget.quizXp} XP'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

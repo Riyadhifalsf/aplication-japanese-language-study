@@ -62,12 +62,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _facebookSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Daftar via Facebook segera hadir — butuh App ID Facebook di konfigurasi.')),
-    );
-  }
-
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
     if (_password.text != _confirmPassword.text) {
@@ -138,14 +132,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         minimumSize: const Size.fromHeight(54),
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black87),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : _facebookSoon,
-                    icon: const FacebookFIcon(),
-                    label: const Text('Daftar dengan Facebook'),
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52)),
                   ),
                   const SizedBox(height: 20),
                   Row(children: [
