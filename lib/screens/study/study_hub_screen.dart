@@ -23,7 +23,6 @@ import '../vocab/vocabulary_screen.dart';
 import '../curriculum/curriculum_path_screen.dart';
 import 'today_learning_screen.dart';
 import 'learning_tracks_screen.dart';
-import 'learning_path_screen.dart';
 import '../profile/study_stats_screen.dart';
 import '../games/game_hub_screen.dart';
 import '../review/mistake_review_screen.dart';
@@ -257,22 +256,20 @@ class _ContinuePath extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const levels = {'N5', 'N4', 'N3', 'N2', 'N1'};
-    final level =
-        levels.contains(app.selectedStudyLevel) ? app.selectedStudyLevel : 'N5';
-    final chapters = curriculum[level] ?? const [];
-    final done = chapters
-        .where((c) => app.completedLearningStepIds.contains(c.id))
-        .length;
-    final next = nextPathChapter(level, app.completedLearningStepIds);
-    final progress = chapters.isEmpty ? 0.0 : done / chapters.length;
-    final cs = Theme.of(context).colorScheme;
+    final levelId = {'N5', 'N4', 'N3', 'N2', 'N1'}.contains(app.selectedStudyLevel)
+        ? app.selectedStudyLevel
+        : 'N5';
+    final level = CurriculumCatalogData.levelById(levelId);
+    if (level == null) return const SizedBox.shrink();
+    final progress = app.curriculumLevelProgress(level.id);
+    final next = app.curriculumContinue()?.lesson;
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: LinearGradient(
-          colors: [cs.primary, const Color(0xFF4A1110)],
+          colors: [scheme.primary, const Color(0xFF4A1110)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -280,52 +277,20 @@ class _ContinuePath extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                'LANJUTKAN BELAJAR · $level',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.1,
-                  fontSize: 12,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .18),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(
-                  'Bab $done/${chapters.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          Row(children: [
+            const Text('CONTINUE · ', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1)),
+            Text(level.id, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+            const Spacer(),
+            Text('${(progress.percent * 100).round()}%', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+          ]),
           const SizedBox(height: 10),
           Text(
-            next == null
-                ? 'Level $level selesai!'
-                : 'Bab ${next.number}: ${next.title}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
+            next == null ? 'Jelajahi materi ${level.id}' : next.title,
+            style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 5),
           Text(
-            next == null
-                ? 'Pertahankan dengan review & simulasi.'
-                : next.summary,
+            next?.subtitle ?? 'Semua bab dan sub-bab pada level ini tersedia untuk dipelajari kapan saja.',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white70, height: 1.4),
@@ -334,9 +299,9 @@ class _ContinuePath extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: .22),
+              value: progress.percent.clamp(0.0, 1.0).toDouble(),
+              minHeight: 7,
+              backgroundColor: Colors.white24,
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
           ),
@@ -344,21 +309,12 @@ class _ContinuePath extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: cs.primary,
-              ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => next == null
-                      ? CurriculumPathScreen(initialLevel: level)
-                      : ChapterDetailScreen(chapter: next),
-                ),
-              ),
-              child: Text(next == null
-                  ? 'Review level $level'
-                  : 'Mulai Bab ${next.number}'),
+              style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: scheme.primary),
+              onPressed: () {
+                if (next != null) app.setCurriculumActiveLesson(next.id);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => CurriculumPathScreen(initialLevel: level.id)));
+              },
+              child: Text(next == null ? 'Buka Learning' : 'Lanjut di Learning'),
             ),
           ),
         ],
