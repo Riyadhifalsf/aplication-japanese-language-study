@@ -21,6 +21,7 @@ import '../readings/reading_screen.dart';
 import '../sentences/sentence_screen.dart';
 import '../vocab/vocabulary_screen.dart';
 import '../curriculum/curriculum_path_screen.dart';
+import '../../features/curriculum/curriculum_catalog.dart';
 import 'today_learning_screen.dart';
 import 'learning_tracks_screen.dart';
 import '../profile/study_stats_screen.dart';
