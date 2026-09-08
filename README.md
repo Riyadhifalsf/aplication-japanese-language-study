@@ -2,7 +2,7 @@
 
 [![Lisensi MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Flutter CI](https://github.com/Riyadhifalsf/aplication-japanese-language-study/actions/workflows/ci.yml/badge.svg)](https://github.com/Riyadhifalsf/aplication-japanese-language-study/actions/workflows/ci.yml)
-[![Versi](https://img.shields.io/badge/version-1.1.0-red.svg)](CHANGELOG.md)
+[![Versi](https://img.shields.io/badge/version-1.6.0-red.svg)](CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/platform-Android-green.svg)](../../releases)
 
 Aplikasi Android untuk belajar bahasa Jepang dari nol sampai JLPT N1
@@ -23,7 +23,7 @@ saat online. Ganti HP tidak menghilangkan XP.
   - [Kuis, review & exam](#kuis-review--exam)
   - [Materi lain](#materi-lain)
   - [Akun, sync & streak](#akun-sync--streak)
-  - [Premium & iklan](#premium--iklan)
+  - [Dukungan & iklan](#dukungan--iklan)
   - [AI](#ai)
   - [Admin](#admin)
 - [Cara memakai (alur pengguna baru)](#cara-memakai-alur-pengguna-baru)
@@ -55,14 +55,14 @@ Spesifikasi singkat: cold start 0,6–1,9 detik di build release
 Layar Belajar memakai path melengkung ala aplikasi kursus modern: node
 lingkaran zig-zag kiri-kanan yang dihubungkan garis putus-putus. Satu node
 = satu unit (mis. “Perkenalan”, “Bentuk て”, “Pasif”). Node aktif berwarna
-dengan badge bintang, selesai jadi hijau, terkunci abu-abu, dan tiap node
-menampilkan progresnya (mis. 0/4 lesson).
+dengan badge bintang dan tiap node menampilkan progresnya (mis. 0/4 lesson).
 
 - Dua trek: **Japanese Path** (Beginner → N5 → N4 → N3 → N2 → N1) dan
   **Work Path** (JFT-A1 → JFT-A2 → SSW, memakai ulang materi Japanese Path
   agar tidak duplikasi).
-- Lesson berikutnya terbuka setelah lesson sebelumnya selesai; Unit Test &
-  Final Test butuh skor ≥70%.
+- Semua bab dan sub-bab pada level aktif dapat dibuka bebas; rekomendasi urutan
+  tetap tersedia sebagai panduan, bukan sebagai kunci materi. Unit/Final Test
+  tetap berada di area assessment/Quiz Center.
 - **Placement test** untuk yang tidak mau mulai dari nol: skor ≥80% bisa
   membuka level langsung.
 - Rekomendasi adaptif + strip Daily Review untuk materi yang sering salah.
@@ -87,7 +87,7 @@ menampilkan progresnya (mis. 0/4 lesson).
 Tata bahasa (pola per bab N5–N4 dst.), kosakata tematik, frasa, contoh
 kalimat, dialog kaiwa, bacaan panjang (reader), budaya, counter/kounter
 bilangan, speaking practice, shadowing, dan mini-game — dijelajahi lewat
-4 tab bawah (Beranda, Belajar, Quiz, Kanji) plus halaman-halaman khusus
+4 area utama (Beranda, Learning, Quiz Center, Library) plus halaman-halaman khusus
 (exam, streak, profil, admin).
 
 ### Akun, sync & streak
@@ -98,19 +98,14 @@ bilangan, speaking practice, shadowing, dan mini-game — dijelajahi lewat
   digabung per-field dengan data lokal (counter ambil nilai terbesar, set
   di-union, skor ambil yang terbaik) — belajar offline di dua HP lalu
   online tidak saling menimpa.
-- Tombol *Mulai dari nol* menghapus progres lokal + server sekaligus.
+- Activity History di Profil menyimpan riwayat belajar dan dapat difilter per tahun.
 - Streak harian (kalender kanji 月火水木金土日 di Beranda), rekor, XP/level,
   6 misi tersembunyi, inbox pengumuman + changelog (retensi 90 hari),
   pengingat review, dan backup opsional ke Google Drive / ekspor JSON.
 
-### Premium & iklan
+### Dukungan & iklan
 
-- Paket **Bulanan / Tahunan / Lifetime**, harga naik tiap fase penjualan.
-  Status premium dicek ke server (bukan klaim lokal) sehingga tidak bisa
-  dipalsukan dari aplikasi.
-- Metode bayar disiapkan untuk QRIS, transfer bank, e-wallet, kartu,
-  crypto, dan Google Play Billing (bertahap — lihat
-  [Batasan & roadmap](#batasan--roadmap)).
+- Halaman Donasi mendukung katalog kanal resmi, ringkasan jumlah donatur, total dukungan, dan leaderboard nominal terbesar ketika data backend sudah tersedia.
 - Iklan AdMob (banner, native, interstitial tiap 4 pindah tab, rewarded
   untuk bonus XP). Catatan jujur: di akun AdMob baru status “No fill”
   itu masalah sisi akun/penayangan, bukan bug kode.
@@ -176,7 +171,7 @@ Backend juga menyediakan endpoint admin ber-token terpisah.
 | Iklan | google_mobile_ads (banner, native, interstitial, rewarded) |
 | AI | Gemini via backend, FastAPI `ai_engine/` (opsional) |
 | Data bawaan | 7 berkas JSON ±7,2 MB di `assets/data` |
-| Backup | Google Drive (opsional) + ekspor JSON manual |
+| Backup | Infrastruktur sinkronisasi cloud + ekspor JSON tersedia untuk developer |
 
 Struktur repo (ringkas):
 
