@@ -42,11 +42,19 @@ class _AdmobNativeSlotState extends State<AdmobNativeSlot> {
       ),
       listener: NativeAdListener(
         onAdLoaded: (ad) {
-          if (!mounted) {
-            ad.dispose();
-            return;
-          }
-          setState(() {});
+          // Root-cause fix '!_debugDoingThisLayout': callback iklan native
+          // bisa datang saat framework sedang layout. setState langsung di
+          // sini memicu markNeedsLayout reentrant. Tunda ke post-frame agar
+          // perubahan ukuran shrink -> fixed-height terjadi di luar fase
+          // layout. Tinggi dibuat STABIL (tidak tergantung hasil ukur iklan)
+          // sehingga tidak ada loop layout.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) {
+              ad.dispose();
+              return;
+            }
+            if (_native != null) setState(() {});
+          });
         },
         onAdFailedToLoad: (ad, error) => ad.dispose(),
         onAdClicked: (ad) {},
@@ -69,8 +77,10 @@ class _AdmobNativeSlotState extends State<AdmobNativeSlot> {
   Widget build(BuildContext context) {
     final ad = _native;
     if (widget.hidden || ad == null) return const SizedBox.shrink();
+    // Tinggi TETAP untuk template medium (~300) + label. Ukuran stabil
+    // sebelum/sesudah load sehingga ListView induk tidak relayout berulang.
     return Container(
-      constraints: const BoxConstraints(minHeight: 120),
+      height: 340,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
@@ -79,6 +89,7 @@ class _AdmobNativeSlotState extends State<AdmobNativeSlot> {
           color: Theme.of(context).colorScheme.outlineVariant,
         ),
       ),
+      clipBehavior: Clip.antiAlias,
       child: AdWidget(ad: ad),
     );
   }

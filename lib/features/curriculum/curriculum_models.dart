@@ -130,8 +130,13 @@ enum CurriculumActivityType {
 ///
 /// [contentRef] adalah kunci opsional ke repository yang sudah ada,
 /// misalnya `level:N5`, `category:daily`, `kanjiTheme:angka`.
-/// [routeHint] memberi tahu UI layar mana yang dibuka
-/// (vocabulary, grammar, kanji, reading, listening, quiz, review, ...).
+/// [contentIds] adalah referensi eksplisit ke item konten
+/// (vocab id int / grammar id / kanji id / phrase id sebagai string)
+/// yang di-resolve via ContentRepository dan disajikan INLINE di lesson.
+/// REFERENCE ≠ NAVIGATE AWAY: UI wajib menampilkan kontennya di dalam
+/// lesson, bukan membuka halaman library global sebagai alur utama.
+/// [routeHint] memberi tahu UI layar library mana yang dibuka sebagai
+/// secondary action (detail global opsional).
 /// [reusedLessonId] dipakai jalur JFT/SSW untuk memakai ulang materi
 /// dari Japanese Path tanpa duplikasi data.
 class LessonActivity {
@@ -143,6 +148,7 @@ class LessonActivity {
     this.xpReward,
     this.estimatedMinutes = 5,
     this.contentRef = '',
+    this.contentIds = const [],
     this.routeHint = '',
     this.reusedLessonId,
   });
@@ -154,6 +160,7 @@ class LessonActivity {
   final int? xpReward;
   final int estimatedMinutes;
   final String contentRef;
+  final List<String> contentIds;
   final String routeHint;
   final String? reusedLessonId;
 
@@ -167,6 +174,7 @@ class LessonActivity {
         'xpReward': xpReward,
         'estimatedMinutes': estimatedMinutes,
         'contentRef': contentRef,
+        'contentIds': contentIds,
         'routeHint': routeHint,
         'reusedLessonId': reusedLessonId,
       };
@@ -180,12 +188,26 @@ class LessonActivity {
         xpReward: (raw['xpReward'] as num?)?.toInt(),
         estimatedMinutes: ((raw['estimatedMinutes'] as num?) ?? 5).toInt(),
         contentRef: '${raw['contentRef'] ?? ''}',
+        contentIds: ((raw['contentIds'] as List? ?? const [])
+            .map((e) => '$e')
+            .toList(growable: false)),
         routeHint: '${raw['routeHint'] ?? ''}',
         reusedLessonId: raw['reusedLessonId'] as String?,
       );
 }
 
 /// Satu lesson: kombinasi 1-4 aktivitas yang bervariasi.
+///
+/// CONTENT = sumber materi reusable (di ContentRepository).
+/// CURRICULUM = urutan pedagogis (field referensi di sini).
+/// [objectives]: tujuan belajar ("Setelah lesson ini kamu dapat...").
+/// [vocabularyIds]: id int vocabulary (sebagai string) khusus lesson ini.
+/// [grammarIds]: id grammar (mis. "n5-wa") yang diajarkan di lesson ini.
+/// [kanjiIds]: id int kanji (sebagai string) yang relevan.
+/// [phraseIds]: id phrase (mis. "ph-0001") untuk materi salam/dialog.
+/// [questionIds]: id soal khusus assessment lesson ini (bukan random).
+/// Semua default kosong (backward compatible). Hanya isi dengan ID yang
+/// BENAR-BENAR ada di data + relevan pedagogis — jangan mengarang mapping.
 class CurriculumLesson {
   const CurriculumLesson({
     required this.id,
@@ -195,6 +217,12 @@ class CurriculumLesson {
     required this.title,
     this.subtitle = '',
     this.activities = const [],
+    this.objectives = const [],
+    this.vocabularyIds = const [],
+    this.grammarIds = const [],
+    this.kanjiIds = const [],
+    this.phraseIds = const [],
+    this.questionIds = const [],
     this.isFinalTest = false,
     this.isBossTest = false,
     this.isPlacement = false,
@@ -209,6 +237,12 @@ class CurriculumLesson {
   final String title;
   final String subtitle;
   final List<LessonActivity> activities;
+  final List<String> objectives;
+  final List<String> vocabularyIds;
+  final List<String> grammarIds;
+  final List<String> kanjiIds;
+  final List<String> phraseIds;
+  final List<String> questionIds;
   final bool isFinalTest;
   final bool isBossTest;
   final bool isPlacement;
@@ -217,6 +251,15 @@ class CurriculumLesson {
 
   int get totalXp =>
       activities.fold<int>(0, (sum, activity) => sum + activity.xp);
+
+  /// True bila lesson punya kurikulum inline nyata (bukan sekadar
+  /// kumpulan shortcut): ada objectives atau referensi konten terisi.
+  bool get hasInlineContent =>
+      objectives.isNotEmpty ||
+      vocabularyIds.isNotEmpty ||
+      grammarIds.isNotEmpty ||
+      kanjiIds.isNotEmpty ||
+      phraseIds.isNotEmpty;
 
   /// Tipe dominan untuk ikon node di UI (aktivitas pertama non-review).
   CurriculumActivityType get primaryType {

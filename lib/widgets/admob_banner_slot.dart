@@ -50,12 +50,17 @@ class _AdmobBannerSlotState extends State<AdmobBannerSlot> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          if (!mounted) {
-            ad.dispose();
-            return;
-          }
-          setState(() {
-            if (_banner != null) _height = _banner!.size.height.toDouble();
+          // Sama seperti native slot: tunda setState ke post-frame agar
+          // tidak reentrant dengan fase layout (assertion
+          // '!_debugDoingThisLayout').
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) {
+              ad.dispose();
+              return;
+            }
+            setState(() {
+              if (_banner != null) _height = _banner!.size.height.toDouble();
+            });
           });
         },
         onAdFailedToLoad: (ad, error) => ad.dispose(),

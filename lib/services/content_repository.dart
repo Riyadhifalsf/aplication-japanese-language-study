@@ -59,6 +59,8 @@ class ContentRepository {
 
   Map<int, Kanji> _kanjiById = const {};
   Map<int, Vocabulary> _vocabularyById = const {};
+  Map<String, GrammarPoint> _grammarById = const {};
+  Map<String, PhraseItem> _phraseById = const {};
   Map<String, List<Kanji>> _kanjiByLevel = const {};
   Map<String, List<Vocabulary>> _vocabularyByLevel = const {};
   Map<String, int> _kanjiLevelCounts = const {};
@@ -218,6 +220,8 @@ class ContentRepository {
     _vocabularyById = {
       for (final item in vocabulary) item.id: item,
     };
+    _grammarById = {for (final item in grammar) item.id: item};
+    _phraseById = {for (final item in phrases) item.id: item};
     _kanjiByLevel = {
       for (final level in ['N5', 'N4', 'N3', 'N2', 'N1'])
         level:
@@ -311,6 +315,13 @@ class ContentRepository {
   Kanji? kanjiById(int id) => _kanjiById[id];
 
   Vocabulary? vocabularyById(int id) => _vocabularyById[id];
+
+  /// Lookup grammar untuk resolusi referensi kurikulum lesson.
+  /// Mengembalikan null bila id tidak ada (UI skip, tanpa crash).
+  GrammarPoint? grammarById(String id) => _grammarById[id];
+
+  /// Lookup phrase untuk resolusi referensi kurikulum lesson.
+  PhraseItem? phraseById(String id) => _phraseById[id];
 
   List<Vocabulary> directVocabulary(Kanji item) => item.vocabularyIds
       .map(vocabularyById)

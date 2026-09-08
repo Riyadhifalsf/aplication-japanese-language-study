@@ -59,7 +59,7 @@ class ErrorRecord {
   final String? remediationSuggested;
   final String? transferTask;
 
-  Map<String, Object> toJson() => {
+  Map<String, Object?> toJson() => {
         'conceptId': conceptId,
         'skill': skill.name,
         'errorCategory': errorCategory.name,
@@ -308,7 +308,7 @@ class ErrorEngine {
     if (particleSwap != null) return ErrorCategory.production;
 
     // Jika user jawaban benar grammatically tapi salah konteks
-    if (_checkContextualError(userLower, correctLower)) {
+    if (_checkContextualError(userLower, correctLower) == true) {
       return ErrorCategory.pragmatic;
     }
 
@@ -321,8 +321,9 @@ class ErrorEngine {
     // Partikel N5 common: wa/no/ga/mo/to
     final particles = {'wa': 'no', 'no': 'wa', 'ga': 'to', 'mo': 'to', 'to': 'mo'};
     for (final p in particles.keys) {
-      if (user.contains(p) && correct.contains(particles[p])) return true;
-      if (user.contains(particles[p]) && correct.contains(p)) return true;
+      final q = particles[p]!;
+      if (user.contains(p) && correct.contains(q)) return true;
+      if (user.contains(q) && correct.contains(p)) return true;
     }
     return null;
   }
@@ -347,7 +348,7 @@ class ErrorEngine {
   }
 
   /// Analisis pattern error untuk seorang learner
-  static Map<String, int> analyzeErrorPatterns(
+  static Map<ErrorCategory, int> analyzeErrorPatterns(
       {required List<ErrorRecord> errors,
       required LearningSkill skill}) {
     final categoryCounts = <ErrorCategory, int>{};
@@ -359,14 +360,14 @@ class ErrorEngine {
     }
 
     // Return map ErrorCategory -> count
-    return categoryCounts..putIfAbsent(ErrorCategory.recognition, (_) => 0);
+    return categoryCounts..putIfAbsent(ErrorCategory.recognition, () => 0);
   }
 
   /// Dapatkan rekomendasi remediation berdasarkan analyzed errors
   static List<String> getRemediationRecommendations(
       {required List<ErrorRecord> errors,
       required LearningSkill skill,
-      required Map<String, int> errorCounts}) {
+      required Map<ErrorCategory, int> errorCounts}) {
     final recommendations = <String>[];
 
     // Urutkan kategori berdasarkan frekuensi

@@ -8,6 +8,7 @@ LessonActivity _a(
   int? xp,
   int minutes = 5,
   String contentRef = '',
+  List<String> contentIds = const [],
   String routeHint = '',
   String? reusedLessonId,
 }) =>
@@ -19,6 +20,7 @@ LessonActivity _a(
       xpReward: xp,
       estimatedMinutes: minutes,
       contentRef: contentRef,
+      contentIds: contentIds,
       routeHint: routeHint.isEmpty ? type.name : routeHint,
       reusedLessonId: reusedLessonId,
     );
@@ -31,6 +33,12 @@ CurriculumLesson _l(
   String title,
   List<LessonActivity> activities, {
   String subtitle = '',
+  List<String> objectives = const [],
+  List<String> vocabularyIds = const [],
+  List<String> grammarIds = const [],
+  List<String> kanjiIds = const [],
+  List<String> phraseIds = const [],
+  List<String> questionIds = const [],
   bool isFinalTest = false,
   bool isBossTest = false,
   int requiredScore = 0,
@@ -43,6 +51,12 @@ CurriculumLesson _l(
       title: title,
       subtitle: subtitle,
       activities: activities,
+      objectives: objectives,
+      vocabularyIds: vocabularyIds,
+      grammarIds: grammarIds,
+      kanjiIds: kanjiIds,
+      phraseIds: phraseIds,
+      questionIds: questionIds,
       isFinalTest: isFinalTest,
       isBossTest: isBossTest,
       requiredScore: requiredScore,
@@ -68,18 +82,36 @@ List<CurriculumUnit> _n5Units() => [
         description: 'Sapaan, perkenalan diri, dan pola です/は/も/の.',
         icon: 'waving',
         lessons: [
+          // Lesson kurikulum inline: objectives + referensi konten nyata
+          // (terverifikasi di bundled data, tanpa mengarang).
+          // Phrases Resmi Salam/Perkenalan: ph-0001/0002/0003.
+          // Vocab N5 perkenalan: 313 学生, 377 先生, 405 名前.
+          // Grammar: n5-wa (～は～です identitas), n5-ka (～ですか tanya).
+          // Kanji N5 penyusun kata lesson: 名 前 学 生 先.
           _l('n5-u01-l01', 'n5-u01', 'N5', 1, 'Salam & Perkenalan', [
             _a('n5-u01-l01-a1', CurriculumActivityType.vocabulary,
                 'Kosakata salam',
-                description: 'はじめまして, わたし, なまえ',
+                description: 'はじめまして, 学生, 先生, 名前',
                 contentRef: 'level:N5;skill:vocabulary;theme:greeting',
+                contentIds: ['313', '377', '405'],
                 routeHint: 'vocabulary'),
             _a('n5-u01-l01-a2', CurriculumActivityType.quiz,
                 'Quiz salam',
                 description: '5 soal pilihan ganda',
                 contentRef: 'level:N5;quiz:salam',
                 routeHint: 'quiz'),
-          ], subtitle: 'Vocabulary + Quiz'),
+          ],
+              subtitle: 'Vocabulary + Quiz',
+              objectives: [
+                'Memilih salam berdasarkan waktu dan situasi (pagi/siang).',
+                'Mengucapkan salam formal dengan tingkat kesopanan tepat.',
+                'Menyebutkan identitas dasar (nama, status pelajar).',
+                'Memahami pola A は B です untuk perkenalan.',
+              ],
+              vocabularyIds: ['313', '377', '405'],
+              grammarIds: ['n5-wa', 'n5-ka'],
+              kanjiIds: ['56', '48', '42', '41', '40'],
+              phraseIds: ['ph-0001', 'ph-0002', 'ph-0003']),
           _l('n5-u01-l02', 'n5-u01', 'N5', 2, 'Pola です & は', [
             _a('n5-u01-l02-a1', CurriculumActivityType.grammar,
                 'Materi です & は',

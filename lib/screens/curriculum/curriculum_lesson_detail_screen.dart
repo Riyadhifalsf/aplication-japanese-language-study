@@ -75,12 +75,16 @@ class _CurriculumLessonDetailScreenState
           _StatusBanner(status: status, lesson: lesson),
           const SizedBox(height: 16),
           // Inline lesson content: materi tampil di dalam lesson (bukan
-          // sekadar shortcut ke library global). Data di-resolve dari
-          // ContentRepository via level, tanpa duplikasi object.
+          // sekadar shortcut ke library global). Referensi ID lesson
+          // di-resolve via ContentRepository; fallback pratinjau level bila
+          // lesson belum punya mapping kurikulum.
           _LessonInlineContent(
               lesson: lesson,
               unitTitle: unit == null ? '' : unit.title,
-              unitDescription: unit == null ? '' : unit.description),
+              unitSequence: unit?.sequence ?? 0,
+              unitDescription: unit == null ? '' : unit.description,
+              doneCount: doneIds.length,
+              totalCount: lesson.activities.length),
           const SizedBox(height: 16),
           const Text('Aktivitas lesson',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -119,8 +123,8 @@ class _CurriculumLessonDetailScreenState
     );
   }
 
-  void _openActivity(BuildContext context, AppController app,
-      CurriculumLesson lesson, LessonActivity activity) {
+  Future<void> _openActivity(BuildContext context, AppController app,
+      CurriculumLesson lesson, LessonActivity activity) async {
     // Tandai aktif agar Home "Continue" selalu tepat.
     app.setCurriculumActiveLesson(lesson.id);
     final route = activity.routeHint;
@@ -150,16 +154,18 @@ class _CurriculumLessonDetailScreenState
       default:
         screen = null;
     }
+    // Root-cause fix '!_debugDoingThisLayout': sebelumnya bottom sheet
+    // dimunculkan via Future.delayed 350ms memakai context lama — bisa
+    // menyela transisi/layout route. Sekarang tunggu route di-pop
+    // (await), lalu tampilkan bottom sheet hanya bila context masih mounted.
+    // Tidak ada timer, tidak ada showModalBottomSheet saat layout.
     if (screen != null) {
-      Navigator.push(
+      await Navigator.push(
           context, MaterialPageRoute(builder: (_) => screen!));
-    }
-    // Setelah kembali dari materi, tandai aktivitas selesai via bottom sheet
-    // agar XP & unlock tetap tercatat walau materi dibuka bebas.
-    Future.delayed(const Duration(milliseconds: 350), () {
       if (!context.mounted) return;
-      _askComplete(context, app, lesson, activity);
-    });
+    }
+    if (!context.mounted) return;
+    _askComplete(context, app, lesson, activity);
   }
 
   String _jlptOrNull(String levelId) =>
@@ -291,72 +297,184 @@ class _StatusBanner extends StatelessWidget {
   }
 }
 
-/// Inline lesson content: tujuan + materi inti di dalam lesson.
-/// Resolve via ContentRepository berdasarkan level (tanpa duplikasi).
-/// Library tetap terpisah untuk belajar bebas; ini konteks lesson.
+/// Inline lesson content: ruang belajar di dalam lesson.
+///
+/// CONTENT (repository) → REFERENSI (lesson ids) → PRESENTASI (di sini).
+/// Tidak ada duplikasi objek; tidak ada navigasi keluar sebagai alur utama.
+/// Library tetap terpisah untuk belajar bebas.
 class _LessonInlineContent extends StatelessWidget {
   const _LessonInlineContent(
-      {required this.lesson, required this.unitTitle, required this.unitDescription});
+      {required this.lesson,
+      required this.unitTitle,
+      required this.unitSequence,
+      required this.unitDescription,
+      required this.doneCount,
+      required this.totalCount});
 
   final CurriculumLesson lesson;
   final String unitTitle;
+  final int unitSequence;
   final String unitDescription;
+  final int doneCount;
+  final int totalCount;
+
+  int? _intId(String raw) => int.tryParse(raw);
 
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final cs = Theme.of(context).colorScheme;
-    final vocabs = app.repository.vocabulary
-        .where((v) => v.level == lesson.levelId)
-        .take(3)
-        .toList();
-    final grammars = app.repository.grammar
-        .where((g) => g.level == lesson.levelId)
-        .take(1)
-        .toList();
-    final kanjis = app.repository.kanji
-        .where((k) => k.level == lesson.levelId)
-        .take(4)
-        .toList();
+    final repo = app.repository;
+    // Resolusi referensi kurikulum (skip ID yang tidak ada — tanpa crash).
+    final phrases = [
+      for (final id in lesson.phraseIds)
+        if (repo.phraseById(id) != null) repo.phraseById(id)!
+    ];
+    final vocabs = [
+      for (final id in lesson.vocabularyIds)
+        if (_intId(id) != null && repo.vocabularyById(_intId(id)!) != null)
+          repo.vocabularyById(_intId(id)!)!
+    ];
+    final grammars = [
+      for (final id in lesson.grammarIds)
+        if (repo.grammarById(id) != null) repo.grammarById(id)!
+    ];
+    final kanjis = [
+      for (final id in lesson.kanjiIds)
+        if (_intId(id) != null && repo.kanjiById(_intId(id)!) != null)
+          repo.kanjiById(_intId(id)!)!
+    ];
+    final useMapped = lesson.hasInlineContent &&
+        (phrases.isNotEmpty ||
+            vocabs.isNotEmpty ||
+            grammars.isNotEmpty ||
+            kanjis.isNotEmpty);
+    // Fallback pratinjau level bila lesson belum punya mapping.
+    final fallbackVocabs = useMapped
+        ? const []
+        : repo.vocabulary
+            .where((v) => v.level == lesson.levelId)
+            .take(3)
+            .toList();
+    final fallbackGrammars = useMapped
+        ? const []
+        : repo.grammar
+            .where((g) => g.level == lesson.levelId)
+            .take(1)
+            .toList();
+    final fallbackKanjis = useMapped
+        ? const []
+        : repo.kanji
+            .where((k) => k.level == lesson.levelId)
+            .take(4)
+            .toList();
+    final showVocabs = useMapped ? vocabs : fallbackVocabs;
+    final showGrammars = useMapped ? grammars : fallbackGrammars;
+    final showKanjis = useMapped ? kanjis : fallbackKanjis;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          '${lesson.levelId}${unitSequence > 0 ? ' · Unit $unitSequence' : ''} · Progress $doneCount/$totalCount aktivitas',
+          style: TextStyle(
+              color: cs.primary, fontWeight: FontWeight.w900, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
         const Text('Tujuan belajar',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
         const SizedBox(height: 6),
-        Text(
-          lesson.subtitle.isNotEmpty
-              ? lesson.subtitle
-              : (unitDescription.isNotEmpty
-                  ? unitDescription
-                  : 'Selesaikan semua aktivitas untuk membuka lesson berikutnya.'),
-          style: TextStyle(height: 1.45, color: cs.onSurfaceVariant),
-        ),
+        if (lesson.objectives.isNotEmpty)
+          for (final objective in lesson.objectives)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('•  '),
+                  Expanded(
+                      child: Text(objective,
+                          style: const TextStyle(height: 1.4))),
+                ],
+              ),
+            )
+        else
+          Text(
+            lesson.subtitle.isNotEmpty
+                ? lesson.subtitle
+                : (unitDescription.isNotEmpty
+                    ? unitDescription
+                    : 'Selesaikan semua aktivitas untuk membuka lesson berikutnya.'),
+            style: TextStyle(height: 1.45, color: cs.onSurfaceVariant),
+          ),
         if (unitTitle.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text('Konteks: $unitTitle · JLPT ${lesson.levelId}',
-              style: TextStyle(
-                  fontSize: 12, color: cs.onSurfaceVariant)),
+              style:
+                  TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ],
         const SizedBox(height: 12),
         const Text('Materi lesson ini',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
         const SizedBox(height: 4),
         const Text(
-            'Ringkasan inline — detail bebas tetap di Library. Progres lesson terpisah dari mastery library.',
+            'Materi dipelajari di sini — detail bebas tetap di Library. Progres lesson terpisah dari mastery library.',
             style: TextStyle(fontSize: 12, height: 1.4)),
         const SizedBox(height: 8),
-        if (vocabs.isNotEmpty)
+        // Bagian 1 — Materi salam/perkenalan (phrases + catatan pakai).
+        if (phrases.isNotEmpty)
+          for (final phrase in phrases)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(phrase.japanese,
+                                style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.3)),
+                          ),
+                          IconButton(
+                            tooltip: 'Dengarkan',
+                            onPressed: () =>
+                                app.tts.speak(phrase.japanese),
+                            icon: const Icon(Icons.volume_up_rounded),
+                          ),
+                        ],
+                      ),
+                      Text(phrase.reading,
+                          style: TextStyle(
+                              color: cs.onSurfaceVariant, height: 1.35)),
+                      const SizedBox(height: 4),
+                      Text('Arti: ${phrase.meaning}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, height: 1.4)),
+                      const SizedBox(height: 4),
+                      Text(
+                          'Penggunaan (${phrase.politeness}): ${phrase.note}',
+                          style: const TextStyle(height: 1.4)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        if (showVocabs.isNotEmpty)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Vocabulary',
+                  const Text('Kotoba lesson ini',
                       style: TextStyle(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 6),
-                  for (final v in vocabs)
+                  for (final v in showVocabs)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text('${v.word} (${v.reading}) — ${v.meaning}',
@@ -366,33 +484,44 @@ class _LessonInlineContent extends StatelessWidget {
               ),
             ),
           ),
-        if (grammars.isNotEmpty) ...[
+        if (showGrammars.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Grammar: ${grammars.first.pattern}',
-                      style: const TextStyle(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 4),
-                  Text(grammars.first.explanation,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(height: 1.4)),
-                  if (grammars.first.examples.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                        '${grammars.first.examples.first.japanese} — ${grammars.first.examples.first.meaning}',
-                        style: const TextStyle(height: 1.35)),
-                  ],
-                ],
+          for (final grammar in showGrammars)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Grammar: ${grammar.pattern}',
+                          style:
+                              const TextStyle(fontWeight: FontWeight.w900)),
+                      Text(grammar.title,
+                          style: TextStyle(
+                              fontSize: 12, color: cs.onSurfaceVariant)),
+                      const SizedBox(height: 4),
+                      Text('Bentuk: ${grammar.formation}',
+                          style: const TextStyle(height: 1.4)),
+                      const SizedBox(height: 4),
+                      Text(grammar.explanation,
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(height: 1.4)),
+                      if (grammar.examples.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                            '${grammar.examples.first.japanese} — ${grammar.examples.first.meaning}',
+                            style: const TextStyle(height: 1.35)),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
         ],
-        if (kanjis.isNotEmpty) ...[
+        if (showKanjis.isNotEmpty) ...[
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -400,14 +529,18 @@ class _LessonInlineContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Kanji',
+                  const Text('Kanji lesson ini',
                       style: TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  const Text(
+                      'Kanji penyusun kata di lesson ini.',
+                      style: TextStyle(fontSize: 12, height: 1.4)),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final k in kanjis)
+                      for (final k in showKanjis)
                         Chip(label: Text('${k.character} · ${k.meaning}')),
                     ],
                   ),
