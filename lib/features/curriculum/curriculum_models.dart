@@ -1,4 +1,4 @@
-// Struktur data Learning Path / Curriculum System.
+// Struktur data Learning / Curriculum System.
 //
 // Hierarki: Level -> Unit -> Lesson -> Activity.
 // File ini murni Dart (tanpa Flutter) agar mudah diuji dan dipakai
