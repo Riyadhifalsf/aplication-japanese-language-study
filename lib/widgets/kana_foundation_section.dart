@@ -24,7 +24,7 @@ class KanaFoundationSection extends StatelessWidget {
             Text('Hiragana dan Katakana ditempatkan sebelum Bab 1 agar pengguna membangun fondasi membaca terlebih dahulu.', style: TextStyle(color: cs.onSurfaceVariant, height: 1.45)),
             const SizedBox(height: 14),
             Row(children: [
-              Expanded(child: _KanaCard(title: 'Hiragana', subtitle: 'ひらがな · bunyi dasar', icon: Icons.edit_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanaScreen())))),
+              Expanded(child: _KanaCard(title: 'Hiragana', subtitle: 'ひらがな · bunyi dasar', icon: Icons.text_fields_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanaScreen())))),
               const SizedBox(width: 10),
               Expanded(child: _KanaCard(title: 'Katakana', subtitle: 'カタカナ · kata serapan', icon: Icons.language_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanaScreen())))),
             ]),
