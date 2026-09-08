@@ -1,4 +1,4 @@
-// Penyimpanan progress Learning Path: offline-first.
+// Penyimpanan progress Learning: offline-first.
 //
 // - Lokal: SharedPreferences (JSON) via AppController.
 // - Cloud: Firestore via ProgressSyncService merge (union per-lesson).
