@@ -47,6 +47,9 @@ class ProfileInsights extends StatelessWidget {
                 _Stat('Kosakata dikuasai', '$vocab', Icons.abc_rounded),
                 _Stat('Akurasi quiz', '$quiz%', Icons.track_changes_rounded),
                 _Stat('Event belajar', '$events', Icons.insights_rounded),
+                _Stat('Hari aktif', '${app.activeDays}', Icons.calendar_month_rounded),
+                _Stat('Waktu aktif', '${app.totalActiveMinutes}m', Icons.timer_rounded),
+                _Stat('Grammar selesai', '${app.completedGrammarIds.length}', Icons.rule_rounded),
               ],
             ),
             const SizedBox(height: 18),
@@ -55,6 +58,8 @@ class ProfileInsights extends StatelessWidget {
             SizedBox(height: 92, child: CustomPaint(painter: _SparklinePainter(values: values, color: cs.primary), child: const SizedBox.expand())),
             const SizedBox(height: 18),
             const Text('Profil kemampuan', style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('Mastery level, akurasi, retensi kanji, kosakata, dan waktu belajar.', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
             const SizedBox(height: 12),
             Center(
               child: SizedBox(
