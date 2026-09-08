@@ -9,7 +9,7 @@ import '../state/app_controller.dart';
 ///
 /// Menampilkan: Current Level / Unit / Lesson / Progress + [Continue],
 /// di bawahnya: Daily Review, Kanji Today, Vocabulary Review, Streak, XP.
-/// Terhubung langsung ke progress Learning Path (bukan mockup).
+/// Terhubung langsung ke progress Learning (bukan mockup).
 class ContinueLearningCard extends StatelessWidget {
   const ContinueLearningCard({super.key});
 
@@ -155,7 +155,7 @@ class ContinueLearningCard extends StatelessWidget {
                               initialLevel: level.id),
                         ),
                       ),
-                      child: const Text('Learning Path'),
+                      child: const Text('Open Learning'),
                     ),
                   ),
                 ],
