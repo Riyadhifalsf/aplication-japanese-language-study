@@ -29,17 +29,20 @@ async function main() {
     }
     console.log(`MIGRATE apply ${f}`);
     const sql = fs.readFileSync(path.join(dir, f), 'utf8');
-    await pool.query('BEGIN');
+    const client = await pool.connect();
     try {
-      await pool.query(sql);
-      await pool.query('INSERT INTO schema_migrations(version) VALUES($1)', [
+      await client.query('BEGIN');
+      await client.query(sql);
+      await client.query('INSERT INTO schema_migrations(version) VALUES($1)', [
         f,
       ]);
-      await pool.query('COMMIT');
+      await client.query('COMMIT');
       console.log(`MIGRATE ok ${f}`);
     } catch (e) {
-      await pool.query('ROLLBACK');
+      await client.query('ROLLBACK');
       throw e;
+    } finally {
+      client.release();
     }
   }
   await pool.end();
