@@ -80,3 +80,19 @@ Semua perubahan penting pada proyek ini dicatat di berkas ini.
 - Long story reader, tool penerjemahan, dan AI coach.
 
 Versi sebelumnya tidak didokumentasikan; lihat riwayat commit.
+## 2026-09-09 — Learning & Profile UX overhaul
+
+- Reordered Home: streak and Kanji today are promoted near the top.
+- Added a horizontal shortcut slider for Quiz, Mission, Kana, Kanji, Grammar, Vocabulary, and Reading.
+- Moved recent activity from Home into Profile.
+- Added Kana foundation section with Hiragana + Katakana before Bab 1 in Learning.
+- Removed lesson/unit locking inside the active level; users can jump between chapters and sub-lessons.
+- Added a sub-lesson picker when opening a curriculum unit.
+- Learning now follows the user's active N5–N1 material level while Library remains full-catalog.
+- Improved profile editor spacing and expanded Bio input.
+- Added visual profile insights: activity sparkline, skill radar, Kanji/vocabulary/quiz metrics.
+- Made Liquid Glass setting affect Settings surfaces as a real UI mode.
+- Removed Payment, manual backup, start-from-zero, and progress-reset controls from Settings UI.
+- Reworked password UX so Google-only accounts can request an email reset flow.
+- Added reusable password email templates.
+- Replaced personal-name examples in Japanese lesson/dialogue content with Japanese sample names such as Tanaka/Sato.
