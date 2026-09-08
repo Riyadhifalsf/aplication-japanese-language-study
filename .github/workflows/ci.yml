@@ -25,3 +25,21 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+  backend:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install production dependencies
+        run: npm install --omit=dev --no-audit --no-fund
+      - name: Syntax check
+        run: node --check src/server.js
+      - name: Validate migration source syntax
+        run: node --check src/migrate.js
