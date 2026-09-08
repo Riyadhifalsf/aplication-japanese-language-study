@@ -174,7 +174,7 @@ class AppController extends ChangeNotifier {
   final Set<String> completedSentenceIds = {};
   final Set<String> completedCultureIds = {};
 
-  /// Learning Path / Curriculum System (Level -> Unit -> Lesson -> Activity).
+  /// Learning / Curriculum System (Level -> Unit -> Lesson -> Activity).
   /// Offline-first: disimpan di SharedPreferences lalu di-merge ke Firestore.
   /// Katalog (curriculum data) ada di CurriculumCatalogData — tidak di-hardcode
   /// di UI sehingga N5..N1/JFT/SSW bisa ditambah tanpa ubah widget.
@@ -465,7 +465,7 @@ class AppController extends ChangeNotifier {
     completedCultureIds.addAll(
       prefs.getStringList('completedCulture') ?? const [],
     );
-    // Learning Path progress (offline-first).
+    // Learning progress (offline-first).
     try {
       curriculumProgressById
         ..clear()
@@ -808,7 +808,7 @@ class AppController extends ChangeNotifier {
 
   /// Semua fitur terbuka: tidak ada paywall, tidak ada XP gate, tidak ada
   /// level gate. Satu-satunya urutan yang tersisa adalah pedagogis:
-  /// lesson berikutnya terbuka setelah lesson sebelumnya selesai
+  /// progres lesson berikutnya tetap tersedia; penyelesaian sebelumnya hanya menjadi rekomendasi
   /// (ditangani CurriculumEngine, bukan di sini).
   bool canAccessFeature(String feature) => true;
 
@@ -1221,9 +1221,9 @@ class AppController extends ChangeNotifier {
   /// Selalu true agar tidak ada paywall.
   bool get hasFullAccess => true;
 
-  /// Semua level terbuka untuk semua pengguna (tamu maupun login).
-  /// Urutan belajar tetap dipandu lesson-per-lesson di dalam path.
-  bool isLevelUnlocked(String level) => true;
+  /// Level mengikuti checkpoint/placement yang tersimpan. Lesson di dalam
+  /// level aktif tetap bebas dilompati.
+  bool isLevelUnlocked(String level) => unlockedLevels.contains(level);
 
   void unlockLevel(String level) {
     if (['N5', 'N4', 'N3', 'N2', 'N1'].contains(level)) {
@@ -2347,7 +2347,7 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  // ---------- Learning Path / Curriculum System ----------
+  // ---------- Learning / Curriculum System ----------
   //
   // Recommended curriculum (jalur utama). Dictionary/Kanji/Vocabulary/Grammar
   // tetap bebas dibuka di luar path — path hanya menentukan rekomendasi
@@ -2515,7 +2515,7 @@ class AppController extends ChangeNotifier {
 
   /// Selesaikan satu aktivitas. Mengembalikan XP yang didapat.
   /// Otomatis: streak + XP (recordStudy), persist offline, jadwal sync.
-  /// Lesson berikutnya terbuka hanya setelah lesson ini completed.
+  /// Penyelesaian lesson memperbarui progres dan rekomendasi, bukan mengunci lesson berikutnya.
   int completeCurriculumActivity(
     String lessonId,
     String activityId, {
