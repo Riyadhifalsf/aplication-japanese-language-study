@@ -296,6 +296,28 @@ class CurriculumEngine {
   }) =>
       (passed && score > prevBest) ? totalXp : 0;
 
+  /// introducedInLessonId per kunci konten ('v:313' / 'g:n5-wa' /
+  /// 'k:42' / 'p:ph-0001') = lesson PERTAMA (urutan sequence) yang
+  /// memetakannya. Murni derivasi katalog — fondasi aturan ownership:
+  /// New (diperkenalkan di sini) vs Review (dari lesson sebelumnya) vs
+  /// Locked (dari lesson berikutnya, wajib tidak tampil).
+  static Map<String, String> introducedInLessonId(CurriculumLevel level) {
+    final out = <String, String>{};
+    void claim(List<String> ids, String prefix, String lessonId) {
+      for (final id in ids) {
+        out.putIfAbsent('$prefix$id', () => lessonId);
+      }
+    }
+
+    for (final lesson in orderedLessons(level)) {
+      claim(lesson.vocabularyIds, 'v:', lesson.id);
+      claim(lesson.grammarIds, 'g:', lesson.id);
+      claim(lesson.kanjiIds, 'k:', lesson.id);
+      claim(lesson.phraseIds, 'p:', lesson.id);
+    }
+    return out;
+  }
+
   /// Tandai mastered (mis. skor ≥90% dua kali atau review sempurna).
   static void markMastered(
     Map<String, UserLessonProgress> progressById,

@@ -38,6 +38,7 @@ enum CurriculumLessonStatus {
 /// Jenis aktivitas di dalam satu lesson. Kombinasi per lesson dibuat
 /// bervariasi agar pengguna tidak bosan.
 enum CurriculumActivityType {
+  introduction,
   vocabulary,
   kanji,
   grammar,
@@ -57,6 +58,7 @@ enum CurriculumActivityType {
   placementTest;
 
   String get label => switch (this) {
+        CurriculumActivityType.introduction => 'Intro',
         CurriculumActivityType.vocabulary => 'Kosakata',
         CurriculumActivityType.kanji => 'Kanji',
         CurriculumActivityType.grammar => 'Tata Bahasa',
@@ -78,6 +80,7 @@ enum CurriculumActivityType {
 
   /// XP reward default per aktivitas (bisa di-override per activity).
   int get defaultXp => switch (this) {
+        CurriculumActivityType.introduction => 5,
         CurriculumActivityType.vocabulary => 10,
         CurriculumActivityType.kanji => 15,
         CurriculumActivityType.grammar => 15,
@@ -99,6 +102,7 @@ enum CurriculumActivityType {
 
   /// Skill terkait untuk adaptive learning & review system.
   String get skillKey => switch (this) {
+        CurriculumActivityType.introduction => 'mixed',
         CurriculumActivityType.vocabulary => 'vocabulary',
         CurriculumActivityType.kanji => 'kanji',
         CurriculumActivityType.grammar => 'grammar',

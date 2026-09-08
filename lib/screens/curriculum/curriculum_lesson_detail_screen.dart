@@ -143,10 +143,57 @@ class _CurriculumLessonDetailScreenState
     );
   }
 
+  /// Tipe yang hanya selesai via latihan/tes inline bernilai (anti
+  /// bypass bottom-sheet agar gerbang skor ≥70% tidak bisa dilewati).
+  static bool _isScoredActivity(LessonActivity activity) => const {
+        CurriculumActivityType.quiz,
+        CurriculumActivityType.unitTest,
+        CurriculumActivityType.finalTest,
+        CurriculumActivityType.bossTest,
+        CurriculumActivityType.mockTest,
+      }.contains(activity.type);
+
+  /// True bila aktivitas quiz/tes lesson ini punya penilaian inline
+  /// (latihan ≥3 soal / tes bab pool ≥6). False = alur sheet lama agar
+  /// tidak ada dead-end pada lesson legacy tanpa konten inline.
+  bool _hasInlineAssessment(
+      AppController app, CurriculumLesson lesson, String quizActivityId) {
+    if (quizActivityId.isEmpty) return false;
+    if (lesson.isTest) {
+      final unit = CurriculumCatalogData.unitById(lesson.unitId);
+      return buildUnitQuestions(app.repository, unit?.lessons ?? const [])
+              .length >=
+          6;
+    }
+    if (!lesson.hasInlineContent) return false;
+    final resolved = resolveLessonContent(app.repository, lesson);
+    return buildLessonQuestions(
+      phrases: resolved.phrases,
+      vocabs: resolved.vocabs,
+      grammars: resolved.grammars,
+      kanjis: resolved.kanjis,
+      listening: true,
+      authored: lesson.authoredQuestions,
+    ).length >= 3;
+  }
+
   Future<void> _openActivity(BuildContext context, AppController app,
       CurriculumLesson lesson, LessonActivity activity) async {
     // Tandai aktif agar Home "Continue" selalu tepat.
     app.setCurriculumActiveLesson(lesson.id);
+    // Quiz/tes dengan penilaian inline hanya lewat latihan inline
+    // (skor ≥70%), bukan sheet — anti bypass. Legacy tanpa inline
+    // tetap pakai alur sheet agar tidak dead-end.
+    if (_isScoredActivity(activity) &&
+        _hasInlineAssessment(app, lesson, _quizActivityId(lesson))) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                'Kerjakan latihan inline di lesson ini (butuh skor ≥70%).')),
+      );
+      return;
+    }
     final route = activity.routeHint;
     Widget? screen;
     switch (route) {
@@ -1286,11 +1333,15 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
                           child: const Text('Simpan hasil test'),
                         )
                       : FilledButton(
-                          onPressed:
-                              done ? null : () => _claim(context, app),
+                          // Gerbang skor: klaim hanya bila ≥70%.
+                          onPressed: (done || !meetsScoreGate(percent))
+                              ? null
+                              : () => _claim(context, app),
                           child: Text(done
                               ? 'Selesai ✓'
-                              : 'Tandai selesai +${widget.quizXp} XP'),
+                              : (meetsScoreGate(percent)
+                                  ? 'Tandai selesai +${widget.quizXp} XP'
+                                  : 'Butuh ≥70% (ulangi)')),
                         ),
                 ),
               ],
@@ -1346,6 +1397,7 @@ class _ActivityTile extends StatelessWidget {
   }
 
   IconData _iconFor(CurriculumActivityType type) => switch (type) {
+        CurriculumActivityType.introduction => Icons.flag_rounded,
         CurriculumActivityType.vocabulary => Icons.menu_book_rounded,
         CurriculumActivityType.kanji => Icons.translate_rounded,
         CurriculumActivityType.grammar => Icons.account_tree_rounded,

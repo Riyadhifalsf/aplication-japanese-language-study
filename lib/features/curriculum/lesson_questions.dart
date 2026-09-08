@@ -48,6 +48,9 @@ class PracticeQuestion {
   bool get isListening => audio.isNotEmpty;
 }
 
+/// Gerbang skor latihan: quiz activity hanya selesai bila skor ≥70%.
+bool meetsScoreGate(int percent) => percent >= 70;
+
 /// Nilai huruf tes bab: 90+ Excellent, 80+ Great, 70+ Passed.
 String gradeFor(int percent) => percent >= 90
     ? 'Excellent'

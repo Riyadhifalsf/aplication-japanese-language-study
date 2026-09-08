@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../features/curriculum/curriculum_catalog.dart';
+import '../../features/curriculum/curriculum_models.dart';
 import '../../models/kanji.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/common_widgets.dart';
@@ -28,6 +30,7 @@ class _KanjiLibraryScreenState extends State<KanjiLibraryScreen> {
   late String _level;
   String _theme = 'Semua';
   bool _favoritesOnly = false;
+  String? _chapter;
 
   @override
   void initState() {
@@ -55,10 +58,25 @@ class _KanjiLibraryScreenState extends State<KanjiLibraryScreen> {
     });
   }
 
+  /// Unit ber-mapping pada level aktif; null = seluruh Library.
+  List<CurriculumUnit> _mappedUnits() =>
+      CurriculumCatalogData.mappedUnits(_level);
+
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final items = _filtered(app);
+    final chapters = _mappedUnits();
+    Set<int>? chapterIds;
+    if (_chapter != null) {
+      final match = [
+        for (final unit in chapters)
+          if (unit.id == _chapter) unit,
+      ];
+      if (match.isNotEmpty) {
+        chapterIds = CurriculumCatalogData.kanjiIdsOfUnit(match.first);
+      }
+    }
+    final items = _filtered(app, chapterIds);
     final themes = app.repository.themes.toList()..sort();
     final quizLevel = _level == 'Semua' ? 'N5' : _level;
     final masteredInFilter = items
@@ -120,7 +138,10 @@ class _KanjiLibraryScreenState extends State<KanjiLibraryScreen> {
                         child: ChoiceChip(
                           selected: _level == level,
                           label: Text(level == 'Semua' ? 'Semua' : level),
-                          onSelected: (_) => setState(() => _level = level),
+                          onSelected: (_) => setState(() {
+                            _level = level;
+                            _chapter = null;
+                          }),
                         ),
                       ),
                   ],
@@ -128,6 +149,39 @@ class _KanjiLibraryScreenState extends State<KanjiLibraryScreen> {
               ),
             ),
           ),
+          if (chapters.isNotEmpty)
+            SliverPadding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              sliver: SliverToBoxAdapter(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          selected: _chapter == null,
+                          label: const Text('Semua Bab'),
+                          onSelected: (_) =>
+                              setState(() => _chapter = null),
+                        ),
+                      ),
+                      for (final unit in chapters)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            selected: _chapter == unit.id,
+                            label: Text('Bab ${unit.sequence}'),
+                            onSelected: (_) => setState(() => _chapter =
+                                _chapter == unit.id ? null : unit.id),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 7, 16, 8),
             sliver: SliverToBoxAdapter(
@@ -294,11 +348,12 @@ class _KanjiLibraryScreenState extends State<KanjiLibraryScreen> {
     );
   }
 
-  List<Kanji> _filtered(AppController app) {
+  List<Kanji> _filtered(AppController app, [Set<int>? chapterIds]) {
     final source = _level == 'Semua'
         ? app.repository.kanji
         : app.repository.kanjiForLevel(_level);
     return source.where((item) {
+      if (chapterIds != null && !chapterIds.contains(item.id)) return false;
       if (_theme != 'Semua' && !item.themes.contains(_theme)) return false;
       if (_favoritesOnly && !app.favoriteKanjiIds.contains(item.id)) {
         return false;

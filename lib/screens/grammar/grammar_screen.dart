@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../features/curriculum/curriculum_catalog.dart';
+import '../../features/curriculum/curriculum_models.dart';
 import '../../models/grammar_point.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/common_widgets.dart';
@@ -17,6 +19,11 @@ class GrammarScreen extends StatefulWidget {
 class _GrammarScreenState extends State<GrammarScreen> {
   final _search = TextEditingController();
   late String _level;
+  String? _chapter;
+
+  /// Unit ber-mapping pada level aktif; null = seluruh Library.
+  List<CurriculumUnit> _mappedUnits() =>
+      CurriculumCatalogData.mappedUnits(_level);
 
   @override
   void initState() {
@@ -39,8 +46,20 @@ class _GrammarScreenState extends State<GrammarScreen> {
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final query = _search.text.trim().toLowerCase();
+    final chapters = _mappedUnits();
+    Set<String>? chapterIds;
+    if (_chapter != null) {
+      final match = [
+        for (final unit in chapters)
+          if (unit.id == _chapter) unit,
+      ];
+      if (match.isNotEmpty) {
+        chapterIds = CurriculumCatalogData.grammarIdsOfUnit(match.first);
+      }
+    }
     final items = app.repository.grammar.where((item) {
       if (_level != 'Semua' && item.level != _level) return false;
+      if (chapterIds != null && !chapterIds.contains(item.id)) return false;
       return query.isEmpty ||
           '${item.pattern} ${item.title} ${item.explanation}'
               .toLowerCase()
@@ -85,12 +104,44 @@ class _GrammarScreenState extends State<GrammarScreen> {
                     child: ChoiceChip(
                       selected: _level == level,
                       label: Text(level == 'Semua' ? 'Semua' : level),
-                      onSelected: (_) => setState(() => _level = level),
+                      onSelected: (_) => setState(() {
+                        _level = level;
+                        _chapter = null;
+                      }),
                     ),
                   ),
               ],
             ),
           ),
+          if (chapters.isNotEmpty)
+            SizedBox(
+              height: 48,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      selected: _chapter == null,
+                      label: const Text('Semua Bab'),
+                      onSelected: (_) =>
+                          setState(() => _chapter = null),
+                    ),
+                  ),
+                  for (final unit in chapters)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        selected: _chapter == unit.id,
+                        label: Text('Bab ${unit.sequence}'),
+                        onSelected: (_) => setState(() => _chapter =
+                            _chapter == unit.id ? null : unit.id),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
             child: Row(

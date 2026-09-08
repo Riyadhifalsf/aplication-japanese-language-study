@@ -86,13 +86,86 @@ List<CurriculumUnit> _n5Units() => [
         description: 'Sapaan, perkenalan diri, dan pola です/は/も/の.',
         icon: 'waving',
         lessons: [
+          // L0: orientasi Bab (ID n5-u01-l00; skema n5_ch1_l0_* milik
+          // blueprint eksternal, dipetakan di docs XIII).
+          _l('n5-u01-l00', 'n5-u01', 'N5', 0, 'Introduction Bab 1', [
+            _a('n5-u01-l00-a1', CurriculumActivityType.introduction,
+                'Mulai Belajar',
+                description: 'Orientasi + target akhir bab',
+                contentRef: 'level:N5;intro:bab1',
+                routeHint: ''),
+            _a('n5-u01-l00-a2', CurriculumActivityType.quiz,
+                'Cek orientasi',
+                description: '3 soal tanpa prasyarat',
+                contentRef: 'level:N5;quiz:intro-bab1',
+                routeHint: 'quiz'),
+          ],
+              subtitle: 'Orientasi + Target akhir',
+              objectives: [
+                'Mengetahui tujuan akhir Bab 1.',
+                'Mengenali salam はじめまして.',
+              ],
+              notes: [
+                LessonNote(
+                  title: 'Target akhir Bab 1',
+                  body: 'Di akhir bab kamu bisa memperkenalkan diri '
+                      'seperti ini.',
+                  lines: [
+                    LessonLine(
+                        japanese: 'はじめまして。',
+                        reading: 'はじめまして。',
+                        meaning: 'Salam kenal.'),
+                    LessonLine(
+                        japanese: 'わたしは リヤドです。',
+                        reading: 'わたしは リヤドです。',
+                        meaning: 'Saya Riyado.'),
+                    LessonLine(
+                        japanese: 'インドネシアじんです。',
+                        reading: 'インドネシアじんです。',
+                        meaning: 'Orang Indonesia.'),
+                    LessonLine(
+                        japanese: 'どうぞよろしく おねがいします。',
+                        reading: 'どうぞよろしく おねがいします。',
+                        meaning: 'Mohon bimbingannya.'),
+                  ],
+                ),
+              ],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'Bab 1 mengajarkan tentang?',
+                  options: [
+                    'Berkenalan dalam bahasa Jepang',
+                    'Berbelanja di pasar',
+                    'Memasak makanan'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'Tema Bab 1: perkenalan.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'はじめまして diucapkan ketika?',
+                  options: [
+                    'Pertama kali bertemu',
+                    'Berpisah',
+                    'Makan'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'Salam saat pertama bertemu.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'Salam perkenalan yang dipelajari?',
+                  options: ['はじめまして', 'さようなら', 'ありがとう'],
+                  correctIndex: 0,
+                  explanation: 'はじめまして = salam kenal.',
+                ),
+              ]),
           // Lesson kurikulum inline: objectives + referensi konten nyata
           // (terverifikasi di bundled data, tanpa mengarang).
           // Phrases Salam/Perkenalan Resmi + Sopan (kontras kesopanan):
           // ph-0001/0002/0003 (Resmi), ph-0011/0012/0013 (Sopan).
-          // Vocab N5: 私 123/124, 学生 313, 先生 377, 名前 405, 人 93.
+          // Vocab N5 inti salam: 私 123, 学生 313, 先生 377, 名前 405.
+          // (わたくし 124 & 人 93 pindah ke L3 identitas.)
           // Grammar: n5-wa (～は～です identitas), n5-ka (～ですか tanya).
-          // Kanji N5 penyusun kata lesson: 名 前 学 生 先 人.
+          // Kanji N5 penyusun kata lesson: 名 前 学 生 先.
           _l('n5-u01-l01', 'n5-u01', 'N5', 1, 'Salam & Perkenalan', [
             _a('n5-u01-l01-a1', CurriculumActivityType.vocabulary,
                 'Kosakata salam',
@@ -115,9 +188,9 @@ List<CurriculumUnit> _n5Units() => [
                 'Bertanya identitas dengan pola ～ですか.',
                 'Mengenali kanji penyusun kata perkenalan.',
               ],
-              vocabularyIds: ['123', '124', '313', '377', '405', '93'],
+              vocabularyIds: ['123', '313', '377', '405'],
               grammarIds: ['n5-wa', 'n5-ka'],
-              kanjiIds: ['56', '48', '42', '41', '40', '29'],
+              kanjiIds: ['56', '48', '42', '41', '40'],
               phraseIds: [
                 'ph-0001',
                 'ph-0002',
@@ -190,7 +263,7 @@ List<CurriculumUnit> _n5Units() => [
                 'Menggunakan kosakata orang dalam perkenalan.',
                 'Mengenali kanji penyusun kata orang/profesi.',
               ],
-              vocabularyIds: ['313', '377', '93', '295'],
+              vocabularyIds: ['124', '313', '377', '93', '295'],
               kanjiIds: ['42', '41', '40', '29', '179', '138'],
               authoredQuestions: [
                 AuthoredQuestion(
@@ -1664,4 +1737,58 @@ class CurriculumCatalogData {
   static List<CurriculumLevel> levelsForTrack(String track) =>
       fullLevels.where((l) => l.track == track).toList()
         ..sort((a, b) => a.sequence.compareTo(b.sequence));
+
+  /// ID konten kurikulum per unit untuk filter Bab di Library
+  /// (tanpa duplikasi data: Library resolve ID yang sama dari repository).
+  /// Kunci mengikuti konvensi mastery (`v:`, `g:`, `k:` + id).
+  static Set<String> contentKeysOfUnit(CurriculumUnit unit) {
+    final keys = <String>{};
+    for (final lesson in unit.lessons) {
+      for (final id in lesson.vocabularyIds) {
+        keys.add('v:$id');
+      }
+      for (final id in lesson.grammarIds) {
+        keys.add('g:$id');
+      }
+      for (final id in lesson.kanjiIds) {
+        keys.add('k:$id');
+      }
+      for (final id in lesson.phraseIds) {
+        keys.add('p:$id');
+      }
+    }
+    return keys;
+  }
+
+  /// Unit yang punya mapping kurikulum (layak jadi filter Bab).
+  static List<CurriculumUnit> mappedUnits(String levelId) {
+    final level = levelById(levelId);
+    if (level == null) return const [];
+    return [
+      for (final unit in level.units)
+        if (contentKeysOfUnit(unit).isNotEmpty) unit,
+    ];
+  }
+
+  static Set<int> _intIdsOfUnit(CurriculumUnit unit, String prefix) {
+    final ids = <int>{};
+    for (final key in contentKeysOfUnit(unit)) {
+      if (!key.startsWith(prefix)) continue;
+      final parsed = int.tryParse(key.substring(prefix.length));
+      if (parsed != null) ids.add(parsed);
+    }
+    return ids;
+  }
+
+  /// ID integer (vocab/kanji) per unit untuk filter Bab Library.
+  static Set<int> vocabIdsOfUnit(CurriculumUnit unit) =>
+      _intIdsOfUnit(unit, 'v:');
+  static Set<int> kanjiIdsOfUnit(CurriculumUnit unit) =>
+      _intIdsOfUnit(unit, 'k:');
+
+  /// ID grammar (string) per unit untuk filter Bab Library.
+  static Set<String> grammarIdsOfUnit(CurriculumUnit unit) => {
+        for (final key in contentKeysOfUnit(unit))
+          if (key.startsWith('g:')) key.substring(2),
+      };
 }

@@ -54,30 +54,11 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     });
   }
 
-  /// Unit (bab) pada level aktif yang punya mapping kotoba kurikulum.
+  /// Unit (bab) pada level aktif yang punya mapping kurikulum.
   /// Library tetap global secara default; filter Bab mempersempit ke kata
   /// yang diajarkan bab tersebut (tanpa duplikasi data).
-  List<CurriculumUnit> _mappedUnits() {
-    if (_level == 'Semua') return const [];
-    final level = CurriculumCatalogData.levelById(_level);
-    if (level == null) return const [];
-    return [
-      for (final unit in level.units)
-        if (_vocabIdsOfUnit(unit).isNotEmpty) unit,
-    ];
-  }
-
-  /// Kumpulan id kotoba dari seluruh lesson satu unit (urutan katalog).
-  static Set<int> _vocabIdsOfUnit(CurriculumUnit unit) {
-    final ids = <int>{};
-    for (final lesson in unit.lessons) {
-      for (final raw in lesson.vocabularyIds) {
-        final id = int.tryParse(raw);
-        if (id != null) ids.add(id);
-      }
-    }
-    return ids;
-  }
+  List<CurriculumUnit> _mappedUnits() =>
+      CurriculumCatalogData.mappedUnits(_level);
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +71,9 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
         for (final unit in chapters)
           if (unit.id == _chapter) unit,
       ];
-      if (match.isNotEmpty) chapterIds = _vocabIdsOfUnit(match.first);
+      if (match.isNotEmpty) {
+        chapterIds = CurriculumCatalogData.vocabIdsOfUnit(match.first);
+      }
     }
     final items = _filtered(app, chapterIds);
     return Scaffold(

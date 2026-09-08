@@ -2609,6 +2609,16 @@ class AppController extends ChangeNotifier {
       }
       _tryUnlockNextCurriculumLevel(lesson.levelId, clamped);
     }
+    // Bonus Bab: boss test lulus pertama + seluruh unit selesai = +100
+    // (total 150 dengan 50 XP tes). Anti-farm via best baru + unit done.
+    if (passed &&
+        clamped > prevBest &&
+        lesson.isBossTest &&
+        _unitLessonsDone(lesson)) {
+      recordStudy(xpGained: 100, notify: false);
+      recordActivity('chapter_complete', 'Bab selesai: ${lesson.levelId}',
+          meta: {'lessonId': lesson.id, 'level': lesson.levelId});
+    }
     // XP ANTI-FARM: hanya skor terbaik BARU yang lulus yang dapat XP.
     // Ulangi dengan skor sama/rendah/gagal = 0 XP. Statistik attempt
     // tetap dicatat (tanpa XP) agar akurasi jujur.
@@ -2723,6 +2733,21 @@ class AppController extends ChangeNotifier {
       'xp',
     ]);
     notifyListeners();
+  }
+
+  /// True bila seluruh lesson unit sudah completed/mastered.
+  /// Dipakai gerbang bonus Bab (bukan untuk unlock umum).
+  bool _unitLessonsDone(CurriculumLesson lesson) {
+    final unit = CurriculumCatalogData.unitById(lesson.unitId);
+    if (unit == null || unit.lessons.isEmpty) return false;
+    for (final item in unit.lessons) {
+      final status = curriculumProgressById[item.id]?.status;
+      if (status != CurriculumLessonStatus.completed &&
+          status != CurriculumLessonStatus.mastered) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _tryUnlockNextCurriculumLevel(String levelId, int score) {
