@@ -1,3 +1,12 @@
+
+## UI refinement — Home, Library, Activity & Donation
+
+- Added year filter dropdown beside Recent Activity in Profile without removing the activity history.
+- Changed the Home Kanji shortcut icon to a sun icon representing 日.
+- Removed quiz/exam shelf from Library; quizzes and exams remain in Quiz Center.
+- Added Donation access from Settings.
+- Added donor count, total donation amount, and descending donor leaderboard UI with backend-ready data model.
+
 # Changelog
 
 Semua perubahan penting pada proyek ini dicatat di berkas ini.
