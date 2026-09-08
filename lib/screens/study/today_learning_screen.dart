@@ -54,7 +54,7 @@ class TodayLearningScreen extends StatelessWidget {
                 Text(
                   lesson == null
                       ? 'Lanjutkan review terjadwal sambil menunggu lesson berikutnya tersedia.'
-                      : 'Setelah selesai: mastery gate menentukan apakah lesson berikutnya terbuka.',
+                      : 'Setelah selesai: hasil mastery memperbarui rekomendasi review dan progres level.',
                   style: const TextStyle(color: Colors.white70, height: 1.35),
                 ),
               ],
