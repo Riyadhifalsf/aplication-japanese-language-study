@@ -117,13 +117,13 @@ test('google tanpa idToken -> 400', async () => {
   assert.equal(data.error.code, 'AUTH_GOOGLE_NO_TOKEN');
 });
 
-test('ai/chat tanpa token -> 401 (alias v1 sama)', async () => {
+test('ai/chat DIHAPUS -> 404 ROUTE_NOT_FOUND (alias v1 sama)', async () => {
   const a = await api('POST', '/api/ai/chat', { body: { message: 'Apa itu partikel は?' } });
-  assert.equal(a.status, 401);
-  assert.equal(a.data.error.code, 'AUTH_MISSING_TOKEN');
-  const b = await api('POST', '/api/v1/ai/chat', { body: { message: 'Apa itu partikel は?' } });
-  assert.equal(b.status, 401);
-  assert.equal(b.data.error.code, 'AUTH_MISSING_TOKEN');
+  assert.equal(a.status, 404);
+  assert.equal(a.data.error.code, 'ROUTE_NOT_FOUND');
+  const b = await api('POST', '/api/v1/ai/chat', { body: { message: 'Apa itu partikel は?' }, token });
+  assert.equal(b.status, 404);
+  assert.equal(b.data.error.code, 'ROUTE_NOT_FOUND');
 });
 
 test('admin guard: tanpa token 401, user biasa 403', async () => {

@@ -2,60 +2,22 @@
 //
 // - Bootstrap secret (POSTGRES_PASSWORD/DATABASE_URL, JWT_SECRET,
 //   ADMIN_TOKEN) TETAP di env — tanpa itu server tidak bisa konek DB.
-// - Allowlist yang boleh dioverride via tabel app_settings:
-//     secret: GEMINI_API_KEY  -> disimpan TERENKRIPSI AES-256-GCM (CONFIG_KEK)
-//     plain : GEMINI_MODEL, AI_RATE_MAX, GEMINI_TIMEOUT_MS
+// - Allowlist yang boleh dioverride via tabel app_settings: saat ini KOSONG.
+//   Kunci AI (GEMINI_*/AI_RATE_MAX) DIHAPUS bersama endpoint /ai/chat
+//   (keputusan produk: tanpa LLM eksternal). Migrasi
+//   006_remove_ai_settings.sql membersihkan baris lama di DB.
 // - Nilai env selalu jadi FALLBACK bila tidak ada override non-kosong di DB.
 // - Pembaca TIDAK PERNAH melempar untuk kasus operasional (tabel belum ada,
 //   dekripsi gagal -> fallback env + log). Hanya penulis yang memvalidasi.
-// - Cache in-memory 30 detik agar tiap /ai/chat tidak query DB.
+// - Cache in-memory 30 detik untuk mengurangi query DB.
 
 const crypto = require('crypto');
 
-const ALLOWLIST = {
-  GEMINI_API_KEY: { secret: true },
-  GEMINI_MODEL: {
-    secret: false,
-    validate: (v) => {
-      const s = String(v).trim();
-      if (!s || s.length > 80 || !/^[A-Za-z0-9_.-]+$/.test(s)) {
-        throw configError(400, 'VALIDATION', 'GEMINI_MODEL tidak valid.');
-      }
-      return s;
-    },
-  },
-  AI_RATE_MAX: {
-    secret: false,
-    validate: (v) => {
-      const n = Number(v);
-      if (!Number.isInteger(n) || n < 1 || n > 300) {
-        throw configError(400, 'VALIDATION', 'AI_RATE_MAX 1-300.');
-      }
-      return String(n);
-    },
-  },
-  GEMINI_TIMEOUT_MS: {
-    secret: false,
-    validate: (v) => {
-      const n = Number(v);
-      if (!Number.isInteger(n) || n < 1000 || n > 120000) {
-        throw configError(
-          400,
-          'VALIDATION',
-          'GEMINI_TIMEOUT_MS 1000-120000.'
-        );
-      }
-      return String(n);
-    },
-  },
-};
+// Allowlist kosong: tidak ada key yang boleh dioverride via DB saat ini.
+// Endpoint admin settings tetap ada tetapi menolak semua key (VALIDATION).
+const ALLOWLIST = {};
 
-const ENV_DEFAULTS = {
-  GEMINI_API_KEY: '',
-  GEMINI_MODEL: 'gemini-2.0-flash',
-  AI_RATE_MAX: '30',
-  GEMINI_TIMEOUT_MS: '25000',
-};
+const ENV_DEFAULTS = {};
 
 const CACHE_TTL_MS = 30 * 1000;
 const _cache = new Map(); // key -> { value, fetchedAt }
@@ -173,25 +135,6 @@ async function get(pool, key) {
   return effective;
 }
 
-async function getGeminiKey(pool) {
-  return (await get(pool, 'GEMINI_API_KEY')).trim();
-}
-
-async function getGeminiModel(pool) {
-  const m = (await get(pool, 'GEMINI_MODEL')).trim();
-  return m || ENV_DEFAULTS.GEMINI_MODEL;
-}
-
-async function getAiRateMax(pool) {
-  const n = Number(await get(pool, 'AI_RATE_MAX'));
-  return Number.isInteger(n) && n >= 1 && n <= 300 ? n : 30;
-}
-
-async function getGeminiTimeoutMs(pool) {
-  const n = Number(await get(pool, 'GEMINI_TIMEOUT_MS'));
-  return Number.isInteger(n) && n >= 1000 && n <= 120000 ? n : 25000;
-}
-
 // Daftar untuk admin: secret TIDAK PERNAH plaintext (preview mask saja).
 async function listSettings(pool) {
   const out = [];
@@ -285,10 +228,6 @@ function invalidate(key) {
 module.exports = {
   ALLOWLIST,
   get,
-  getGeminiKey,
-  getGeminiModel,
-  getAiRateMax,
-  getGeminiTimeoutMs,
   listSettings,
   setSetting,
   invalidate,

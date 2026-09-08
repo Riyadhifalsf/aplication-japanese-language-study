@@ -14,10 +14,16 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(helmet());
+// CORS default-DENY: hanya origin eksplisit di CORS_ORIGIN (koma-dipisah)
+// yang diizinkan; '*' hanya untuk kebutuhan khusus. Aplikasi mobile tidak
+// butuh CORS (non-browser); web testing wajib allowlist eksplisit.
+const corsOrigins = String(process.env.CORS_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
 app.use(cors({
-  origin: process.env.CORS_ORIGIN === '*' ? true : (process.env.CORS_ORIGIN || true),
+  origin: corsOrigins.includes('*') ? true : (corsOrigins.length ? corsOrigins : false),
 }));
-app.use(express.json({ limit: '10mb' }));
+// Batas body 2mb: cukup untuk sync progress penuh user berat, 5x lebih
+// ketat dari sebelumnya terhadap payload raksasa (DoS).
+app.use(express.json({ limit: '2mb' }));
 
 // Request ID + access log ringan (observability; health tidak dilog).
 app.use((req, res, next) => {
@@ -41,7 +47,9 @@ if (!JWT_SECRET) {
   console.error('[auth] FATAL: JWT_SECRET tidak diatur. Isi di .env, server tidak boleh jalan tanpa itu.');
   process.exit(1);
 }
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
+// Default 7 hari (sebelumnya 30): jendela token curian lebih kecil.
+// Token lama mati otomatis via password_changed_at saat ganti password.
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 const ADMIN_TOKEN = (process.env.ADMIN_TOKEN || '').trim();
 
 // ---------- utilitas ----------
@@ -150,21 +158,6 @@ const passwordLimiter = rateLimit({
   message: { success: false, message: 'Terlalu banyak percobaan password. Coba lagi 15 menit lagi.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak percobaan password. Coba lagi 15 menit lagi.' } },
 });
 
-// AI Sensei lebih ketat (biaya per panggilan LLM). Batas dinamis dari
-// DB (AI_RATE_MAX) dengan fallback env; hard-cap 300/menit per IP.
-const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: async () => {
-    try {
-      return await appConfig.getAiRateMax(pool);
-    } catch (_) {
-      return Number(process.env.AI_RATE_MAX || 30);
-    }
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Terlalu banyak pertanyaan ke Sensei. Coba lagi semenit lagi.', error: { code: 'RATE_LIMITED', message: 'Terlalu banyak pertanyaan ke Sensei. Coba lagi semenit lagi.' } },
-});
 app.use('/api', apiLimiter);
 app.use('/api/v1', apiLimiter);
 
@@ -181,19 +174,10 @@ const rawToJson = (row) => ({ ...row, raw: typeof row.raw === 'string' ? JSON.pa
 // ---------- health ----------
 api.get('/health', asyncHandler(async (_req, res) => {
   const r = await pool.query('SELECT now() AS time');
-  let aiConfigured = false;
-  let aiModel = '';
-  try {
-    aiConfigured = !!(await appConfig.getGeminiKey(pool));
-    aiModel = await appConfig.getGeminiModel(pool);
-  } catch (_) {
-    aiConfigured = !!(process.env.GEMINI_API_KEY || '').trim();
-  }
   res.json({
     ok: true,
     database: true,
     time: r.rows[0].time,
-    ai: { configured: aiConfigured, model: aiModel },
   });
 }));
 
@@ -1074,79 +1058,11 @@ api.post('/sessions', authRequired, asyncHandler(async (req, res) => {
   res.json({ ok: true, streak: Number(streak.rows[0].streak) });
 }));
 
-// ---------- AI Sensei (proxy Gemini; key hanya di server) ----------
-// Key/model/timeout dibaca DINAMIS via app_config: override terenkripsi di
-// tabel app_settings menang, env jadi fallback. Tidak ada secret yang
-// dikirim ke client; endpoint admin hanya menampilkan mask.
-const SENSEI_SYSTEM = (level) =>
-  `Kamu adalah "Sensei", tutor bahasa Jepang yang ramah untuk murid Indonesia` +
-  `${level ? ` (target level murid: ${level})` : ''}. ` +
-  `Jawab dalam Bahasa Indonesia, sertakan contoh kalimat Jepang (kanji + furigana sederhana + romaji bila membantu) ` +
-  `dan artinya. Jelaskan grammar seperlunya dengan pola kalimat yang jelas. ` +
-  `Tetap pada topik belajar bahasa Jepang; tolak dengan sopan hal di luar itu. ` +
-  `Jawaban ringkas (maks ~250 kata) kecuali murid meminta detail.`;
-
-async function callGemini(message, history, level, opts) {
-  const apiKey = opts && opts.apiKey ? opts.apiKey : '';
-  const model = (opts && opts.model ? opts.model : 'gemini-2.0-flash').trim() || 'gemini-2.0-flash';
-  const timeoutMs = opts && opts.timeoutMs ? opts.timeoutMs : 25000;
-  const contents = [];
-  for (const h of history) {
-    const role = h.role === 'model' ? 'model' : 'user';
-    contents.push({ role, parts: [{ text: h.text }] });
-  }
-  contents.push({ role: 'user', parts: [{ text: message }] });
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: SENSEI_SYSTEM(level) }] },
-        contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    }
-  );
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const msg = (data.error && data.error.message) || `Gemini HTTP ${r.status}`;
-    if (r.status === 429) throw new HttpError(429, 'Sensei sedang sibuk. Coba lagi sebentar lagi.', 'AI_RATE_LIMITED');
-    if (r.status === 400) throw new HttpError(400, `Pertanyaan ditolak upstream: ${String(msg).slice(0, 200)}`, 'AI_BAD_REQUEST');
-    throw new HttpError(502, 'Sensei tidak merespons. Coba lagi nanti.', 'AI_UPSTREAM');
-  }
-  const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-  const reply = parts.map((p) => p.text || '').join('').trim();
-  if (!reply) throw new HttpError(502, 'Sensei memberi jawaban kosong. Coba lagi.', 'AI_EMPTY');
-  return reply;
-}
-
-api.post('/ai/chat', authRequired, aiLimiter, asyncHandler(async (req, res) => {
-  const apiKey = await appConfig.getGeminiKey(pool);
-  if (!apiKey) {
-    return fail(res, 503, 'AI_DISABLED', 'AI Sensei belum aktif di server (kunci Gemini kosong).');
-  }
-  const model = await appConfig.getGeminiModel(pool);
-  const timeoutMs = await appConfig.getGeminiTimeoutMs(pool);
-  const b = req.body && typeof req.body === 'object' ? req.body : {};
-  const message = String(b.message || '').trim().slice(0, 2000);
-  if (!message) return fail(res, 400, 'VALIDATION', 'message wajib diisi (maks 2000 karakter).');
-  const level = ['N5', 'N4', 'N3', 'N2', 'N1'].includes(String(b.level || '').toUpperCase())
-    ? String(b.level).toUpperCase() : '';
-  const history = Array.isArray(b.history) ? b.history.slice(0, 10).flatMap((h) => {
-    if (!h || typeof h !== 'object') return [];
-    const text = String(h.text || '').trim().slice(0, 2000);
-    if (!text) return [];
-    return [{ role: h.role === 'model' ? 'model' : 'user', text }];
-  }) : [];
-  const reply = await callGemini(message, history, level, { apiKey, model, timeoutMs });
-  await audit(req.auth.sub, 'ai_chat', req);
-  res.json({ reply, model });
-}));
+// ---------- AI Sensei DIHAPUS ----------
+// Endpoint /ai/chat + proxy Gemini dihapus total (keputusan produk: tanpa
+// LLM eksternal; adaptivitas murni on-device/deterministik di aplikasi).
+// Rute lama kini 404 ROUTE_NOT_FOUND via catch-all di bawah.
+// Lihat migrasi 006_remove_ai_settings.sql (pembersihan app_settings).
 
 // ---------- pengaturan runtime di DB (pengganti sebagian .env) ----------
 // allowlist di src/app_config.js. Secret tidak pernah dikembalikan plaintext.
