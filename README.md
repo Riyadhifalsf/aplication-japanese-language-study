@@ -317,17 +317,3 @@ Pastikan `flutter analyze` bersih dan `flutter test` hijau sebelum push.
 ## Lisensi
 
 [MIT](LICENSE). Logo & aset branding milik proyek ini.
-
-## Consolidated product specification
-
-Requirement dan kontrak implementasi yang dikonsolidasikan dari requirement produk sebelumnya tersedia di:
-
-- `docs/MASTER_PRODUCT_SPEC.md`
-- `docs/IMPLEMENTATION_CONTRACT.md`
-- `docs/DATA_MIGRATION_PLAN.md`
-- `docs/FILE_IMPLEMENTATION_PLAN.md`
-- `docs/REPOSITORY_AUDIT_TEMPLATE.md`
-- `docs/CURRICULUM_N5_N1_BLUEPRINT.md`
-- `docs/PRODUCT_REQUIREMENTS.json`
-
-Dokumen tersebut menjadi acuan sebelum melakukan perubahan besar pada learning engine, curriculum, speaking, SSW, AI, sync, atau billing.
