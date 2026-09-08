@@ -7,6 +7,7 @@ import '../auth/login_screen.dart';
 import '../kanji/kanji_review_screen.dart';
 import '../profile/bug_report_screen.dart';
 import 'change_password_screen.dart';
+import '../donation/donation_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'reminder_settings_screen.dart';
 
@@ -64,6 +65,16 @@ class ProfileSettingsScreen extends StatelessWidget {
             const Divider(height: 1),
             ListTile(leading: const Icon(Icons.volume_up_rounded), title: const Text('Tes bahasa Jepang'), trailing: const Icon(Icons.play_arrow_rounded), onTap: () => app.tts.speak('今日も日本語を勉強しましょう。')),
           ])),
+          const SizedBox(height: 20),
+          const Text('Dukungan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          _surface(context, app, ListTile(
+            leading: const Icon(Icons.volunteer_activism_rounded),
+            title: const Text('Donasi', style: TextStyle(fontWeight: FontWeight.w900)),
+            subtitle: const Text('Lihat kanal donasi, jumlah donatur, dan peringkat dukungan.'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DonationScreen())),
+          )),
           const SizedBox(height: 20),
           const Text('Ulangan & data', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
