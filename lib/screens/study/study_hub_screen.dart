@@ -13,12 +13,9 @@ import '../dialogs/dialog_screen.dart';
 import '../exams/exam_hub_screen.dart';
 import '../grammar/grammar_screen.dart';
 import '../kana/kana_screen.dart';
-import '../kanji/kanji_hiragana_quiz_screen.dart';
 import '../kanji/kanji_library_screen.dart';
 import '../kanji/kanji_study_screen.dart';
 import '../kanji/kanji_review_screen.dart';
-import '../kanji/kanji_similar_quiz_screen.dart';
-import '../kanji/kanji_theme_quiz_screen.dart';
 import '../phrases/phrase_screen.dart';
 import '../readings/reading_screen.dart';
 import '../sentences/sentence_screen.dart';
@@ -55,13 +52,36 @@ class StudyHubScreen extends StatelessWidget {
             cards: [
               _StudyCardData(
                   title: 'Kanji',
-                  subtitle: 'Belajar, flashcard, quiz, dan review',
+                  subtitle: 'Materi kanji, flashcard, dan review',
                   icon: Icons.translate_rounded,
                   color: const Color(0xFFFFA62B),
                   badge: '${app.masteredKanjiIds.length} dikuasai',
                   progress: app.masteredKanjiIds.length / 5000,
                   screen: const KanjiStudyScreen()),
             ]),
+        const SizedBox(height: 22),
+        _StudyShelf(
+          title: 'Ruang latihan pintar',
+          subtitle: 'Fitur yang menyesuaikan diri dengan progresmu.',
+          cards: [
+            _StudyCardData(
+              title: 'Ulasan Kesalahan',
+              subtitle: 'Kesalahan yang paling perlu kamu perbaiki',
+              icon: Icons.rate_review_rounded,
+              color: const Color(0xFFEF4444),
+              badge: 'Smart review',
+              screen: MistakeReviewScreen(),
+            ),
+            const _StudyCardData(
+              title: 'Statistik Belajar',
+              subtitle: 'Ringkasan XP, streak, waktu, dan mastery',
+              icon: Icons.insights_rounded,
+              color: Color(0xFF315C7E),
+              badge: 'Insight',
+              screen: StudyStatsScreen(),
+            ),
+          ],
+        ),
         const SizedBox(height: 22),
         _StudyShelf(
           title: 'Jalur utama belajar',
@@ -89,7 +109,7 @@ class StudyHubScreen extends StatelessWidget {
             ),
             _StudyCardData(
               title: 'Kanji Study',
-              subtitle: 'Pendalaman kanji sebagai tambahan',
+              subtitle: 'Pendalaman kanji sebagai tambahan materi',
               icon: Icons.auto_awesome_rounded,
               color: const Color(0xFFFFA62B),
               badge: '${app.masteredKanjiIds.length} dikuasai',
@@ -143,13 +163,6 @@ class StudyHubScreen extends StatelessWidget {
                 color: Color(0xFFB42318),
                 badge: 'Play',
                 screen: GameHubScreen()),
-            const _StudyCardData(
-                title: 'Ulasan Kesalahan',
-                subtitle: 'Evaluasi kesalahan dan rekomendasi AI',
-                icon: Icons.rate_review_rounded,
-                color: Color(0xFFEF4444),
-                badge: 'Review',
-                screen: MistakeReviewScreen()),
           ],
         ),
         const SizedBox(height: 16),
@@ -223,70 +236,7 @@ class StudyHubScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        _StudyShelf(
-          title: 'Pusat kuis & ujian',
-          subtitle:
-              'Semua latihan, uji penguasaan, JLPT, dan JFT dari satu tempat.',
-          cards: [
-            const _StudyCardData(
-              title: 'Simulasi JLPT',
-              subtitle: 'N5–N1 lengkap',
-              icon: Icons.school_rounded,
-              color: Color(0xFFD92D20),
-              badge: '本番',
-              screen: ExamHubScreen(),
-            ),
-            const _StudyCardData(
-              title: 'Simulasi JFT',
-              subtitle: 'A2 kerja dan choukai',
-              icon: Icons.badge_rounded,
-              color: Color(0xFF17A673),
-              badge: 'A2',
-              screen: ExamHubScreen(initialType: ExamType.jft),
-            ),
-            const _StudyCardData(
-              title: 'Kanji ke Hiragana',
-              subtitle: 'Lihat kanji pilih bacaan',
-              icon: Icons.spellcheck_rounded,
-              color: Color(0xFFE64E64),
-              badge: 'かな',
-              screen: KanjiHiraganaQuizScreen(),
-            ),
-            const _StudyCardData(
-              title: 'Kuis Tema',
-              subtitle: 'Keluarga, alam, waktu',
-              icon: Icons.category_rounded,
-              color: Color(0xFFE64E64),
-              badge: 'Tema',
-              screen: KanjiThemeQuizScreen(),
-            ),
-            const _StudyCardData(
-              title: 'Kanji Mirip',
-              subtitle: 'Bedakan bentuk serupa',
-              icon: Icons.blur_on_rounded,
-              color: Color(0xFFB42318),
-              badge: 'Mirip',
-              screen: KanjiSimilarQuizScreen(),
-            ),
-            _StudyCardData(
-              title: 'Ulangi Kanji',
-              subtitle: 'Kartu lemah hari ini',
-              icon: Icons.notifications_active_rounded,
-              color: const Color(0xFFFFA62B),
-              badge: '${app.dueKanjiReviewCount} lagi',
-              screen: const KanjiReviewScreen(),
-            ),
-            const _StudyCardData(
-              title: 'Statistik Belajar',
-              subtitle: 'Hari ini · total · streak',
-              icon: Icons.insights_rounded,
-              color: Color(0xFF315C7E),
-              badge: 'Analitik',
-              screen: StudyStatsScreen(),
-            ),
-          ],
-        ),
+
       ],
     );
   }
