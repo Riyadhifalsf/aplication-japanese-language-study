@@ -1,4 +1,4 @@
-// Logika Learning Path: status, progress, unlock, review, adaptive.
+// Logika Learning: status, progress, unlock, review, adaptive.
 //
 // Murni Dart agar bisa diuji tanpa Flutter. AppController hanya menyimpan
 // state + meneruskan ke engine ini. Aturan unlock memakai KOMBINASI
@@ -24,10 +24,9 @@ class CurriculumEngine {
     return out;
   }
 
-  /// Status satu lesson dengan aturan berurutan:
-  /// lesson pertama selalu available; berikutnya terbuka bila sebelumnya
-  /// completed/mastered. Final test terkunci sampai semua lesson non-final
-  /// di unit/level-nya selesai (ditangani via previous).
+  /// Status satu lesson. Semua lesson pada level aktif selalu tersedia;
+  /// status hanya menggambarkan progres yang sudah tersimpan. Level gating
+  /// dipisahkan dari gating lesson agar pengguna bebas melompat.
   static CurriculumLessonStatus lessonStatus({
     required CurriculumLesson lesson,
     required List<CurriculumLesson> ordered,
