@@ -165,7 +165,7 @@ class HomeScreen extends StatelessWidget {
             _HomeShortcut('Pusat Quiz', Icons.quiz_rounded, onOpenQuiz),
             _HomeShortcut('Misi hari ini', Icons.flag_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TodayLearningScreen()))),
             _HomeShortcut('Kana', Icons.translate_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanaScreen()))),
-            _HomeShortcut('Kanji', Icons.menu_book_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanjiStudyScreen()))),
+            _HomeShortcut('Kanji', Icons.wb_sunny_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanjiStudyScreen()))),
             _HomeShortcut('Grammar', Icons.rule_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GrammarScreen()))),
             _HomeShortcut('Kotoba', Icons.text_fields_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VocabularyScreen()))),
             _HomeShortcut('Reading', Icons.chrome_reader_mode_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReadingScreen()))),
