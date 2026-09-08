@@ -58,10 +58,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     ));
   }
 
-  /// IA: 0 Home, 1 Learn (Learning Path), 2 Practice (Quiz/Review),
+  /// Navigation: 0 Home, 1 Learning, 2 Practice (Quiz/Review),
   /// 3 Library (Independent Study), 4 Donasi. SEMUA tab terbuka untuk semua
   /// pengguna (tamu maupun login) — tidak ada lock fitur. Satu-satunya
-  /// urutan adalah pedagogis di dalam Learning Path (lesson-per-lesson).
+  /// urutan lesson menjadi panduan belajar, bukan kunci akses.
   Future<void> _select(int value) async {
     setState(() => _index = value);
     // Iklan tetap jalan, tidak tergantung status apapun.
@@ -84,7 +84,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             onOpenStudy: () => _select(1),
             onOpenQuiz: () => _select(2),
             onOpenProfile: _openProfile),
-        // Learn murni Learning Path (bukan library).
+        // Learning fokus pada kurikulum terstruktur; Library tetap terpisah.
         1 => CurriculumPathScreen(
             initialLevel: app.curriculumActiveLevelId),
         // Practice: latihan bebas + review + mistakes + exam.
@@ -105,8 +105,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           selectedIcon: Icon(Icons.home_rounded),
           label: Text('Beranda')),
       const NavigationRailDestination(
-          icon: Icon(Icons.route_outlined),
-          selectedIcon: Icon(Icons.route_rounded),
+          icon: Icon(Icons.auto_stories_outlined),
+          selectedIcon: Icon(Icons.auto_stories_rounded),
           label: Text('Learning')),
       const NavigationRailDestination(
           icon: Icon(Icons.quiz_outlined),
