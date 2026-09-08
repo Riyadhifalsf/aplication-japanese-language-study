@@ -4,7 +4,7 @@ import '../../features/curriculum/curriculum_models.dart';
 import '../../state/app_controller.dart';
 // Phase 1: premium_screen tidak dipakai. File dipertahankan untuk future dev.
 
-/// View-model satu node unit di path melengkung ala LingoDeer.
+/// View-model satu node unit pada peta belajar visual.
 class UnitPathNode {
   const UnitPathNode({
     required this.unit,
@@ -25,7 +25,7 @@ class UnitPathNode {
   bool get completed => total > 0 && done >= total;
 }
 
-/// Path melengkung ala LingoDeer: node lingkaran zig-zag kiri-kanan dengan
+/// Peta belajar visual: node unit bergerak kiri-kanan dengan
 /// garis putus-putus di belakangnya. Satu node = satu unit.
 class CurriculumWindingPath extends StatelessWidget {
   const CurriculumWindingPath({
