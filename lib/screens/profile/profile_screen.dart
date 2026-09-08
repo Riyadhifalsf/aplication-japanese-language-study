@@ -9,6 +9,7 @@ import '../auth/login_screen.dart';
 // tetapi tidak diimport/ditampilkan agar tidak ada UI subscription.
 import 'profile_settings_screen.dart';
 import 'study_stats_screen.dart';
+import '../../widgets/profile_insights.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -187,19 +188,23 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        ProfileInsights(app: app),
+        const SizedBox(height: 14),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Penguasaan JLPT keseluruhan',
-                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
-                ),
+                const Text('Penguasaan JLPT keseluruhan', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 10),
-                for (final level in const ['N5', 'N4', 'N3', 'N2', 'N1'])
-                  _LevelProgress(level, app),
+                for (final level in const ['N5', 'N4', 'N3', 'N2', 'N1']) _LevelProgress(level, app),
+                const SizedBox(height: 8),
+                const Divider(),
+                const SizedBox(height: 4),
+                const Text('Aktivitas terakhir', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 6),
+                for (final e in app.activityJournal.reversed.take(8)) ListTile(contentPadding: EdgeInsets.zero, dense: true, leading: const Icon(Icons.timeline_rounded), title: Text('${e['label'] ?? '-'}', maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text('${e['type'] ?? '-'} · ${e['at'] ?? '-'}')),
               ],
             ),
           ),

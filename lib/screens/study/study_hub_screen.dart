@@ -24,7 +24,6 @@ import '../readings/reading_screen.dart';
 import '../sentences/sentence_screen.dart';
 import '../vocab/vocabulary_screen.dart';
 import '../curriculum/curriculum_path_screen.dart';
-import 'learning_path_screen.dart';
 import 'today_learning_screen.dart';
 import 'learning_tracks_screen.dart';
 import '../profile/study_stats_screen.dart';
@@ -77,7 +76,7 @@ class StudyHubScreen extends StatelessWidget {
               screen: TodayLearningScreen(),
             ),
             _StudyCardData(
-              title: 'Learning Path',
+              title: 'Learning',
               subtitle: 'Beginner → N5 → N1 + Work Path',
               icon: Icons.route_rounded,
               color: const Color(0xFFD92D20),
@@ -87,15 +86,6 @@ class StudyHubScreen extends StatelessWidget {
                   .percent,
               screen: CurriculumPathScreen(
                   initialLevel: app.curriculumActiveLevelId),
-            ),
-            _StudyCardData(
-              title: 'Path Belajar (lama)',
-              subtitle: 'N5 → N4 → N3 → N2 → N1',
-              icon: Icons.timeline_rounded,
-              color: const Color(0xFFB42318),
-              badge: 'Klasik',
-              progress: app.completedLearningStepIds.length / 25,
-              screen: LearningPathScreen(initialLevel: app.selectedStudyLevel),
             ),
             _StudyCardData(
               title: 'Kanji Study',
@@ -164,17 +154,17 @@ class StudyHubScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         _StudyShelf(
-            title: 'Jalur level',
+            title: 'Pilih materi',
             subtitle:
-                'Mulai dari N5 atau buktikan kemampuanmu lewat placement quiz.',
+                'Level aktif menentukan materi Learning; Library tetap lengkap.',
             cards: [
               _StudyCardData(
-                  title: 'Placement Quiz',
-                  subtitle: 'Tes untuk membantu membuka N4–N1',
+                  title: 'Learning aktif',
+                  subtitle: 'Buka semua bab dan sub-bab pada levelmu',
                   icon: Icons.assignment_turned_in_rounded,
                   color: const Color(0xFFD92D20),
-                  badge: '80%+',
-                  screen: const LearningPathScreen()),
+                  badge: 'BEBAS',
+                  screen: const CurriculumPathScreen()),
             ]),
         const SizedBox(height: 24),
         _StudyShelf(
@@ -411,7 +401,7 @@ class _ContinuePath extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => next == null
-                      ? LearningPathScreen(initialLevel: level)
+                      ? CurriculumPathScreen(initialLevel: level)
                       : ChapterDetailScreen(chapter: next),
                 ),
               ),

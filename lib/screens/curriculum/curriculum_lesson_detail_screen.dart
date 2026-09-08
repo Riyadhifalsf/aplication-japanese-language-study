@@ -104,7 +104,7 @@ class _CurriculumLessonDetailScreenState
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
           Text(
-            'Selesaikan berurutan. Tiap aktivitas memberi XP berbeda.',
+            'Semua sub-aktivitas terbuka. Kamu bisa memilih bagian yang ingin dipelajari dulu; XP tetap mengikuti aktivitas yang diselesaikan.',
             style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
@@ -114,9 +114,7 @@ class _CurriculumLessonDetailScreenState
               number: i + 1,
               activity: lesson.activities[i],
               done: doneIds.contains(lesson.activities[i].id),
-              locked: i > 0 &&
-                  !doneIds.contains(lesson.activities[i - 1].id) &&
-                  !allDone,
+              locked: false,
               onTap: () => _openActivity(
                   context, app, lesson, lesson.activities[i]),
             ),
@@ -181,9 +179,8 @@ class _CurriculumLessonDetailScreenState
       CurriculumLesson lesson, LessonActivity activity) async {
     // Tandai aktif agar Home "Continue" selalu tepat.
     app.setCurriculumActiveLesson(lesson.id);
-    // Quiz/tes dengan penilaian inline hanya lewat latihan inline
-    // (skor ≥70%), bukan sheet — anti bypass. Legacy tanpa inline
-    // tetap pakai alur sheet agar tidak dead-end.
+    // Quiz/tes inline tetap menjadi tempat penilaian resmi; membuka aktivitas
+    // lain tidak diblokir oleh urutan lesson.
     if (_isScoredActivity(activity) &&
         _hasInlineAssessment(app, lesson, _quizActivityId(lesson))) {
       if (!context.mounted) return;

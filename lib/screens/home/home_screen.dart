@@ -12,6 +12,10 @@ import '../../widgets/liquid_glass.dart';
 import '../kanji/kanji_detail_screen.dart';
 import '../kanji/kanji_study_screen.dart';
 import '../notifications/notification_center_screen.dart';
+import '../kana/kana_screen.dart';
+import '../grammar/grammar_screen.dart';
+import '../vocab/vocabulary_screen.dart';
+import '../readings/reading_screen.dart';
 import '../review/mistake_review_screen.dart';
 import '../streak/streak_screen.dart';
 import '../study/today_learning_screen.dart';
@@ -142,65 +146,36 @@ class HomeScreen extends StatelessWidget {
         // DAILY GOAL (jawab: pencapaian hari ini).
         _DailyGoalCard(app: app),
         const SizedBox(height: 16),
-        // QUICK ACTIONS (Learn / Review / Kanji / Practice).
-        const Text('Aksi cepat',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 8),
-        _QuickActions(
-            onOpenStudy: onOpenStudy, onOpenQuiz: onOpenQuiz, app: app),
-        const SizedBox(height: 16),
-        Entrance(
-          keyName: 'home-mission',
-          delay: const Duration(milliseconds: 45),
-          child: _TodayMissionCard(app: app),
-        ),
-        const SizedBox(height: 16),
         Entrance(
           keyName: 'home-streak',
-          delay: const Duration(milliseconds: 70),
+          delay: const Duration(milliseconds: 35),
           child: _StreakCard(app: app),
         ),
         const SizedBox(height: 16),
         Entrance(
           keyName: 'home-kanji',
-          delay: const Duration(milliseconds: 140),
+          delay: const Duration(milliseconds: 60),
           child: _TodayKanjiCarousel(app: app),
         ),
+        const SizedBox(height: 16),
+        const Text('Akses cepat', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        _ShortcutSlider(
+          items: [
+            _HomeShortcut('Pusat Quiz', Icons.quiz_rounded, onOpenQuiz),
+            _HomeShortcut('Misi hari ini', Icons.flag_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TodayLearningScreen()))),
+            _HomeShortcut('Kana', Icons.translate_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanaScreen()))),
+            _HomeShortcut('Kanji', Icons.menu_book_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanjiStudyScreen()))),
+            _HomeShortcut('Grammar', Icons.rule_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GrammarScreen()))),
+            _HomeShortcut('Kotoba', Icons.text_fields_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VocabularyScreen()))),
+            _HomeShortcut('Reading', Icons.chrome_reader_mode_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReadingScreen()))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Entrance(keyName: 'home-mission', delay: const Duration(milliseconds: 80), child: _TodayMissionCard(app: app)),
         // Iklan tetap tampil (bukan paywall). Premium check dihapus Phase 1.
         const SizedBox(height: 16),
         AdmobNativeSlot(hidden: false),
-        const SizedBox(height: 18),
-        // Dua tombol dibuat SIMETRIS: tinggi sama via IntrinsicHeight.
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _ActionCard(
-                  icon: Icons.auto_stories_rounded,
-                  title: 'Misi hari ini',
-                  subtitle: 'Ikuti urutan yang direkomendasikan',
-                  onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const TodayLearningScreen())),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _ActionCard(
-                  icon: Icons.quiz_rounded,
-                  title: 'Pusat Quiz',
-                  subtitle: 'Akurasi ${(app.quizAccuracy * 100).round()}%',
-                  onTap: onOpenQuiz,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        // RECENT ACTIVITY (belajar terakhir yang tercatat).
-        _RecentActivityCard(app: app),
       ],
     );
   }
@@ -656,91 +631,50 @@ class _QuickTile extends StatelessWidget {
       );
 }
 
-class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard({required this.app});
-
-  final AppController app;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = app.activityJournal.reversed.take(3).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Aktivitas terakhir',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 8),
-        AppCard(
-          padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              for (var i = 0; i < items.length; i++) ...[
-                ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.check_circle_outline_rounded),
-                  title: Text('${items[i]['label'] ?? '-'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${items[i]['type'] ?? ''}',
-                      style: const TextStyle(fontSize: 11)),
-                ),
-                if (i != items.length - 1) const Divider(height: 1),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+class _HomeShortcut {
+  const _HomeShortcut(this.title, this.icon, this.onTap);
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
 }
 
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+class _ShortcutSlider extends StatelessWidget {
+  const _ShortcutSlider({required this.items});
+  final List<_HomeShortcut> items;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Row(
-            children: [
-              CircleAvatar(child: Icon(icon)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(fontWeight: FontWeight.w900)),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+    return SizedBox(
+      height: 116,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return SizedBox(
+            width: 148,
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: item.onTap,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(child: Icon(item.icon)),
+                      const Spacer(),
+                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 3),
+                      const Text('Buka', style: TextStyle(fontSize: 11)),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

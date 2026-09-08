@@ -42,14 +42,11 @@ class CurriculumEngine {
       }
       return saved.status;
     }
-    final index = ordered.indexWhere((l) => l.id == lesson.id);
-    if (index <= 0) return CurriculumLessonStatus.available;
-    final prev = progressById[ordered[index - 1].id]?.status;
-    if (prev == CurriculumLessonStatus.completed ||
-        prev == CurriculumLessonStatus.mastered) {
-      return CurriculumLessonStatus.available;
-    }
-    return CurriculumLessonStatus.locked;
+    // Lesson dalam level aktif sengaja tidak dikunci. Pengguna boleh
+    // melompat antar bab/lesson kapan saja; status hanya merefleksikan
+    // progress yang sudah tersimpan. Jalur tetap memberi rekomendasi
+    // urutan, tetapi bukan paywall pedagogis.
+    return CurriculumLessonStatus.available;
   }
 
   static Map<String, CurriculumLessonStatus> statusesForLevel({

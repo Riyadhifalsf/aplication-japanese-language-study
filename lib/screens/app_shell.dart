@@ -107,7 +107,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       const NavigationRailDestination(
           icon: Icon(Icons.route_outlined),
           selectedIcon: Icon(Icons.route_rounded),
-          label: Text('Learn')),
+          label: Text('Learning')),
       const NavigationRailDestination(
           icon: Icon(Icons.quiz_outlined),
           selectedIcon: Icon(Icons.quiz_rounded),
@@ -190,7 +190,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           NavigationDestination(
               icon: Icon(Icons.route_outlined),
               selectedIcon: Icon(Icons.route_rounded),
-              label: 'Learn'),
+              label: 'Learning'),
           NavigationDestination(
               icon: Icon(Icons.quiz_outlined),
               selectedIcon: Icon(Icons.quiz_rounded),

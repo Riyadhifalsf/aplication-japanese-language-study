@@ -5,6 +5,7 @@ import '../../features/curriculum/curriculum_models.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/common_widgets.dart';
 import '../study/level_placement_screen.dart';
+import '../../widgets/kana_foundation_section.dart';
 import 'curriculum_lesson_detail_screen.dart';
 import 'curriculum_winding_path.dart';
 
@@ -41,6 +42,9 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final levels = CurriculumCatalogData.levelsForTrack(_track);
+    if (_track == 'jlpt' && {'N5','N4','N3','N2','N1'}.contains(app.selectedStudyLevel)) {
+      _levelId = app.selectedStudyLevel;
+    }
     var level = CurriculumCatalogData.levelById(_levelId);
     if (level == null || level.track != _track) {
       level = levels.isNotEmpty ? levels.first : null;
@@ -48,24 +52,22 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
     }
     if (level == null) {
       return Scaffold(
-          appBar: AppBar(title: const Text('Learning Path')),
+          appBar: AppBar(title: const Text('Learning')),
           body: const EmptyState(
               title: 'Belum ada level',
               message: 'Katalog kurikulum belum tersedia.'));
     }
     final current = level;
-    final unlocked = app.isCurriculumLevelUnlocked(current.id);
+    final unlocked = true;
     final progress = app.curriculumLevelProgress(current.id);
     final statuses = app.curriculumStatuses(current.id);
     final adaptive = app.curriculumAdaptive(current.id);
     final reviews = app.curriculumReviewQueue(current.id, limit: 3);
-    final unlockState = current.requiredPreviousLevelId == null
-        ? null
-        : app.curriculumUnlockState(current.id);
+    final unlockState = null;
     final hasAnyProgress = app.curriculumProgressById.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Learning Path')),
+      appBar: AppBar(title: const Text('Learning')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 10, 18, 34),
         children: [
@@ -104,102 +106,8 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
             },
           ),
           const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final l in levels)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _LevelChip(
-                      level: l,
-                      selected: l.id == _levelId,
-                      unlocked: app.isCurriculumLevelUnlocked(l.id),
-                      progress: app.curriculumLevelProgress(l.id),
-                      onTap: () {
-                        setState(() => _levelId = l.id);
-                        app.setCurriculumActiveLevel(l.id);
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // Placement entry: mulai dari awal vs placement test.
-          if (!hasAnyProgress) ...[
-            const SizedBox(height: 14),
-            Card(
-              color: Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: .55),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Baru mulai?',
-                        style: TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Pilih "Mulai dari Beginner" untuk jalur N5 Unit 1, atau "Placement Test" untuk menentukan titik awal (N5 Beginner / Intermediate / N4 Beginner ...). Kamu tetap bisa mulai dari awal kapan saja.',
-                      style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
-                          height: 1.4),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton.icon(
-                            onPressed: () {
-                              app.setCurriculumActiveLevel('N5');
-                              setState(() {
-                                _track = 'jlpt';
-                                _levelId = 'N5';
-                              });
-                            },
-                            icon: const Icon(Icons.flag_rounded),
-                            label: const Text('Mulai Beginner'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const LevelPlacementScreen(
-                                    level: 'N5'),
-                              ),
-                            ),
-                            icon: const Icon(Icons.quiz_rounded),
-                            label: const Text('Placement Test'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          if (!unlocked && unlockState != null) ...[
-            const SizedBox(height: 14),
-            _LockedBanner(
-              level: current,
-              unlockState: unlockState,
-              onPlacement: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LevelPlacementScreen(
-                      level: current.requiredPreviousLevelId ?? 'N5'),
-                ),
-              ),
-            ),
-          ],
+          if (_track == 'jlpt') const KanaFoundationSection(),
+          if (_track == 'jlpt') const SizedBox(height: 14),
           // Adaptive recommendation (jalur utama tetap, saran personal).
           if (unlocked && adaptive != null) ...[
             const SizedBox(height: 14),
@@ -224,7 +132,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
           if (unlocked) ...[
             const SizedBox(height: 4),
             Text(
-              'Lesson berikutnya terbuka setelah lesson sebelumnya selesai. Unit Test & Final Test butuh skor ≥70%.',
+              'Semua lesson di level ini terbuka. Jalur menyorot rekomendasi berikutnya, tetapi kamu bebas melompat ke bab mana pun.',
               style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.4),
@@ -264,7 +172,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
     final first = [...unit.lessons]
       ..sort((a, b) => a.sequence.compareTo(b.sequence));
     if (first.isEmpty) return false;
-    return statuses[first.first.id] == CurriculumLessonStatus.locked;
+    return false;
   }
 
   /// View-model node untuk path melengkung: satu node = satu unit.
@@ -281,8 +189,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
       final lessons = [...unit.lessons]
         ..sort((a, b) => a.sequence.compareTo(b.sequence));
       final prog = app.curriculumUnitProgress(unit);
-      final locked =
-          _isUnitLocked(unit: unit, level: level, statuses: statuses);
+      const locked = false;
       final complete = prog.total > 0 && prog.done >= prog.total;
       final isCurrent = !locked && !complete && !currentSet;
       if (isCurrent) currentSet = true;
@@ -310,32 +217,47 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
   }
 
   void _openNode(BuildContext context, AppController app, UnitPathNode node) {
-    if (node.locked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selesaikan unit sebelumnya dulu.')),
-      );
-      return;
-    }
-    final lesson = node.nextLesson;
-    if (lesson == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Belum ada lesson di unit ini.')),
-      );
-      return;
-    }
-    _openLesson(context, app, lesson);
+    final lessons = [...node.unit.lessons]..sort((a, b) => a.sequence.compareTo(b.sequence));
+    if (lessons.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Bab ${node.unit.sequence} · ${node.unit.title}', style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 5),
+            Text(node.unit.description.isEmpty ? 'Pilih sub-bab mana pun untuk langsung belajar.' : node.unit.description),
+            const SizedBox(height: 12),
+            Flexible(child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: lessons.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, index) {
+                final lesson = lessons[index];
+                final status = app.curriculumLessonStatus(lesson);
+                final done = status == CurriculumLessonStatus.completed || status == CurriculumLessonStatus.mastered;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(child: done ? const Icon(Icons.check_rounded) : Text('${index + 1}')),
+                  title: Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text(lesson.subtitle.isEmpty ? '${lesson.activities.length} aktivitas · ${lesson.estimatedMinutes} menit' : lesson.subtitle),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () { Navigator.pop(context); _openLesson(context, app, lesson); },
+                );
+              },
+            )),
+          ]),
+        ),
+      ),
+    );
   }
 
   void _openLesson(
       BuildContext context, AppController app, CurriculumLesson lesson) {
     final status = app.curriculumLessonStatus(lesson);
-    if (status == CurriculumLessonStatus.locked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Selesaikan lesson sebelumnya dulu.')),
-      );
-      return;
-    }
     app.setCurriculumActiveLesson(lesson.id);
     Navigator.push(
       context,

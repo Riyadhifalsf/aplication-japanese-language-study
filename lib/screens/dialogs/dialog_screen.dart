@@ -554,7 +554,7 @@ final List<DialogLesson> _dialogLessons = [
     favorite: true,
     tags: ['perkenalan', 'sopan'],
     lines: const [
-      DialogLine(speaker: 'A', japanese: 'はじめまして。リヤディファルです。', reading: 'hajimemashite. Riyadhifaru desu.', meaning: 'Salam kenal. Saya Riyadhifal.'),
+      DialogLine(speaker: 'A', japanese: 'はじめまして。タナカです。', reading: 'hajimemashite. Tanaka desu.', meaning: 'Salam kenal. Saya Tanaka.'),
       DialogLine(speaker: 'B', japanese: 'はじめまして。どちらから来ましたか。', reading: 'hajimemashite. dochira kara kimashita ka.', meaning: 'Salam kenal. Anda berasal dari mana?'),
       DialogLine(speaker: 'A', japanese: 'インドネシアから来ました。', reading: 'indoneshia kara kimashita.', meaning: 'Saya berasal dari Indonesia.'),
       DialogLine(speaker: 'B', japanese: '日本語を勉強しているんですか。', reading: 'nihongo o benkyou shite iru n desu ka.', meaning: 'Apakah Anda sedang belajar bahasa Jepang?'),
@@ -1169,7 +1169,7 @@ final List<DialogLesson> _dialogLessons = [
     tags: ['wawancara', 'kerja', 'sopan'],
     lines: const [
       DialogLine(speaker: '面接官', japanese: '自己紹介をお願いします。', reading: 'jikoshoukai o onegai shimasu.', meaning: 'Silakan perkenalkan diri.'),
-      DialogLine(speaker: '応募者', japanese: 'リヤディファルと申します。インドネシア出身です。', reading: 'riyadifaru to moushimasu. indoneshia shusshin desu.', meaning: 'Nama saya Riyadhifal. Saya berasal dari Indonesia.'),
+      DialogLine(speaker: '応募者', japanese: 'タナカと申します。インドネシア出身です。', reading: 'riyadifaru to moushimasu. indoneshia shusshin desu.', meaning: 'Nama saya Tanaka. Saya berasal dari Indonesia.'),
       DialogLine(speaker: '応募者', japanese: '二年間、日本語と機械の基礎を勉強してきました。', reading: 'ninenkan, nihongo to kikai no kiso o benkyou shite kimashita.', meaning: 'Selama dua tahun saya mempelajari bahasa Jepang dan dasar mesin.'),
       DialogLine(speaker: '面接官', japanese: 'ありがとうございます。', reading: 'arigatou gozaimasu.', meaning: 'Terima kasih.'),
     ],
@@ -2123,7 +2123,7 @@ final List<DialogLesson> _dialogLessons = [
     icon: Icons.home_rounded,
     tags: ['tetangga', 'perkenalan', 'sopan'],
     lines: const [
-      DialogLine(speaker: '新住人', japanese: '昨日、隣に引っ越してきたリヤディファルです。', reading: 'kinou, tonari ni hikkoshite kita Riyadhifaru desu.', meaning: 'Saya Riyadhifal yang kemarin baru pindah ke sebelah.'),
+      DialogLine(speaker: '新住人', japanese: '昨日、隣に引っ越してきたタナカです。', reading: 'kinou, tonari ni hikkoshite kita Tanaka desu.', meaning: 'Saya Tanaka yang kemarin baru pindah ke sebelah.'),
       DialogLine(speaker: '隣人', japanese: 'はじめまして。よろしくお願いします。', reading: 'hajimemashite. yoroshiku onegai shimasu.', meaning: 'Salam kenal. Senang bertetangga dengan Anda.'),
       DialogLine(speaker: '新住人', japanese: 'こちらこそ、よろしくお願いします。', reading: 'kochira koso, yoroshiku onegai shimasu.', meaning: 'Saya juga senang bertetangga dengan Anda.'),
       DialogLine(speaker: '隣人', japanese: '何か分からないことがあったら聞いてください。', reading: 'nanika wakaranai koto ga attara kiite kudasai.', meaning: 'Kalau ada yang tidak Anda mengerti, silakan bertanya.'),

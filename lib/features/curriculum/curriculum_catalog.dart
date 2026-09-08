@@ -118,7 +118,7 @@ List<CurriculumUnit> _n5Units() => [
                     LessonLine(
                         japanese: 'わたしは リヤドです。',
                         reading: 'わたしは リヤドです。',
-                        meaning: 'Saya Riyado.'),
+                        meaning: 'Saya Tanaka.'),
                     LessonLine(
                         japanese: 'インドネシアじんです。',
                         reading: 'インドネシアじんです。',
@@ -349,14 +349,14 @@ List<CurriculumUnit> _n5Units() => [
                     LessonLine(
                         japanese: 'りやどさん。',
                         reading: 'りやどさん。',
-                        meaning: 'Tn. Riyado.'),
+                        meaning: 'Tn. Tanaka.'),
                   ],
                 ),
               ],
               authoredQuestions: [
                 AuthoredQuestion(
                   prompt: 'たなかさん artinya?',
-                  options: ['Tn. Tanaka', 'Tn. Yamada', 'Tn. Riyado'],
+                  options: ['Tn. Tanaka', 'Tn. Yamada', 'Tn. Sato'],
                   correctIndex: 0,
                   explanation: 'Nama + ～さん = panggilan sopan.',
                 ),
@@ -497,7 +497,7 @@ List<CurriculumUnit> _n5Units() => [
                 ),
                 AuthoredQuestion(
                   prompt: 'Dengarkan. Siapa nama orang tersebut?',
-                  options: ['Tanaka', 'Yamada', 'Riyado'],
+                  options: ['Tanaka', 'Yamada', 'Sato'],
                   correctIndex: 0,
                   explanation: 'Audio menyebut たなか.',
                   audio: 'わたしは たなかです。',
@@ -535,7 +535,7 @@ List<CurriculumUnit> _n5Units() => [
               vocabularyIds: ['123', '313'],
               notes: [
                 LessonNote(
-                  title: 'Bacaan: Perkenalan Riyado',
+                  title: 'Bacaan: Perkenalan Tanaka',
                   body: 'Bacaan ini hanya memakai salam dan pola yang sudah '
                       'dipelajari.',
                   lines: [
@@ -546,7 +546,7 @@ List<CurriculumUnit> _n5Units() => [
                     LessonLine(
                         japanese: 'わたしは リヤドです。',
                         reading: 'わたしは リヤドです。',
-                        meaning: 'Saya Riyado.'),
+                        meaning: 'Saya Tanaka.'),
                     LessonLine(
                         japanese: 'インドネシアじんです。',
                         reading: 'インドネシアじんです。',
@@ -561,7 +561,7 @@ List<CurriculumUnit> _n5Units() => [
               authoredQuestions: [
                 AuthoredQuestion(
                   prompt: 'Siapa yang berkenalan di teks?',
-                  options: ['Riyado', 'Tanaka', 'Yamada'],
+                  options: ['Tanaka', 'Yamada', 'Sato'],
                   correctIndex: 0,
                   explanation: 'Teks menyebut リヤド.',
                 ),
