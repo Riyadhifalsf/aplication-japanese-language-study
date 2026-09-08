@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/exam_question.dart';
 import '../../state/app_controller.dart';
-import '../../services/feature_flags_service.dart';
 import '../../widgets/entrance.dart';
 import '../exams/exam_hub_screen.dart';
 import '../kana/kana_screen.dart';
@@ -15,7 +14,6 @@ import '../vocab/vocabulary_quiz_screen.dart';
 import 'quiz_setup_screen.dart';
 import '../review/mistake_review_screen.dart';
 import '../games/game_hub_screen.dart';
-import '../speaking/speaking_practice_screen.dart';
 
 class QuizCenterScreen extends StatelessWidget {
   const QuizCenterScreen({super.key});
@@ -43,7 +41,6 @@ class QuizCenterScreen extends StatelessWidget {
     }
     final level = app.selectedStudyLevel == 'JFT' ? 'N5' : app.selectedStudyLevel;
     final examLocked = !app.canAccessFeature('exam_simulation');
-    final speakingEnabled = app.speakingEnabled;
     return ListView(padding: const EdgeInsets.fromLTRB(18, 16, 18, 32), children: [
       Entrance(
         keyName: 'quiz-header',
@@ -61,7 +58,6 @@ class QuizCenterScreen extends StatelessWidget {
         _Item('Quiz Custom','Atur mode dan jumlah soal',Icons.tune_rounded,()=>_open(context,const QuizSetupScreen())),
         _Item('Ulasan Kesalahan','Lihat jawaban salah',Icons.rate_review_rounded,()=>_open(context,const MistakeReviewScreen())),
         _Item('Games','Typing Kana, Kotoba, Kanji',Icons.sports_esports_rounded,()=>_open(context,const GameHubScreen())),
-        _Item('Speaking Practice','Dengar dan latih pengucapan',Icons.mic_rounded,()=>_open(context,const SpeakingPracticeScreen()),beta: true, enabledOverride: speakingEnabled, flagKey: FeatureFlagsService.speaking),
       ], enabled:true),
       const SizedBox(height:22),
       _Section(title:'Ujian & simulasi', subtitle:'Paket ujian dipisahkan dari latihan harian.'),

@@ -588,7 +588,6 @@ class AppController extends ChangeNotifier {
   bool get communityEnabled => featureEnabled(FeatureFlagsService.community);
   bool get followersEnabled => featureEnabled(FeatureFlagsService.followers);
   bool get commentsEnabled => featureEnabled(FeatureFlagsService.comments);
-  bool get speakingEnabled => featureEnabled(FeatureFlagsService.speaking);
 
   Future<void> setFeatureFlag(String key, bool enabled) async {
     await FeatureFlagsService.set(key, enabled);

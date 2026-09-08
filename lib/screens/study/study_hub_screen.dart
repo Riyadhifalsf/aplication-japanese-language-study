@@ -29,7 +29,6 @@ import 'today_learning_screen.dart';
 import 'learning_tracks_screen.dart';
 import '../profile/study_stats_screen.dart';
 import '../games/game_hub_screen.dart';
-import '../speaking/speaking_practice_screen.dart';
 import '../review/mistake_review_screen.dart';
 
 class StudyHubScreen extends StatelessWidget {
@@ -154,13 +153,6 @@ class StudyHubScreen extends StatelessWidget {
                 color: Color(0xFFB42318),
                 badge: 'Play',
                 screen: GameHubScreen()),
-            const _StudyCardData(
-                title: 'Speaking Practice',
-                subtitle: 'Latihan pengucapan dengan TTS',
-                icon: Icons.mic_rounded,
-                color: Color(0xFF0EA5E9),
-                badge: 'Speak',
-                screen: SpeakingPracticeScreen()),
             const _StudyCardData(
                 title: 'Ulasan Kesalahan',
                 subtitle: 'Evaluasi kesalahan dan rekomendasi AI',

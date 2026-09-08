@@ -8,6 +8,7 @@ import '../widgets/admob_banner_slot.dart';
 import '../widgets/auth_gate.dart';
 import '../widgets/common_widgets.dart';
 import 'curriculum/curriculum_path_screen.dart';
+import 'donation/donation_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
 import 'quiz/quiz_center_screen.dart';
@@ -58,9 +59,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   /// IA: 0 Home, 1 Learn (Learning Path), 2 Practice (Quiz/Review),
-  /// 3 Library (Independent Study). SEMUA tab terbuka untuk semua pengguna
-  /// (tamu maupun login) — tidak ada lock fitur. Satu-satunya urutan adalah
-  /// pedagogis di dalam Learning Path (lesson-per-lesson).
+  /// 3 Library (Independent Study), 4 Donasi. SEMUA tab terbuka untuk semua
+  /// pengguna (tamu maupun login) — tidak ada lock fitur. Satu-satunya
+  /// urutan adalah pedagogis di dalam Learning Path (lesson-per-lesson).
   Future<void> _select(int value) async {
     setState(() => _index = value);
     // Iklan tetap jalan, tidak tergantung status apapun.
@@ -89,7 +90,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         // Practice: latihan bebas + review + mistakes + exam.
         2 => const QuizCenterScreen(),
         // Library: independent study (Vocab/Kanji/Grammar/Kana/dll).
-        _ => const StudyHubScreen(),
+        3 => const StudyHubScreen(),
+        // Donasi: dukung pengembangan (ikon lebih besar dari lainnya).
+        _ => const DonationScreen(),
       };
 
   @override
@@ -113,6 +116,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           icon: Icon(Icons.library_books_outlined),
           selectedIcon: Icon(Icons.library_books_rounded),
           label: Text('Library')),
+      const NavigationRailDestination(
+          icon: Icon(Icons.volunteer_activism_outlined, size: 30),
+          selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30),
+          label: Text('Donasi')),
     ];
 
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
@@ -192,6 +199,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               icon: Icon(Icons.library_books_outlined),
               selectedIcon: Icon(Icons.library_books_rounded),
               label: 'Library'),
+          NavigationDestination(
+              icon: Icon(Icons.volunteer_activism_outlined, size: 30),
+              selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30),
+              label: 'Donasi'),
         ],
       ),
         ],

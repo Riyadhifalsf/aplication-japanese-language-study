@@ -379,16 +379,7 @@ class _PathHero extends StatelessWidget {
               children: [
                 const Icon(Icons.route_rounded,
                     color: Colors.white, size: 28),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Path ${level.id}',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900),
-                  ),
-                ),
+                const Spacer(),
                 _Pill(icon: Icons.local_fire_department_rounded, text: '$streak'),
                 const SizedBox(width: 8),
                 _Pill(icon: Icons.star_rounded, text: '$xp XP'),
