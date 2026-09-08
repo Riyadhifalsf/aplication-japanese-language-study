@@ -7,6 +7,7 @@ import '../../state/app_controller.dart';
 import '../auth/login_screen.dart';
 import '../kanji/kanji_review_screen.dart';
 import '../profile/bug_report_screen.dart';
+import 'change_password_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'reminder_settings_screen.dart';
 
@@ -30,6 +31,26 @@ class ProfileSettingsScreen extends StatelessWidget {
           const Text('Profil', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           Card(child: ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Sunting profil', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Data pribadi, identitas komunitas, dan sosial media.'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _editProfile(context, app))),
+          const SizedBox(height: 20),
+          const Text('Keamanan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.lock_reset_rounded),
+              title: const Text('Ganti password', style: TextStyle(fontWeight: FontWeight.w900)),
+              subtitle: Text(app.isAuthenticated
+                  ? 'Wajib tahu password saat ini. Hash bcrypt, sesi lama otomatis mati.'
+                  : 'Masuk dulu untuk ganti password.'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () {
+                if (!app.isAuthenticated) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                  return;
+                }
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
+              },
+            ),
+          ),
           const SizedBox(height: 20),
           const Text('Belajar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),

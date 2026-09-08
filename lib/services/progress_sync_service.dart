@@ -154,6 +154,7 @@ class ProgressSyncService {
       'appLanguage',
       'ttsGender',
       'reviewIntervalDays',
+      'dailyGoalXp',
       'membershipPlan',
       'membershipTier',
       'activeRoadmapStepId',

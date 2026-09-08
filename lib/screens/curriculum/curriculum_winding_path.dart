@@ -1,10 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../features/curriculum/curriculum_models.dart';
 import '../../state/app_controller.dart';
-import '../profile/premium_screen.dart';
+// Phase 1: premium_screen tidak dipakai. File dipertahankan untuk future dev.
 
 /// View-model satu node unit di path melengkung ala LingoDeer.
 class UnitPathNode {
@@ -322,103 +320,12 @@ class PromoBanner extends StatefulWidget {
   State<PromoBanner> createState() => _PromoBannerState();
 }
 
+/// Phase 1: PromoBanner premium dinonaktifkan total. Class dipertahankan
+/// agar tidak merusak import, tetapi build selalu shrink.
+/// Kode promo lama tersimpan di git history untuk future development.
 class _PromoBannerState extends State<PromoBanner> {
-  late Timer _timer;
-  Duration _left = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _tick();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-  }
-
-  void _tick() {
-    final now = DateTime.now();
-    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    if (mounted) setState(() => _left = end.difference(now));
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  static String _two(int n) => n.toString().padLeft(2, '0');
-
   @override
   Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    if (app.isPremium) return const SizedBox.shrink();
-    final h = _two(_left.inHours.clamp(0, 99).toInt());
-    final m = _two(_left.inMinutes.remainder(60).clamp(0, 59).toInt());
-    final s = _two(_left.inSeconds.remainder(60).clamp(0, 59).toInt());
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1F2A44), Color(0xFF10182B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.workspace_premium_rounded,
-            color: Color(0xFFFFD66B),
-            size: 34,
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'HEMAT\n40%',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                height: 1.0,
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$h : $m : $s',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 6),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD66B),
-                  foregroundColor: const Color(0xFF3A2B00),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                ),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const PremiumScreen(),
-                  ),
-                ),
-                child: const Text(
-                  'Upgrade ke Premium >',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }

@@ -239,6 +239,12 @@ class CurriculumEngine {
     final existing = progressById[lesson.id] ??
         UserLessonProgress(
             lessonId: lesson.id, status: CurriculumLessonStatus.inProgress);
+    // Idempotent: aktivitas yang sudah selesai tidak memberi XP lagi.
+    // Mencegah double XP karena buka/tutup screen berulang.
+    if (existing.completedActivityIds.contains(activityId)) {
+      progressById[lesson.id] = existing;
+      return (progress: existing, xpGained: 0, lessonJustCompleted: false);
+    }
     final completed = {...existing.completedActivityIds, activityId};
     existing.completedActivityIds = completed;
     existing.attempts++;

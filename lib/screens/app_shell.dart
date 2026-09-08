@@ -7,11 +7,11 @@ import '../state/app_controller.dart';
 import '../widgets/admob_banner_slot.dart';
 import '../widgets/auth_gate.dart';
 import '../widgets/common_widgets.dart';
+import 'curriculum/curriculum_path_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
 import 'quiz/quiz_center_screen.dart';
 import 'study/study_hub_screen.dart';
-import 'kanji/kanji_study_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -57,36 +57,34 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     ));
   }
 
+  /// IA baru: 0 Home, 1 Learn (Learning Path murni), 2 Practice
+  /// (Quiz/Review/Mistakes), 3 Library (Independent Study via StudyHub).
+  /// Learn vs Library dipisah tegas; Review masuk Home + Practice.
   Future<void> _select(int value) async {
     final app = _app ?? AppScope.of(context);
-    // Tamu: Beranda + Belajar bebas. Quiz + Kanji + Profil wajib login —
-    // cukup beri tahu user belum login (tanpa mode pratinjau).
-    if (!app.isAuthenticated && (value == 2 || value == 3)) {
-      const names = {2: 'Quiz', 3: 'Kanji'};
-      await requireLogin(context, feature: names[value] ?? 'fitur ini');
+    // Tamu: Home + Learn bebas. Practice wajib login. Library bebas agar
+    // belajar kosakata/kanji mandiri tetap terbuka.
+    if (!app.isAuthenticated && value == 2) {
+      await requireLogin(context, feature: 'Practice');
       return;
     }
     if (value == 2 && !app.canAccessFeature('quiz_center')) {
-      _lock(context, 'Quiz Center', app.featureXpRequirement('quiz_center'));
-      return;
-    }
-    if (value == 3 && !app.canAccessFeature('kanji')) {
-      _lock(context, 'Kanji', app.featureXpRequirement('kanji'));
+      _lock(context, 'Practice', app.featureXpRequirement('quiz_center'));
       return;
     }
     setState(() => _index = value);
-    if (!app.isPremium) unawaited(AdsService.instance.onTabChange());
+    // Phase 1: iklan tetap jalan, tidak tergantung status premium.
+    unawaited(AdsService.instance.onTabChange());
   }
 
   void _lock(BuildContext context, String feature, int xp) {
-    final app = AppScope.of(context);
     showDialog<void>(
         context: context,
         builder: (_) => AlertDialog(
               title: Text('$feature belum terbuka'),
-              content: Text(app.hasFullAccess
-                  ? 'Fitur ini sedang dikunci oleh aturan progres.'
-                  : 'Login untuk membuka lebih banyak materi gratis. Premium membuka seluruh aplikasi.'),
+              // Phase 1: tidak ada paywall. Lock murni progression XP.
+              content: Text(
+                  'Kumpulkan $xp XP untuk membuka $feature. Terus belajar untuk unlock.'),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(context),
@@ -111,9 +109,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             onOpenStudy: () => _select(1),
             onOpenQuiz: () => _select(2),
             onOpenProfile: _openProfile),
-        1 => const StudyHubScreen(),
+        // Learn murni Learning Path (bukan library).
+        1 => CurriculumPathScreen(
+            initialLevel: app.curriculumActiveLevelId),
+        // Practice: latihan bebas + review + mistakes + exam.
         2 => const QuizCenterScreen(),
-        _ => const KanjiStudyScreen(),
+        // Library: independent study (Vocab/Kanji/Grammar/Kana/dll).
+        _ => const StudyHubScreen(),
       };
 
   @override
@@ -126,17 +128,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           selectedIcon: Icon(Icons.home_rounded),
           label: Text('Beranda')),
       const NavigationRailDestination(
-          icon: Icon(Icons.auto_stories_outlined),
-          selectedIcon: Icon(Icons.auto_stories_rounded),
-          label: Text('Belajar')),
+          icon: Icon(Icons.route_outlined),
+          selectedIcon: Icon(Icons.route_rounded),
+          label: Text('Learn')),
       const NavigationRailDestination(
           icon: Icon(Icons.quiz_outlined),
           selectedIcon: Icon(Icons.quiz_rounded),
-          label: Text('Quiz')),
+          label: Text('Practice')),
       const NavigationRailDestination(
-          icon: Icon(Icons.wb_sunny_outlined),
-          selectedIcon: Icon(Icons.wb_sunny_rounded),
-          label: Text('Kanji')),
+          icon: Icon(Icons.library_books_outlined),
+          selectedIcon: Icon(Icons.library_books_rounded),
+          label: Text('Library')),
     ];
 
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
@@ -185,7 +187,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           const VerticalDivider(width: 1),
           Expanded(child: body),
         ]),
-        bottomNavigationBar: AdmobBannerSlot(hidden: app.isPremium),
+        // Phase 1: tidak ada tier premium, iklan selalu tampil.
+        bottomNavigationBar: AdmobBannerSlot(hidden: false),
       );
     }
     return Scaffold(
@@ -194,7 +197,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AdmobBannerSlot(hidden: app.isPremium),
+          AdmobBannerSlot(hidden: false),
           NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _select,
@@ -204,17 +207,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               selectedIcon: Icon(Icons.home_rounded),
               label: 'Beranda'),
           NavigationDestination(
-              icon: Icon(Icons.auto_stories_outlined),
-              selectedIcon: Icon(Icons.auto_stories_rounded),
-              label: 'Belajar'),
+              icon: Icon(Icons.route_outlined),
+              selectedIcon: Icon(Icons.route_rounded),
+              label: 'Learn'),
           NavigationDestination(
               icon: Icon(Icons.quiz_outlined),
               selectedIcon: Icon(Icons.quiz_rounded),
-              label: 'Quiz'),
+              label: 'Practice'),
           NavigationDestination(
-              icon: Icon(Icons.wb_sunny_outlined),
-              selectedIcon: Icon(Icons.wb_sunny_rounded),
-              label: 'Kanji'),
+              icon: Icon(Icons.library_books_outlined),
+              selectedIcon: Icon(Icons.library_books_rounded),
+              label: 'Library'),
         ],
       ),
         ],

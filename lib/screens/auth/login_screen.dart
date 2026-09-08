@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/brand_icons.dart';
 import '../admin/admin_dashboard_screen.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 import '../app_shell.dart';
 import '../onboarding_screen.dart';
@@ -88,7 +89,14 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 14),
       if (_error.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(_error, style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700))),
       FilledButton(onPressed: _busy ? null : _emailLogin, style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)), child: _busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Masuk')),
-      const SizedBox(height: 10),
+      Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ForgotPasswordScreen(initialEmail: _email.text))),
+          child: const Text('Lupa password?'),
+        ),
+      ),
+      const SizedBox(height: 4),
       OutlinedButton.icon(
         onPressed: _busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
         icon: const Icon(Icons.person_add_alt_1_rounded),

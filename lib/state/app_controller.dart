@@ -190,7 +190,13 @@ class AppController extends ChangeNotifier {
   Map<String, bool> featureFlags = {};
 
   static const dailyGoal = 100;
+  static const defaultDailyGoal = 100;
+  static const allowedDailyGoals = [20, 50, 100, 150];
   static const kanjiMasteryThreshold = 3;
+
+  /// Daily goal configurable (default 100 XP). Disimpan lokal + ikut sync.
+  /// Static [dailyGoal] dipertahankan untuk kompatibilitas kode lama.
+  int dailyGoalXp = defaultDailyGoal;
 
   /// Stopwatch umur proses untuk diagnosis cold start (log [STARTUP]).
   static final Stopwatch bootWatch = Stopwatch()..start();
@@ -347,6 +353,9 @@ class AppController extends ChangeNotifier {
         prefs.getString('lastDriveBackupLabel') ?? 'belum ada';
     xp = prefs.getInt('xp') ?? 0;
     dailyXp = prefs.getInt('dailyXp') ?? 0;
+    final loadedGoal = prefs.getInt('dailyGoalXp') ?? defaultDailyGoal;
+    dailyGoalXp =
+        allowedDailyGoals.contains(loadedGoal) ? loadedGoal : defaultDailyGoal;
     streak = prefs.getInt('streak') ?? 0;
     quizCorrect = prefs.getInt('quizCorrect') ?? 0;
     quizAnswered = prefs.getInt('quizAnswered') ?? 0;
@@ -508,7 +517,18 @@ class AppController extends ChangeNotifier {
   int get level => xp ~/ 500 + 1;
   int get levelXp => xp % 500;
   double get levelProgress => levelXp / 500;
-  double get dailyProgress => (dailyXp / dailyGoal).clamp(0.0, 1.0).toDouble();
+  double get dailyProgress =>
+      (dailyXp / dailyGoalXp).clamp(0.0, 1.0).toDouble();
+
+  /// Ganti target harian. Hanya nilai dalam [allowedDailyGoals].
+  /// Tidak mereset XP/streak/progress (migration aman).
+  Future<void> setDailyGoal(int value) async {
+    if (!allowedDailyGoals.contains(value)) return;
+    dailyGoalXp = value;
+    _preferences?.setInt('dailyGoalXp', value);
+    markProgressDirty(const ['dailyGoalXp']);
+    notifyListeners();
+  }
   double get quizAccuracy => quizAnswered == 0 ? 0 : quizCorrect / quizAnswered;
 
   int get learnedVocabularyCount => masteredVocabularyIds.length;
@@ -554,7 +574,10 @@ class AppController extends ChangeNotifier {
   bool get communityEnabled => featureEnabled(FeatureFlagsService.community);
   bool get followersEnabled => featureEnabled(FeatureFlagsService.followers);
   bool get commentsEnabled => featureEnabled(FeatureFlagsService.comments);
-  bool get aiCoachEnabled => featureEnabled(FeatureFlagsService.aiCoach);
+  /// AI Sensei / AI Coach DINONAKTIFKAN sementara (Phase 1 redesign).
+  /// Service internal tetap ada untuk future development, tetapi UI tidak
+  /// boleh menggunakannya. Selalu false agar tidak ada tombol AI yang muncul.
+  bool get aiCoachEnabled => false;
   bool get speakingEnabled => featureEnabled(FeatureFlagsService.speaking);
 
   Future<void> setFeatureFlag(String key, bool enabled) async {
@@ -774,8 +797,11 @@ class AppController extends ChangeNotifier {
         _ => 0,
       };
 
+  /// Phase 1: subscription/paywall dinonaktifkan. Unlock berbasis progression
+  /// (XP / lesson), bukan pembayaran. `hasFullAccess` tidak lagi dipakai
+  /// untuk bypass agar progression tetap bermakna.
   bool canAccessFeature(String feature) =>
-      xp >= featureXpRequirement(feature) || hasFullAccess;
+      xp >= featureXpRequirement(feature);
 
   /// Akun dianggap terverifikasi bila login via Google atau emailnya
   /// sudah diverifikasi Firebase. Tamu tidak pernah terverifikasi.
@@ -1181,15 +1207,19 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get hasFullAccess => membershipPlan == 'lifetime' || isPremium;
+  /// Phase 1: seluruh konten gratis. Struktur membership dipertahankan
+  /// internal untuk future development, tetapi tidak memblokir konten.
+  /// Selalu true agar tidak ada paywall.
+  bool get hasFullAccess => true;
 
   bool isLevelUnlocked(String level) {
+    // Gratis berbasis progression: N5 selalu terbuka.
     if (level == 'N5') return true;
+    // N4-N1 terbuka untuk user login (progression lesson mengatur urutan
+    // detail, bukan paywall). Tamu tetap N5 saja agar didorong login.
     if (!isAuthenticated) return false;
-    if (level == 'N4') return true;
-    if (hasFullAccess && ['N3', 'N2', 'N1'].contains(level)) return true;
-    return unlockedLevels.contains(level) &&
-        !['N3', 'N2', 'N1'].contains(level);
+    if (['N4', 'N3', 'N2', 'N1'].contains(level)) return true;
+    return unlockedLevels.contains(level);
   }
 
   void unlockLevel(String level) {
@@ -2949,6 +2979,7 @@ class AppController extends ChangeNotifier {
         'lastDriveBackupLabel': lastDriveBackupLabel,
         'xp': xp,
         'dailyXp': dailyXp,
+        'dailyGoalXp': dailyGoalXp,
         'streak': streak,
         'lastStudyDate': lastStudyDate,
         'studyDateKeys': studyDateKeys.toList()..sort(),
@@ -3064,6 +3095,11 @@ class AppController extends ChangeNotifier {
           (json['lastDriveBackupLabel'] as String?) ?? lastDriveBackupLabel;
       xp = (json['xp'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();
       dailyXp = (json['dailyXp'] as num? ?? 0).toInt().clamp(0, 100000).toInt();
+      final syncedGoal =
+          (json['dailyGoalXp'] as num? ?? defaultDailyGoal).toInt();
+      dailyGoalXp = allowedDailyGoals.contains(syncedGoal)
+          ? syncedGoal
+          : defaultDailyGoal;
       streak = (json['streak'] as num? ?? 0).toInt().clamp(0, 100000).toInt();
       quizCorrect =
           (json['quizCorrect'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();

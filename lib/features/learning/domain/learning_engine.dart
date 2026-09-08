@@ -9,12 +9,33 @@ class AnswerEvaluation {
     required this.explanation,
     required this.nextReviewAt,
     required this.masteryBySkill,
+    this.accuracyBySkill,
+    this.stabilityBySkill,
+    this.latencyBySkill,
+    this.transferBySkill,
+    this.productionBySkill,
+    this.interactionBySkill,
+    this.metacognitionBySkill,
   });
 
   final bool correct;
   final String explanation;
   final DateTime nextReviewAt;
   final Map<LearningSkill, double> masteryBySkill;
+  /// Akurasi per skill (0-100)
+  final Map<LearningSkill, double>? accuracyBySkill;
+  /// Stabilitas per skill (SRS days)
+  final Map<LearningSkill, double>? stabilityBySkill;
+  /// Latency per skill (milidetik atau skor 0-10000)
+  final Map<LearningSkill, int>? latencyBySkill;
+  /// Transfer per skill (0-100)
+  final Map<LearningSkill, int>? transferBySkill;
+  /// Production per skill (0-100)
+  final Map<LearningSkill, int>? productionBySkill;
+  /// Interaksi per skill (0-1000)
+  final Map<LearningSkill, int>? interactionBySkill;
+  /// Metacognition per skill (0-100)
+  final Map<LearningSkill, double>? metacognitionBySkill;
 }
 
 class GateStatus {
@@ -80,6 +101,10 @@ class LearningEngine {
 
   final CurriculumCatalog catalog;
   LearnerState state;
+
+  /// Additional mastery metrics stored after masteryForLesson calculation.
+  /// Key: skill, Value: map of accuracy, stability, latency, transfer, production, interaction, metacognition
+  final Map<LearningSkill, Map<String, double>> _lastConceptScores = {};
 
   void restore(LearnerState newState) {
     state = newState;
@@ -175,6 +200,42 @@ class LearningEngine {
       record.score = (previousScore * (1 - weight) + target * weight)
           .clamp(0, 100)
           .toDouble();
+
+      // Update additional mastery metrics
+      // Akurasi: semakin banyak jawaban benar, akurasi naik
+      record.accuracy = ((record.attemptCount - 1) * record.accuracy +
+          (correct ? 100.0 : 0.0))
+          .clamp(0, 100)
+          .toDouble();
+
+      // Stability naik lambat berdasarkan konsistensi
+      final consistencyFactor = correct ? .95 : .90;
+      record.stability = (record.stability * consistencyFactor)
+          .clamp(0.25, 3650)
+          .toDouble();
+
+      // Latency: catat waktu respons (di sini kita simpan skor default,
+      // di implementasi nyata akan diukur dari UI)
+      record.latency = correct
+          ? (record.latency * .95).clamp(0, 10000).toInt()
+          : 0;
+
+      // Transfer dan production meningkat dengan praktik berkala
+      record.transfer =
+          (record.transfer * .98 + 2).clamp(0, 100).toInt();
+      record.production =
+          (record.production * .98 + 2).clamp(0, 100).toInt();
+
+      // Interaksi meningkat dengan setiap engagement
+      record.interaction = (record.interaction + (correct ? 1 : 0))
+          .clamp(0, 1000)
+          .toInt();
+
+      // Metacognition: self-assessment user
+      record.metacognition = (record.metacognition + (correct ? 1 : .5))
+          .clamp(0, 100)
+          .toDouble();
+
       record.updatedAt = now;
       currentScores[skill] = record.score;
     }
@@ -215,6 +276,9 @@ class LearningEngine {
       }
     }
 
+    // Metrics tambahan tetap tersimpan di MasteryRecord dan bisa diakses
+    // via *ForConcept getters. Tidak dikembalikan di sini agar tidak
+    // memblokir test / UI lama (backward compatible).
     return AnswerEvaluation(
       correct: correct,
       explanation: question.explanation,
@@ -268,6 +332,27 @@ class LearningEngine {
   double masteryForConcept(String conceptId, LearningSkill skill) =>
       state.masteryByKey['$conceptId:${skill.name}']?.score ?? 0;
 
+  double accuracyForConcept(String conceptId, LearningSkill skill) =>
+      state.masteryByKey['$conceptId:${skill.name}']?.accuracy ?? 0;
+
+  double stabilityForConcept(String conceptId, LearningSkill skill) =>
+      state.masteryByKey['$conceptId:${skill.name}']?.stability ?? 1;
+
+  int latencyForConcept(String conceptId, LearningSkill skill) =>
+      state.masteryByKey['$conceptId:${skill.name}']?.latency ?? 0;
+
+  int transferForConcept(String conceptId, LearningSkill skill) =>
+      state.masteryByKey['$conceptId:${skill.name}']?.transfer ?? 0;
+
+  int productionForConcept(String conceptId, LearningSkill skill) =>
+      state.masteryByKey['$conceptId:${skill.name}']?.production ?? 0;
+
+  int interactionForConcept(String conceptId, LearningSkill skill) =>
+      state.masteryByKey['$conceptId:${skill.name}']?.interaction ?? 0;
+
+  double metacognitionForConcept(String conceptId, LearningSkill skill) =>
+      state.masteryByKey['$conceptId:${skill.name}']?.metacognition ?? 0;
+
   Map<LearningSkill, double> masteryForLesson(LessonDefinition lesson) {
     final conceptIds = <String>{
       ...lesson.contents.map((content) => content.id),
@@ -280,10 +365,45 @@ class LearningEngine {
           .whereType<MasteryRecord>()
           .where((record) => record.attemptCount > 0)
           .toList();
-      result[skill] = records.isEmpty
-          ? 0
-          : records.map((record) => record.score).reduce((a, b) => a + b) /
-              records.length;
+      if (records.isEmpty) {
+        result[skill] = 0;
+      } else {
+        final avgScore = records.map((record) => record.score).reduce((a, b) => a + b) /
+            records.length;
+        final avgAccuracy =
+            records.map((record) => record.accuracy).reduce((a, b) => a + b) /
+                records.length;
+        final avgStability =
+            records.map((record) => record.stability).reduce((a, b) => a + b) /
+                records.length;
+        final avgLatency =
+            records.map((record) => record.latency).reduce((a, b) => a + b) /
+                records.length;
+        final avgTransfer =
+            records.map((record) => record.transfer).reduce((a, b) => a + b) /
+                records.length;
+        final avgProduction =
+            records.map((record) => record.production).reduce((a, b) => a + b) /
+                records.length;
+        final avgInteraction =
+            records.map((record) => record.interaction).reduce((a, b) => a + b) /
+                records.length;
+        final avgMetacognition =
+            records.map((record) => record.metacognition).reduce((a, b) => a + b) /
+                records.length;
+
+        result[skill] = avgScore;
+        // Store additional metrics for later use via accessor methods
+        _lastConceptScores[skill] = {
+          'accuracy': avgAccuracy,
+          'stability': avgStability,
+          'latency': avgLatency,
+          'transfer': avgTransfer,
+          'production': avgProduction,
+          'interaction': avgInteraction,
+          'metacognition': avgMetacognition,
+        };
+      }
     }
     return result;
   }

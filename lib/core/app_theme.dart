@@ -1,11 +1,28 @@
 import 'package:flutter/material.dart';
 
+/// Design tokens terpusat (Phase 2 redesign).
+/// Jangan hardcode warna XP/streak/locked/progress di screen.
+/// Pakai [AppColors] agar konsisten light/dark + Japanese-inspired.
+class AppColors {
+  AppColors._();
+  static const xp = Color(0xFFFFB020);
+  static const streak = Color(0xFFFF6B35);
+  static const locked = Color(0xFF9AA3B2);
+  static const progress = Color(0xFFD92D20);
+  static const success = Color(0xFF17A673);
+  static const warning = Color(0xFFE8A13D);
+  static const error = Color(0xFFD92D20);
+  static const kanji = Color(0xFFFFA62B);
+  static const grammar = Color(0xFF6D4AFF);
+  static const vocab = Color(0xFF0EA5A4);
+}
+
 class AppTheme {
   /// Merah hinomaru (blend merah khas Japanese Study).
   static const seed = Color(0xFFD92D20);
   static const primaryDark = Color(0xFF7F1D1D);
   static const accent = Color(0xFFFF8A80);
-  static const success = Color(0xFF17A673);
+  static const success = AppColors.success;
 
   static ThemeData light() => _theme(
         Brightness.light,

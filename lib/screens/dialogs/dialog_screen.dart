@@ -100,17 +100,10 @@ class _DialogScreenState extends State<DialogScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _DialogLessonCard(
+                    // Phase 1: dialog premium flag diabaikan, semua gratis.
                     lesson: lesson,
-                    locked: lesson.premium && !app.isPremium,
+                    locked: false,
                     onTap: () {
-                      if (lesson.premium && !app.isPremium) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Dialog ini tersedia untuk anggota langganan.'),
-                          ),
-                        );
-                        return;
-                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(

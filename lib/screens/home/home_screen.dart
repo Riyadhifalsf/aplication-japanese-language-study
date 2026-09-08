@@ -8,10 +8,14 @@ import '../../state/app_controller.dart';
 import '../../widgets/admob_native_slot.dart';
 import '../../widgets/continue_learning_card.dart';
 import '../../widgets/entrance.dart';
+import '../../widgets/learning_components.dart';
 import '../../widgets/liquid_glass.dart';
+import '../curriculum/curriculum_path_screen.dart';
 import '../kanji/kanji_detail_screen.dart';
+import '../kanji/kanji_study_screen.dart';
 import '../notifications/notification_center_screen.dart';
 import '../profile/study_stats_screen.dart';
+import '../review/mistake_review_screen.dart';
 import '../study/learning_path_screen.dart';
 import '../study/today_learning_screen.dart';
 
@@ -118,11 +122,36 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
+        // HEADER meta: level + XP + streak (jawab: progress/streak/pencapaian).
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            LevelBadge(level: app.level),
+            XPIndicator(xp: app.xp),
+            StreakBadge(streak: app.streak),
+          ],
+        ),
         const SizedBox(height: 14),
+        // CURRENT LEARNING (jawab: sedang belajar apa + harus apa sekarang).
+        const Text('Saat ini belajar',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
         const Entrance(
           keyName: 'home-continue',
           child: ContinueLearningCard(),
         ),
+        const SizedBox(height: 16),
+        // DAILY GOAL (jawab: pencapaian hari ini).
+        _DailyGoalCard(app: app),
+        const SizedBox(height: 16),
+        // QUICK ACTIONS (Learn / Review / Kanji / Practice).
+        const Text('Aksi cepat',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        _QuickActions(
+            onOpenStudy: onOpenStudy, onOpenQuiz: onOpenQuiz, app: app),
         const SizedBox(height: 16),
         Entrance(
           keyName: 'home-mission',
@@ -141,11 +170,11 @@ class HomeScreen extends StatelessWidget {
           delay: const Duration(milliseconds: 140),
           child: _TodayKanjiCarousel(app: app),
         ),
-        if (!app.isPremium) ...[
-          const SizedBox(height: 16),
-          AdmobNativeSlot(hidden: false),
-        ],
+        // Iklan tetap tampil (bukan paywall). Premium check dihapus Phase 1.
+        const SizedBox(height: 16),
+        AdmobNativeSlot(hidden: false),
         const SizedBox(height: 18),
+        // LEARNING PATH preview.
         const Text(
           'Jalur JLPT',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
@@ -216,6 +245,9 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        // RECENT ACTIVITY (belajar terakhir yang tercatat).
+        _RecentActivityCard(app: app),
         const SizedBox(height: 16),
         Card(
           child: ListTile(
@@ -646,6 +678,169 @@ class _Mini extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DailyGoalCard extends StatelessWidget {
+  const _DailyGoalCard({required this.app});
+
+  final AppController app;
+
+  @override
+  Widget build(BuildContext context) {
+    final goal = app.dailyGoalXp;
+    final done = app.dailyXp.clamp(0, goal);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text("Today's Goal",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              ),
+              Text('$done / $goal XP',
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          LearningProgressBar(value: app.dailyProgress),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            children: [
+              for (final g in AppController.allowedDailyGoals)
+                ChoiceChip(
+                  label: Text('$g'),
+                  selected: goal == g,
+                  onSelected: (_) => app.setDailyGoal(g),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            done >= goal
+                ? 'Target harian tercapai. Pertahankan streak!'
+                : 'Selesaikan 1 lesson untuk mendekati target.',
+            style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions(
+      {required this.onOpenStudy, required this.onOpenQuiz, required this.app});
+
+  final VoidCallback onOpenStudy;
+  final VoidCallback onOpenQuiz;
+  final AppController app;
+
+  @override
+  Widget build(BuildContext context) => GridView.count(
+        crossAxisCount: 4,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: .78,
+        children: [
+          _QuickTile(
+              icon: Icons.auto_stories_rounded,
+              label: 'Learn',
+              onTap: onOpenStudy),
+          _QuickTile(
+              icon: Icons.refresh_rounded,
+              label: 'Review',
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const MistakeReviewScreen()))),
+          _QuickTile(
+              icon: Icons.translate_rounded,
+              label: 'Kanji',
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const KanjiStudyScreen()))),
+          _QuickTile(
+              icon: Icons.quiz_rounded, label: 'Practice', onTap: onOpenQuiz),
+        ],
+      );
+}
+
+class _QuickTile extends StatelessWidget {
+  const _QuickTile(
+      {required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 6),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
+      );
+}
+
+class _RecentActivityCard extends StatelessWidget {
+  const _RecentActivityCard({required this.app});
+
+  final AppController app;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = app.activityJournal.reversed.take(3).toList();
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Aktivitas terakhir',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.check_circle_outline_rounded),
+                  title: Text('${items[i]['label'] ?? '-'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('${items[i]['type'] ?? ''}',
+                      style: const TextStyle(fontSize: 11)),
+                ),
+                if (i != items.length - 1) const Divider(height: 1),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

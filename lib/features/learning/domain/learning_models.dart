@@ -63,7 +63,32 @@ enum ContentTier {
 
 enum ReviewPhase { newItem, learning, review, mature, relearning }
 
-enum QuestionKind { choice, ordering }
+/// Jenis latihan practice engine. Extensible: UI memilih widget
+/// berdasarkan kind, logic penilaian tetap di LearningEngine.
+/// Nilai lama (choice, ordering) dipertahankan agar data existing aman.
+enum QuestionKind {
+  choice,
+  ordering,
+  fillBlank,
+  matching,
+  translation,
+  vocabRecognition,
+  kanjiRecognition,
+  reading,
+  listening;
+
+  String get label => switch (this) {
+        QuestionKind.choice => 'Pilihan ganda',
+        QuestionKind.ordering => 'Susun kalimat',
+        QuestionKind.fillBlank => 'Isi titik-titik',
+        QuestionKind.matching => 'Menjodohkan',
+        QuestionKind.translation => 'Terjemahan',
+        QuestionKind.vocabRecognition => 'Tebak kosakata',
+        QuestionKind.kanjiRecognition => 'Tebak kanji',
+        QuestionKind.reading => 'Reading',
+        QuestionKind.listening => 'Listening',
+      };
+}
 
 class LearningObjective {
   const LearningObjective({
@@ -114,6 +139,7 @@ class LessonQuestion {
     required this.skills,
     required this.explanation,
     this.scenario,
+    this.kind = QuestionKind.choice,
   });
 
   final String id;
@@ -125,8 +151,7 @@ class LessonQuestion {
   final Set<LearningSkill> skills;
   final String explanation;
   final String? scenario;
-
-  QuestionKind get kind => QuestionKind.choice;
+  final QuestionKind kind;
 }
 
 class LessonDefinition {
@@ -213,6 +238,13 @@ class MasteryRecord {
     this.score = 0,
     this.correctCount = 0,
     this.attemptCount = 0,
+    this.accuracy = 0,
+    this.stability = 1,
+    this.latency = 0,
+    this.transfer = 0,
+    this.production = 0,
+    this.interaction = 0,
+    this.metacognition = 0,
     DateTime? updatedAt,
   }) : updatedAt = updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -220,6 +252,13 @@ class MasteryRecord {
   double score;
   int correctCount;
   int attemptCount;
+  double accuracy; // akurasi jawaban (0-100)
+  double stability; // stabilitas pengingatan (SRS days)
+  int latency; // latency dalam milidetik atau satuan waktu
+  int transfer; // kemampuan menerapkan ke konteks baru (0-100)
+  int production; // kemampuan produksi (0-100)
+  int interaction; // interaksi (diskusi, speaking, writing)
+  double metacognition; // self-assessment kejujuran (0-100)
   DateTime updatedAt;
 
   Map<String, Object> toJson() => {
@@ -227,6 +266,13 @@ class MasteryRecord {
         'score': score,
         'correctCount': correctCount,
         'attemptCount': attemptCount,
+        'accuracy': accuracy,
+        'stability': stability,
+        'latency': latency,
+        'transfer': transfer,
+        'production': production,
+        'interaction': interaction,
+        'metacognition': metacognition,
         'updatedAt': updatedAt.toIso8601String(),
       };
 
@@ -245,6 +291,22 @@ class MasteryRecord {
           .toInt()
           .clamp(0, 1000000)
           .toInt(),
+      accuracy: ((raw['accuracy'] as num?) ?? 0)
+          .toDouble()
+          .clamp(0, 100)
+          .toDouble(),
+      stability: ((raw['stability'] as num?) ?? 1)
+          .toDouble()
+          .clamp(0.25, 3650)
+          .toDouble(),
+      latency: (raw['latency'] as num?)?.toInt() ?? 0,
+      transfer: (raw['transfer'] as num?)?.toInt() ?? 0,
+      production: (raw['production'] as num?)?.toInt() ?? 0,
+      interaction: (raw['interaction'] as num?)?.toInt() ?? 0,
+      metacognition: ((raw['metacognition'] as num?) ?? 0)
+          .toDouble()
+          .clamp(0, 100)
+          .toDouble(),
       updatedAt: DateTime.tryParse('${raw['updatedAt'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );

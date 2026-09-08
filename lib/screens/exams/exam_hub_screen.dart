@@ -107,14 +107,11 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
                       level: activeLevel,
                       stage: stage,
                       bestScore: best,
-                      locked: (!app.isPremium && stage > 3) || (_type == ExamType.jlpt && !app.isLevelUnlocked(activeLevel)),
+                      // Phase 1: semua stage gratis. Lock hanya progression level.
+                      locked: (_type == ExamType.jlpt && !app.isLevelUnlocked(activeLevel)),
                       onTap: () {
                         if (_type == ExamType.jlpt && !app.isLevelUnlocked(activeLevel)) {
                           _showLevelLockedHint(context, activeLevel);
-                          return;
-                        }
-                        if (!app.isPremium && stage > 3) {
-                          _showPremiumHint(context);
                           return;
                         }
                         final plan = repository.buildSession(

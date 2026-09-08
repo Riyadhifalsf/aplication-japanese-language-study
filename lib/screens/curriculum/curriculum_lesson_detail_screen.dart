@@ -74,6 +74,14 @@ class _CurriculumLessonDetailScreenState
           const SizedBox(height: 12),
           _StatusBanner(status: status, lesson: lesson),
           const SizedBox(height: 16),
+          // Inline lesson content: materi tampil di dalam lesson (bukan
+          // sekadar shortcut ke library global). Data di-resolve dari
+          // ContentRepository via level, tanpa duplikasi object.
+          _LessonInlineContent(
+              lesson: lesson,
+              unitTitle: unit == null ? '' : unit.title,
+              unitDescription: unit == null ? '' : unit.description),
+          const SizedBox(height: 16),
           const Text('Aktivitas lesson',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
@@ -279,6 +287,136 @@ class _StatusBanner extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w900)),
         ],
       ),
+    );
+  }
+}
+
+/// Inline lesson content: tujuan + materi inti di dalam lesson.
+/// Resolve via ContentRepository berdasarkan level (tanpa duplikasi).
+/// Library tetap terpisah untuk belajar bebas; ini konteks lesson.
+class _LessonInlineContent extends StatelessWidget {
+  const _LessonInlineContent(
+      {required this.lesson, required this.unitTitle, required this.unitDescription});
+
+  final CurriculumLesson lesson;
+  final String unitTitle;
+  final String unitDescription;
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final vocabs = app.repository.vocabulary
+        .where((v) => v.level == lesson.levelId)
+        .take(3)
+        .toList();
+    final grammars = app.repository.grammar
+        .where((g) => g.level == lesson.levelId)
+        .take(1)
+        .toList();
+    final kanjis = app.repository.kanji
+        .where((k) => k.level == lesson.levelId)
+        .take(4)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Tujuan belajar',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        Text(
+          lesson.subtitle.isNotEmpty
+              ? lesson.subtitle
+              : (unitDescription.isNotEmpty
+                  ? unitDescription
+                  : 'Selesaikan semua aktivitas untuk membuka lesson berikutnya.'),
+          style: TextStyle(height: 1.45, color: cs.onSurfaceVariant),
+        ),
+        if (unitTitle.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text('Konteks: $unitTitle · JLPT ${lesson.levelId}',
+              style: TextStyle(
+                  fontSize: 12, color: cs.onSurfaceVariant)),
+        ],
+        const SizedBox(height: 12),
+        const Text('Materi lesson ini',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 4),
+        const Text(
+            'Ringkasan inline — detail bebas tetap di Library. Progres lesson terpisah dari mastery library.',
+            style: TextStyle(fontSize: 12, height: 1.4)),
+        const SizedBox(height: 8),
+        if (vocabs.isNotEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Vocabulary',
+                      style: TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 6),
+                  for (final v in vocabs)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('${v.word} (${v.reading}) — ${v.meaning}',
+                          style: const TextStyle(height: 1.35)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        if (grammars.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Grammar: ${grammars.first.pattern}',
+                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text(grammars.first.explanation,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(height: 1.4)),
+                  if (grammars.first.examples.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                        '${grammars.first.examples.first.japanese} — ${grammars.first.examples.first.meaning}',
+                        style: const TextStyle(height: 1.35)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+        if (kanjis.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Kanji',
+                      style: TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final k in kanjis)
+                        Chip(label: Text('${k.character} · ${k.meaning}')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
