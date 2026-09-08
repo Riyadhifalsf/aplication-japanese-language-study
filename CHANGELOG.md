@@ -2,6 +2,15 @@
 
 Semua perubahan penting pada proyek ini dicatat di berkas ini.
 
+## [1.3.0] - 2026-09
+
+- Bab 1 N5 (はじめまして) gaya Duolingo: micro-lesson berurutan dengan
+  materi scoped per bab (salam Resmi/Sopan, kotoba, bunpou, kanji Bab 1).
+- Listening inline via TTS + reading dari materi yang sudah diajarkan.
+- Tes Bab nyata: soal dari pool unit, dinilai otomatis (90 Excellent,
+  80 Great, 70 Passed), tanpa input skor manual.
+- Semua fitur terbuka; dashboard admin & AI dihapus; ikon Google resmi.
+
 ## [1.2.0] - 2026-09
 
 - Navigasi baru: Home / Learn (Learning Path murni) / Practice (Quiz+Review) /

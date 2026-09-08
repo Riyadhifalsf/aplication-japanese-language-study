@@ -6,6 +6,7 @@ import '../../models/grammar_point.dart';
 import '../../models/kanji.dart';
 import '../../models/phrase_item.dart';
 import '../../models/vocabulary.dart';
+import '../../services/content_repository.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/learning_components.dart';
 import '../exams/exam_hub_screen.dart';
@@ -93,7 +94,10 @@ class _CurriculumLessonDetailScreenState
               quizActivityId: _quizActivityId(lesson),
               quizXp: _quizXp(lesson, _quizActivityId(lesson)),
               doneIds: doneIds,
-              onProgressChanged: () => setState(() {})),
+              onProgressChanged: () => setState(() {}),
+              unitLessons: unit?.lessons ?? const [],
+              onSubmitTestScore: (score) =>
+                  _submitTestScore(context, app, lesson, score)),
           const SizedBox(height: 16),
           const Text('Aktivitas lesson',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -116,7 +120,13 @@ class _CurriculumLessonDetailScreenState
                   context, app, lesson, lesson.activities[i]),
             ),
           const SizedBox(height: 16),
-          if (lesson.isFinalTest || lesson.isBossTest || lesson.isTest)
+          // Tes nyata (soal pool unit) menggantikan input skor manual bila
+          // tersedia; _TestPanel dipertahankan sebagai fallback legacy.
+          if ((lesson.isFinalTest || lesson.isBossTest || lesson.isTest) &&
+              !(lesson.isTest &&
+                  _buildUnitQuestions(app.repository, unit?.lessons ?? const [])
+                          .length >=
+                      6))
             _TestPanel(
               lesson: lesson,
               onSubmitScore: (score) =>
@@ -346,7 +356,9 @@ class _LessonInlineContent extends StatelessWidget {
       required this.quizActivityId,
       required this.quizXp,
       required this.doneIds,
-      required this.onProgressChanged});
+      required this.onProgressChanged,
+      required this.unitLessons,
+      required this.onSubmitTestScore});
 
   final CurriculumLesson lesson;
   final String unitTitle;
@@ -358,8 +370,8 @@ class _LessonInlineContent extends StatelessWidget {
   final int quizXp;
   final Set<String> doneIds;
   final VoidCallback onProgressChanged;
-
-  int? _intId(String raw) => int.tryParse(raw);
+  final List<CurriculumLesson> unitLessons;
+  final ValueChanged<int> onSubmitTestScore;
 
   @override
   Widget build(BuildContext context) {
@@ -367,23 +379,35 @@ class _LessonInlineContent extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final repo = app.repository;
     // Resolusi referensi kurikulum (skip ID yang tidak ada — tanpa crash).
-    final phrases = [
-      for (final id in lesson.phraseIds)
-        if (repo.phraseById(id) != null) repo.phraseById(id)!
-    ];
-    final vocabs = [
-      for (final id in lesson.vocabularyIds)
-        if (_intId(id) != null && repo.vocabularyById(_intId(id)!) != null)
-          repo.vocabularyById(_intId(id)!)!
-    ];
-    final grammars = [
-      for (final id in lesson.grammarIds)
-        if (repo.grammarById(id) != null) repo.grammarById(id)!
-    ];
-    final kanjis = [
-      for (final id in lesson.kanjiIds)
-        if (_intId(id) != null && repo.kanjiById(_intId(id)!) != null)
-          repo.kanjiById(_intId(id)!)!
+    final resolved = _resolveLessonContent(repo, lesson);
+    final phrases = resolved.phrases;
+    final vocabs = resolved.vocabs;
+    final grammars = resolved.grammars;
+    final kanjis = resolved.kanjis;
+    // Pool Tes Bab: gabungan konten ter-mapping seluruh lesson unit ini.
+    final unitQuestions = lesson.isTest
+        ? _buildUnitQuestions(repo, unitLessons)
+        : const <_PracticeQuestion>[];
+    final showChapterTest = lesson.isTest && unitQuestions.length >= 6;
+    final lessonQuestions = lesson.isTest
+        ? const <_PracticeQuestion>[]
+        : _buildLessonQuestions(
+            phrases: phrases,
+            vocabs: vocabs,
+            grammars: grammars,
+            kanjis: kanjis,
+            listening: true,
+          );
+    final showPractice = !lesson.isTest &&
+        lessonQuestions.length >= 3 &&
+        quizActivityId.isNotEmpty;
+    final hasListeningActivity = lesson.activities.any(
+        (a) => a.type == CurriculumActivityType.listening);
+    // Contoh kalimat terverifikasi untuk strip dengar & reading.
+    final exampleLines = [
+      for (final g in grammars)
+        for (final e in g.examples.take(1))
+          (japanese: e.japanese, reading: e.reading, meaning: e.meaning),
     ];
     final useMapped = lesson.hasInlineContent &&
         (phrases.isNotEmpty ||
@@ -622,11 +646,79 @@ class _LessonInlineContent extends StatelessWidget {
             ),
           ),
         ],
+        // Listening: dengar via TTS (hanya bila lesson punya aktivitas
+        // listening + ada materi suara terverifikasi). Tanpa mic.
+        if (hasListeningActivity &&
+            (phrases.isNotEmpty || exampleLines.isNotEmpty)) ...[
+          const SizedBox(height: 12),
+          const Text('Bagian Listening — Dengarkan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text(
+              'Putar audio, dengarkan baik-baik, lalu lanjut ke latihan.',
+              style: TextStyle(fontSize: 12, height: 1.4)),
+          const SizedBox(height: 8),
+          for (final line in [
+            for (final p in phrases.take(3))
+              (japanese: p.japanese, reading: p.reading, meaning: p.meaning),
+            ...exampleLines.take(2),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: ListTile(
+                  leading: const Icon(Icons.headphones_rounded),
+                  title: Text(line.japanese,
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  subtitle: Text('${line.reading} — ${line.meaning}',
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  trailing: IconButton(
+                    tooltip: 'Putar audio',
+                    onPressed: () => app.tts.speak(line.japanese),
+                    icon: const Icon(Icons.play_circle_rounded),
+                  ),
+                ),
+              ),
+            ),
+        ],
+        // Reading: teks pendek HANYA dari materi yang sudah diajarkan
+        // (salam + contoh grammar terverifikasi lesson ini).
+        if (useMapped && phrases.length >= 2 && exampleLines.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text('Bagian Reading — Baca',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final line in [
+                    (japanese: phrases[2].japanese,
+                        reading: phrases[2].reading,
+                        meaning: phrases[2].meaning),
+                    exampleLines.first,
+                  ]) ...[
+                    Text(line.japanese,
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w900,
+                            height: 1.5)),
+                    Text('${line.reading} — ${line.meaning}',
+                        style: TextStyle(
+                            color: cs.onSurfaceVariant, height: 1.4)),
+                    const SizedBox(height: 8),
+                  ],
+                  const Text(
+                      'Bacaan ini hanya memakai salam dan pola yang sudah dipelajari di atas.',
+                      style: TextStyle(fontSize: 12, height: 1.4)),
+                ],
+              ),
+            ),
+          ),
+        ],
         // Bagian 5 — Latihan terpandu dari materi bab ini saja.
-        if (useMapped &&
-            phrases.length >= 3 &&
-            vocabs.length >= 3 &&
-            quizActivityId.isNotEmpty) ...[
+        if (showPractice) ...[
           const SizedBox(height: 12),
           const Text('Bagian 5 — Latihan Terpandu',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -637,14 +729,34 @@ class _LessonInlineContent extends StatelessWidget {
           const SizedBox(height: 8),
           _LessonGuidedPractice(
             lesson: lesson,
-            phrases: phrases,
-            vocabs: vocabs,
-            grammars: grammars,
-            kanjis: kanjis,
+            questions: lessonQuestions,
             quizActivityId: quizActivityId,
             quizXp: quizXp,
             alreadyDone: doneIds.contains(quizActivityId),
             onCompleted: onProgressChanged,
+          ),
+        ],
+        // Tes Bab nyata: soal dari pool unit, dinilai otomatis.
+        // Menggantikan input skor manual agar hasil jujur.
+        if (showChapterTest) ...[
+          const SizedBox(height: 12),
+          Text('Tes ${unitTitle.isNotEmpty ? unitTitle : 'Bab'}',
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text(
+              'Soal dari seluruh materi bab ini. Lulus ≥70% untuk lanjut.',
+              style: TextStyle(fontSize: 12, height: 1.4)),
+          const SizedBox(height: 8),
+          _LessonGuidedPractice(
+            lesson: lesson,
+            questions: unitQuestions,
+            quizActivityId: quizActivityId,
+            quizXp: lesson.totalXp,
+            alreadyDone: false,
+            onCompleted: onProgressChanged,
+            isTest: true,
+            onSubmitTestScore: onSubmitTestScore,
           ),
         ],
         // Bagian 6 — Review ringkasan bab.
@@ -688,6 +800,8 @@ class _LessonInlineContent extends StatelessWidget {
 
 /// Satu soal latihan terpandu: seluruh teks berasal dari konten lesson
 /// yang sudah di-resolve (tanpa soal random global, tanpa mengarang).
+/// [audio]: bila diisi, soal adalah listening — putar via TTS, teks
+/// Jepang pertanyaan disembunyikan agar benar-benar melatih dengar.
 class _PracticeQuestion {
   const _PracticeQuestion({
     required this.prompt,
@@ -696,6 +810,7 @@ class _PracticeQuestion {
     required this.explanation,
     this.reading = '',
     this.meaning = '',
+    this.audio = '',
   });
 
   final String prompt;
@@ -704,55 +819,120 @@ class _PracticeQuestion {
   final String explanation;
   final String reading;
   final String meaning;
+  final String audio;
 }
 
-/// Latihan terpandu di dalam lesson: mudah → sulit, soalnya HANYA dari
-/// materi bab ini (phrases/vocab/grammar/kanji lesson). Urutan tetap
-/// (deterministik) sebagai panduan 0 → mahir. Selesai → aktivitas quiz
-/// lesson ditandai selesai (+XP, idempotent via engine).
-class _LessonGuidedPractice extends StatefulWidget {
-  const _LessonGuidedPractice({
-    required this.lesson,
+/// Hasil resolusi referensi satu lesson: list-model asli dari repository
+/// (tanpa duplikasi objek). ID tak dikenal di-skip diam-diam.
+class _ResolvedLesson {
+  const _ResolvedLesson({
     required this.phrases,
     required this.vocabs,
     required this.grammars,
     required this.kanjis,
-    required this.quizActivityId,
-    required this.quizXp,
-    required this.alreadyDone,
-    required this.onCompleted,
   });
 
-  final CurriculumLesson lesson;
   final List<PhraseItem> phrases;
   final List<Vocabulary> vocabs;
   final List<GrammarPoint> grammars;
   final List<Kanji> kanjis;
-  final String quizActivityId;
-  final int quizXp;
-  final bool alreadyDone;
-  final VoidCallback onCompleted;
 
-  @override
-  State<_LessonGuidedPractice> createState() => _LessonGuidedPracticeState();
+  bool get isEmpty =>
+      phrases.isEmpty &&
+      vocabs.isEmpty &&
+      grammars.isEmpty &&
+      kanjis.isEmpty;
 }
 
-class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
-  late final List<_PracticeQuestion> _questions = _buildQuestions();
-  int _index = 0;
-  int _selected = -1;
-  int _correct = 0;
-  final List<String> _wrong = [];
-  bool _finished = false;
-  bool _claimed = false;
+/// Resolve vocabularyIds/grammarIds/kanjiIds/phraseIds lesson via
+/// repository. Urutan = urutan ID di katalog (deterministik).
+_ResolvedLesson _resolveLessonContent(
+    ContentRepository repo, CurriculumLesson lesson) {
+  final phrases = <PhraseItem>[];
+  for (final id in lesson.phraseIds) {
+    final item = repo.phraseById(id);
+    if (item != null) phrases.add(item);
+  }
+  final vocabs = <Vocabulary>[];
+  for (final id in lesson.vocabularyIds) {
+    final parsed = int.tryParse(id);
+    final item = parsed == null ? null : repo.vocabularyById(parsed);
+    if (item != null) vocabs.add(item);
+  }
+  final grammars = <GrammarPoint>[];
+  for (final id in lesson.grammarIds) {
+    final item = repo.grammarById(id);
+    if (item != null) grammars.add(item);
+  }
+  final kanjis = <Kanji>[];
+  for (final id in lesson.kanjiIds) {
+    final parsed = int.tryParse(id);
+    final item = parsed == null ? null : repo.kanjiById(parsed);
+    if (item != null) kanjis.add(item);
+  }
+  return _ResolvedLesson(
+      phrases: phrases, vocabs: vocabs, grammars: grammars, kanjis: kanjis);
+}
 
-  List<_PracticeQuestion> _buildQuestions() {
-    final qs = <_PracticeQuestion>[];
-    final phrases = widget.phrases;
-    final vocabs = widget.vocabs;
-    final grammars = widget.grammars;
-    final kanjis = widget.kanjis;
-    // 1. Arti salam (mudah).
+/// Gabungkan konten ter-resolve seluruh lesson satu unit (dedupe per ID,
+/// urutan = urutan lesson). Dipakai Tes Bab agar soal berasal dari materi
+/// unit tersebut saja — bukan random global.
+_ResolvedLesson _resolveUnitContent(
+    ContentRepository repo, List<CurriculumLesson> lessons) {
+  final phrases = <String, PhraseItem>{};
+  final vocabs = <int, Vocabulary>{};
+  final grammars = <String, GrammarPoint>{};
+  final kanjis = <int, Kanji>{};
+  for (final lesson in lessons) {
+    final resolved = _resolveLessonContent(repo, lesson);
+    for (final item in resolved.phrases) {
+      phrases.putIfAbsent(item.id, () => item);
+    }
+    for (final item in resolved.vocabs) {
+      vocabs.putIfAbsent(item.id, () => item);
+    }
+    for (final item in resolved.grammars) {
+      grammars.putIfAbsent(item.id, () => item);
+    }
+    for (final item in resolved.kanjis) {
+      kanjis.putIfAbsent(item.id, () => item);
+    }
+  }
+  return _ResolvedLesson(
+    phrases: phrases.values.toList(growable: false),
+    vocabs: vocabs.values.toList(growable: false),
+    grammars: grammars.values.toList(growable: false),
+    kanjis: kanjis.values.toList(growable: false),
+  );
+}
+
+/// Soal Tes Bab: dari pool unit (deterministik). ≥6 soal = tes nyata layak.
+List<_PracticeQuestion> _buildUnitQuestions(
+    ContentRepository repo, List<CurriculumLesson> lessons) {
+  final pool = _resolveUnitContent(repo, lessons);
+  return _buildLessonQuestions(
+    phrases: pool.phrases,
+    vocabs: pool.vocabs,
+    grammars: pool.grammars,
+    kanjis: pool.kanjis,
+    listening: true,
+  );
+}
+
+/// Bangun soal deterministik (urutan tetap: mudah → sulit) dari konten
+/// lesson yang sudah di-resolve. Hanya memakai item yang ADA (guard
+/// panjang) — tidak pernah mengarang opsi. [listening]: tambah soal dengar
+/// (butuh phrases ≥ 3).
+List<_PracticeQuestion> _buildLessonQuestions({
+  required List<PhraseItem> phrases,
+  required List<Vocabulary> vocabs,
+  required List<GrammarPoint> grammars,
+  required List<Kanji> kanjis,
+  bool listening = false,
+}) {
+  final qs = <_PracticeQuestion>[];
+  // 1. Arti salam (mudah).
+  if (phrases.length >= 3) {
     qs.add(_PracticeQuestion(
       prompt: '「${phrases[0].japanese}」 artinya?',
       options: [phrases[0].meaning, phrases[1].meaning, phrases[2].meaning],
@@ -764,28 +944,34 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
     // 2. Penggunaan sesuai situasi.
     qs.add(_PracticeQuestion(
       prompt: 'Bertemu guru di pagi hari, salam yang tepat?',
-      options: [phrases[0].japanese, phrases[1].japanese, phrases[2].japanese],
+      options: [
+        phrases[0].japanese,
+        phrases[1].japanese,
+        phrases[2].japanese
+      ],
       correctIndex: 0,
       explanation: phrases[0].note,
       reading: phrases[0].reading,
       meaning: phrases[0].meaning,
     ));
-    // 3. Tingkat kesopanan (butuh varian Sopan).
-    if (phrases.length >= 6) {
-      qs.add(_PracticeQuestion(
-        prompt: 'Menyapa teman dekat dengan santai, pilih yang tepat?',
-        options: [
-          phrases[3].japanese,
-          phrases[0].japanese,
-          phrases[1].japanese
-        ],
-        correctIndex: 0,
-        explanation: phrases[3].note,
-        reading: phrases[3].reading,
-        meaning: phrases[3].meaning,
-      ));
-    }
-    // 4. Bacaan kotoba.
+  }
+  // 3. Tingkat kesopanan (butuh varian Sopan).
+  if (phrases.length >= 6) {
+    qs.add(_PracticeQuestion(
+      prompt: 'Menyapa teman dekat dengan santai, pilih yang tepat?',
+      options: [
+        phrases[3].japanese,
+        phrases[0].japanese,
+        phrases[1].japanese
+      ],
+      correctIndex: 0,
+      explanation: phrases[3].note,
+      reading: phrases[3].reading,
+      meaning: phrases[3].meaning,
+    ));
+  }
+  // 4-5. Kotoba (butuh ≥5 agar opsi pengecoh valid).
+  if (vocabs.length >= 5) {
     qs.add(_PracticeQuestion(
       prompt: '「${vocabs[2].word}」 dibaca?',
       options: [vocabs[2].reading, vocabs[3].reading, vocabs[4].reading],
@@ -803,27 +989,79 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
       reading: vocabs[4].reading,
       meaning: vocabs[4].meaning,
     ));
-    // 6. Pola grammar.
-    if (grammars.isNotEmpty) {
-      qs.add(_PracticeQuestion(
-        prompt: 'Lengkapi: わたし ___ がくせいです。',
-        options: const ['は', 'の', 'か'],
-        correctIndex: 0,
-        explanation:
-            'Pola ${grammars[0].pattern}: ${grammars[0].formation}.',
-      ));
-    }
-    // 7. Arti kanji.
-    if (kanjis.length >= 3) {
-      qs.add(_PracticeQuestion(
-        prompt: 'Kanji「${kanjis[2].character}」 artinya?',
-        options: [kanjis[2].meaning, kanjis[0].meaning, kanjis[1].meaning],
-        correctIndex: 0,
-        explanation: 'Kanji penyusun kata bab ini (Bagian 4).',
-      ));
-    }
-    return qs;
   }
+  // 6. Pola grammar.
+  if (grammars.isNotEmpty) {
+    qs.add(_PracticeQuestion(
+      prompt: 'Lengkapi: わたし ___ がくせいです。',
+      options: const ['は', 'の', 'か'],
+      correctIndex: 0,
+      explanation:
+          'Pola ${grammars[0].pattern}: ${grammars[0].formation}.',
+    ));
+  }
+  // 7. Arti kanji.
+  if (kanjis.length >= 3) {
+    qs.add(_PracticeQuestion(
+      prompt: 'Kanji「${kanjis[2].character}」 artinya?',
+      options: [kanjis[2].meaning, kanjis[0].meaning, kanjis[1].meaning],
+      correctIndex: 0,
+      explanation: 'Kanji penyusun kata bab ini (Bagian 4).',
+    ));
+  }
+  // 8. Listening: dengar via TTS, pilih arti.
+  if (listening && phrases.length >= 3) {
+    qs.add(_PracticeQuestion(
+      prompt: 'Dengarkan, lalu pilih artinya.',
+      options: [phrases[1].meaning, phrases[0].meaning, phrases[2].meaning],
+      correctIndex: 0,
+      explanation: 'Dengarkan ulang di Bagian 1 bila ragu.',
+      reading: phrases[1].reading,
+      meaning: phrases[1].meaning,
+      audio: phrases[1].japanese,
+    ));
+  }
+  return qs;
+}
+
+/// Latihan/tes terpandu di dalam lesson: mudah → sulit, soalnya HANYA dari
+/// materi yang diberikan via [questions] (deterministik, tanpa random
+/// global). Mode latihan: selesai → aktivitas quiz ditandai (+XP,
+/// idempotent). Mode tes ([isTest]): nilai persen → [onSubmitTestScore]
+/// (recordCurriculumFinalTest: bestScore + unlock + review).
+class _LessonGuidedPractice extends StatefulWidget {
+  const _LessonGuidedPractice({
+    required this.lesson,
+    required this.questions,
+    required this.quizActivityId,
+    required this.quizXp,
+    required this.alreadyDone,
+    required this.onCompleted,
+    this.isTest = false,
+    this.onSubmitTestScore,
+  });
+
+  final CurriculumLesson lesson;
+  final List<_PracticeQuestion> questions;
+  final String quizActivityId;
+  final int quizXp;
+  final bool alreadyDone;
+  final VoidCallback onCompleted;
+  final bool isTest;
+  final ValueChanged<int>? onSubmitTestScore;
+
+  @override
+  State<_LessonGuidedPractice> createState() => _LessonGuidedPracticeState();
+}
+
+class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
+  List<_PracticeQuestion> get _questions => widget.questions;
+  int _index = 0;
+  int _selected = -1;
+  int _correct = 0;
+  final List<String> _wrong = [];
+  bool _finished = false;
+  bool _claimed = false;
 
   void _answer(int i) {
     if (_selected != -1 || _finished) return;
@@ -893,6 +1131,15 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
             Text(q.prompt,
                 style:
                     const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            // Listening: audio via TTS, teks Jepang disembunyikan.
+            if (q.audio.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              FilledButton.tonalIcon(
+                onPressed: () => AppScope.of(context).tts.speak(q.audio),
+                icon: const Icon(Icons.volume_up_rounded),
+                label: const Text('Putar audio'),
+              ),
+            ],
             const SizedBox(height: 12),
             for (var i = 0; i < q.options.length; i++)
               Padding(
@@ -949,26 +1196,41 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
     );
   }
 
+  /// Nilai huruf tes bab: 90+ Excellent, 80+ Great, 70+ Passed.
+  static String gradeFor(int percent) => percent >= 90
+      ? 'Excellent'
+      : percent >= 80
+          ? 'Great'
+          : percent >= 70
+              ? 'Passed'
+              : 'Review required';
+
   Widget _resultCard(BuildContext context, AppController app) {
     final total = _questions.length;
     final percent =
         total == 0 ? 0 : ((_correct / total) * 100).round();
     final done = widget.alreadyDone || _claimed;
+    final isTest = widget.isTest;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Hasil Latihan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            Text(isTest ? 'Hasil Tes Bab' : 'Hasil Latihan',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
             const SizedBox(height: 6),
             Text('Skor: $percent% ($_correct/$total benar)',
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-            Text('+${widget.quizXp} XP bila ditandai selesai',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            if (isTest)
+              Text('Nilai: ${gradeFor(percent)} (lulus ≥70%)',
+                  style: const TextStyle(fontWeight: FontWeight.w700))
+            else
+              Text('+${widget.quizXp} XP bila ditandai selesai',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
             if (_wrong.isNotEmpty) ...[
               const SizedBox(height: 10),
               const Text('Perlu direview:',
@@ -981,7 +1243,9 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
                 ),
             ] else ...[
               const SizedBox(height: 8),
-              const Text('Sempurna! Lanjut ke quiz bab.'),
+              Text(isTest
+                  ? 'Sempurna! Simpan hasil untuk membuka bab berikutnya.'
+                  : 'Sempurna! Lanjut ke quiz bab.'),
             ],
             const SizedBox(height: 12),
             Row(
@@ -994,12 +1258,20 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: FilledButton(
-                    onPressed: done ? null : () => _claim(context, app),
-                    child: Text(done
-                        ? 'Selesai ✓'
-                        : 'Tandai selesai +${widget.quizXp} XP'),
-                  ),
+                  child: isTest
+                      ? FilledButton(
+                          onPressed: widget.onSubmitTestScore == null
+                              ? null
+                              : () => widget.onSubmitTestScore!(percent),
+                          child: const Text('Simpan hasil test'),
+                        )
+                      : FilledButton(
+                          onPressed:
+                              done ? null : () => _claim(context, app),
+                          child: Text(done
+                              ? 'Selesai ✓'
+                              : 'Tandai selesai +${widget.quizXp} XP'),
+                        ),
                 ),
               ],
             ),

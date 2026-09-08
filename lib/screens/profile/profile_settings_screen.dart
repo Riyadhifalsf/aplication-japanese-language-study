@@ -142,8 +142,6 @@ class ProfileSettingsScreen extends StatelessWidget {
     final bio = TextEditingController(text: app.profileBio);
     final instagram = TextEditingController(text: app.profileInstagram);
     final youtube = TextEditingController(text: app.profileYoutube);
-    final followers = TextEditingController(text: '${app.profileFollowers}');
-    final following = TextEditingController(text: '${app.profileFollowing}');
     final picker = ImagePicker();
     await showModalBottomSheet<void>(
       context: context,
@@ -164,9 +162,8 @@ class ProfileSettingsScreen extends StatelessWidget {
           TextField(controller: bio, decoration: const InputDecoration(labelText: 'Bio', hintText: 'Ceritakan sedikit tentang kamu'), maxLines: 2),
           TextField(controller: instagram, decoration: const InputDecoration(labelText: 'Instagram')),
           TextField(controller: youtube, decoration: const InputDecoration(labelText: 'YouTube')),
-          Row(children: [Expanded(child: TextField(controller: followers, decoration: const InputDecoration(labelText: 'Pengikut'), keyboardType: TextInputType.number)), const SizedBox(width:10), Expanded(child: TextField(controller: following, decoration: const InputDecoration(labelText: 'Mengikuti'), keyboardType: TextInputType.number))]),
           const SizedBox(height: 12),
-          SizedBox(width: double.infinity, child: FilledButton(onPressed: () { app.updateProfile(name: name.text, email: email.text, birthDate: birth.text, phone: phone.text, handle: handle.text, bio: bio.text, instagram: instagram.text, youtube: youtube.text, followers: int.tryParse(followers.text) ?? 0, following: int.tryParse(following.text) ?? 0); Navigator.pop(context); }, child: const Text('Simpan'))),
+          SizedBox(width: double.infinity, child: FilledButton(onPressed: () { app.updateProfile(name: name.text, email: email.text, birthDate: birth.text, phone: phone.text, handle: handle.text, bio: bio.text, instagram: instagram.text, youtube: youtube.text); Navigator.pop(context); }, child: const Text('Simpan'))),
         ]),
       ),
     );

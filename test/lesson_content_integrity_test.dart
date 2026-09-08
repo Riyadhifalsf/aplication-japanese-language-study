@@ -73,6 +73,72 @@ void main() {
       }
     });
 
+    test('n5-u01-l02 pola desu & wa termapping valid', () {
+      final lesson = CurriculumCatalogData.lessonById('n5-u01-l02')!;
+      expect(lesson.hasInlineContent, true);
+      expect(lesson.objectives.length, 4);
+      expect(lesson.grammarIds, ['n5-wa']);
+      expect(lesson.vocabularyIds, ['123', '313', '377']);
+      expect(lesson.kanjiIds, ['42', '41', '40']);
+      final vocab = loadList('assets/data/vocabulary.json');
+      final vById = {for (final v in vocab) '${v['id']}': v};
+      for (final id in lesson.vocabularyIds) {
+        expect(vById.containsKey(id), true, reason: 'vocab $id hilang');
+        expect(vById[id]!['level'], 'N5', reason: 'vocab $id bukan N5');
+      }
+      final kanji = loadList('assets/data/kanji.json');
+      final kById = {for (final k in kanji) '${k['id']}': k};
+      for (final id in lesson.kanjiIds) {
+        expect(kById.containsKey(id), true, reason: 'kanji $id hilang');
+        expect(kById[id]!['level'], 'N5', reason: 'kanji $id bukan N5');
+      }
+      expect(
+          lesson.activities
+              .where((a) => a.type == CurriculumActivityType.quiz),
+          hasLength(1));
+    });
+
+    test('n5-u01-l03 orang & profesi termapping valid', () {
+      final lesson = CurriculumCatalogData.lessonById('n5-u01-l03')!;
+      expect(lesson.hasInlineContent, true);
+      expect(lesson.objectives.length, 3);
+      expect(lesson.vocabularyIds, ['313', '377', '93']);
+      expect(lesson.kanjiIds, ['42', '41', '40', '29']);
+      final vocab = loadList('assets/data/vocabulary.json');
+      final vById = {for (final v in vocab) '${v['id']}': v};
+      for (final id in lesson.vocabularyIds) {
+        expect(vById.containsKey(id), true, reason: 'vocab $id hilang');
+        expect(vById[id]!['level'], 'N5', reason: 'vocab $id bukan N5');
+      }
+      expect(
+          lesson.activities
+              .where((a) => a.type == CurriculumActivityType.quiz),
+          hasLength(1));
+    });
+
+    test('n5-u01-l04 tanpa speaking, ada listening + quiz', () {
+      final lesson = CurriculumCatalogData.lessonById('n5-u01-l04')!;
+      expect(lesson.grammarIds, ['n5-no']);
+      expect(
+          lesson.activities
+              .where((a) => a.type == CurriculumActivityType.speaking),
+          isEmpty);
+      expect(
+          lesson.activities
+              .where((a) => a.type == CurriculumActivityType.listening),
+          hasLength(1));
+      expect(
+          lesson.activities
+              .where((a) => a.type == CurriculumActivityType.quiz),
+          hasLength(1));
+    });
+
+    test('n5-u01-l06 tes bab boss skor 70', () {
+      final lesson = CurriculumCatalogData.lessonById('n5-u01-l06')!;
+      expect(lesson.isBossTest, true);
+      expect(lesson.requiredScore, 70);
+    });
+
     test('LessonActivity contentIds round-trip JSON', () {
       const activity = LessonActivity(
         id: 'a1',

@@ -2,10 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import '../../services/feature_flags_service.dart';
 import '../../state/app_controller.dart';
-import '../../widgets/reward_ad_card.dart';
-import '../../services/hidden_quests.dart';
 import '../../widgets/brand_icons.dart';
 import '../auth/login_screen.dart';
 // Phase 1: premium_screen dipertahankan file-nya untuk future dev,
@@ -124,22 +121,6 @@ class ProfileScreen extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        const SizedBox(height: 9),
-                        Row(
-                          children: [
-                            _SocialCount(
-                              'Pengikut',
-                              '${app.followersEnabled ? app.profileFollowers : 0}',
-                              enabled: app.followersEnabled,
-                            ),
-                            const SizedBox(width: 18),
-                            _SocialCount(
-                              'Mengikuti',
-                              '${app.followersEnabled ? app.profileFollowing : 0}',
-                              enabled: app.followersEnabled,
-                            ),
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -202,36 +183,7 @@ class ProfileScreen extends StatelessWidget {
                   label: const Text('Login untuk sinkronisasi'),
                 ),
               ],
-              // Phase 1: subscription UI dihapus. Semua konten gratis.
-              // RewardAdCard (iklan) tetap tampil, bukan paywall.
-              const SizedBox(height: 12),
-              const RewardAdCard(),
             ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        _HiddenQuestCard(app: app),
-        const SizedBox(height: 14),
-        Card(
-          color: cs.surfaceContainerHighest,
-          child: ListTile(
-            leading: const Icon(Icons.groups_rounded),
-            title: Row(
-              children: [
-                const Text(
-                  'Komunitas',
-                  style: TextStyle(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(width: 7),
-                const _BetaBadge(),
-              ],
-            ),
-            subtitle: Text(
-              app.communityEnabled
-                  ? 'Feed komunitas aktif.'
-                  : 'Upload, follow, dan komentar masih dalam tahap beta dan belum aktif.',
-            ),
-            trailing: const Icon(Icons.lock_clock_rounded),
           ),
         ),
         const SizedBox(height: 14),
@@ -254,32 +206,6 @@ class ProfileScreen extends StatelessWidget {
         ),
         ],
       ),
-    );
-  }
-}
-
-class _SocialCount extends StatelessWidget {
-  const _SocialCount(this.label, this.value, {required this.enabled});
-
-  final String label;
-  final String value;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
-    return Row(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: enabled ? Theme.of(context).colorScheme.onSurface : muted,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: muted)),
-      ],
     );
   }
 }
@@ -314,90 +240,6 @@ class _CompactMetric extends StatelessWidget {
     );
   }
 }
-
-/// Kartu misi tersembunyi: yang terbuka tampil, sisanya "???".
-class _HiddenQuestCard extends StatelessWidget {
-  const _HiddenQuestCard({required this.app});
-  final AppController app;
-
-  @override
-  Widget build(BuildContext context) {
-    final open = app.unlockedQuests.length;
-    final total = HiddenQuests.defs.length;
-    return Card(
-      child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.auto_awesome_rounded)),
-        title: const Text('Misi Tersembunyi',
-            style: TextStyle(fontWeight: FontWeight.w900)),
-        subtitle: Text('$open dari $total terbuka. Syaratnya rahasia...'),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => showDialog<void>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Misi Tersembunyi'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  for (final q in HiddenQuests.defs)
-                    Builder(builder: (_) {
-                      final got = app.unlockedQuests.contains(q.id);
-                      return ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          radius: 18,
-                          child: Icon(got ? q.icon : Icons.question_mark_rounded,
-                              size: 18),
-                        ),
-                        title: Text(got ? q.title : '???',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w800)),
-                        subtitle: Text(got ? '+${q.rewardXp} XP' : q.hint,
-                            style: const TextStyle(fontSize: 12)),
-                      );
-                    }),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Tutup'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BetaBadge extends StatelessWidget {
-  const _BetaBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: scheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Text(
-        'BETA',
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-          color: scheme.onTertiaryContainer,
-        ),
-      ),
-    );
-  }
-}
-
 
 class _LevelProgress extends StatelessWidget {
   const _LevelProgress(this.level, this.app);
