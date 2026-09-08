@@ -10,9 +10,18 @@ import '../auth/login_screen.dart';
 import 'profile_settings_screen.dart';
 import 'study_stats_screen.dart';
 import '../../widgets/profile_insights.dart';
+import '../../widgets/achievement_gallery.dart';
+import '../../widgets/weekly_learning_pulse.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  int? _selectedActivityYear;
 
   @override
   Widget build(BuildContext context) {
@@ -190,6 +199,10 @@ class ProfileScreen extends StatelessWidget {
         const SizedBox(height: 14),
         ProfileInsights(app: app),
         const SizedBox(height: 14),
+        WeeklyLearningPulse(app: app),
+        const SizedBox(height: 14),
+        AchievementGallery(app: app),
+        const SizedBox(height: 14),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -202,9 +215,27 @@ class ProfileScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 const Divider(),
                 const SizedBox(height: 4),
-                const Text('Aktivitas terakhir', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text('Aktivitas terakhir', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                    ),
+                    _ActivityYearDropdown(
+                      year: _selectedActivityYear,
+                      years: _activityYears(app.activityJournal),
+                      onChanged: (value) => setState(() => _selectedActivityYear = value),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 6),
-                for (final e in app.activityJournal.reversed.take(8)) ListTile(contentPadding: EdgeInsets.zero, dense: true, leading: const Icon(Icons.timeline_rounded), title: Text('${e['label'] ?? '-'}', maxLines: 1, overflow: TextOverflow.ellipsis), subtitle: Text('${e['type'] ?? '-'} · ${e['at'] ?? '-'}')),
+                for (final e in _filteredActivities(app.activityJournal).take(8))
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: const Icon(Icons.timeline_rounded),
+                    title: Text('${e['label'] ?? '-'}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text('${e['type'] ?? '-'} · ${_formatActivityDate(e['at'])}'),
+                  ),
               ],
             ),
           ),
@@ -213,7 +244,64 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+  List<int> _activityYears(List<Map<String, Object?>> entries) {
+    final years = <int>{DateTime.now().year};
+    for (final e in entries) {
+      final value = DateTime.tryParse('${e['at'] ?? ''}');
+      if (value != null) years.add(value.year);
+    }
+    final sorted = years.toList()..sort((a, b) => b.compareTo(a));
+    return sorted;
+  }
+
+  List<Map<String, Object?>> _filteredActivities(List<Map<String, Object?>> entries) {
+    final year = _selectedActivityYear;
+    if (year == null) return entries.reversed.toList(growable: false);
+    return entries
+        .where((e) => DateTime.tryParse('${e['at'] ?? ''}')?.year == year)
+        .toList(growable: false)
+        .reversed
+        .toList(growable: false);
+  }
+
+  String _formatActivityDate(Object? raw) {
+    final dt = DateTime.tryParse('$raw');
+    if (dt == null) return '$raw';
+    final local = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${local.day}/${two(local.month)}/${local.year} ${two(local.hour)}:${two(local.minute)}';
+  }
+
+
+
 }
+
+class _ActivityYearDropdown extends StatelessWidget {
+  const _ActivityYearDropdown({required this.year, required this.years, required this.onChanged});
+
+  final int? year;
+  final List<int> years;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<int?>(
+        value: year,
+        borderRadius: BorderRadius.circular(16),
+        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+        isDense: true,
+        hint: const Text('Semua tahun'),
+        items: [
+          const DropdownMenuItem<int?>(value: null, child: Text('Semua tahun')),
+          ...years.map((y) => DropdownMenuItem<int?>(value: y, child: Text('$y'))),
+        ],
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
 
 class _CompactMetric extends StatelessWidget {
   const _CompactMetric(this.label, this.value);
