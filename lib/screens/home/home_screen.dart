@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../../models/kanji.dart';
 import '../../state/app_controller.dart';
-import '../../widgets/admob_native_slot.dart';
 import '../../widgets/continue_learning_card.dart';
 import '../../widgets/entrance.dart';
 import '../../widgets/learning_components.dart';
@@ -174,9 +173,8 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Entrance(keyName: 'home-mission', delay: const Duration(milliseconds: 80), child: _TodayMissionCard(app: app)),
-        // Iklan tetap tampil (bukan paywall). Premium check dihapus Phase 1.
-        const SizedBox(height: 16),
-        AdmobNativeSlot(hidden: false),
+        const SizedBox(height: 18),
+        _HomeFooter(),
       ],
     );
   }
@@ -186,6 +184,37 @@ class HomeScreen extends StatelessWidget {
     if (now.hour < 18) return 'Lanjutkan latihanmu saat ritmenya masih hangat.';
     return 'Tutup hari dengan sedikit review.';
   }
+}
+
+class _HomeFooter extends StatelessWidget {
+  const _HomeFooter();
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+          child: Row(children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: Theme.of(context).colorScheme.primaryContainer,
+              ),
+              child: const Icon(Icons.auto_awesome_rounded),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Pelan-pelan, yang penting berlanjut.', style: TextStyle(fontWeight: FontWeight.w900)),
+                SizedBox(height: 3),
+                Text('Satu sesi yang selesai lebih berguna daripada banyak target yang tidak sempat disentuh.', style: TextStyle(fontSize: 12, height: 1.35)),
+              ]),
+            ),
+          ]),
+        ),
+      );
 }
 
 class _TodayMissionCard extends StatelessWidget {
