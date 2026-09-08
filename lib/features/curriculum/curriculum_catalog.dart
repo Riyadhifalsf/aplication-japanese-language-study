@@ -1,4 +1,5 @@
 import 'curriculum_models.dart';
+import 'curriculum_depth_catalog.dart';
 
 LessonActivity _a(
   String id,
@@ -117,7 +118,7 @@ List<CurriculumUnit> _n5Units() => [
                         meaning: 'Salam kenal.'),
                     LessonLine(
                         japanese: 'わたしは リヤドです。',
-                        reading: 'わたしは リヤドです。',
+                        reading: 'わたしは たなかです。',
                         meaning: 'Saya Tanaka.'),
                     LessonLine(
                         japanese: 'インドネシアじんです。',
@@ -316,7 +317,7 @@ List<CurriculumUnit> _n5Units() => [
           _l('n5-u01-l04', 'n5-u01', 'N5', 5, 'Nama & ～さん', [
             _a('n5-u01-l04-a1', CurriculumActivityType.vocabulary,
                 'Panggilan sopan',
-                description: 'たなかさん, やまださん, りやどさん',
+                description: 'たなかさん, やまださん, さとうさん',
                 contentRef: 'level:N5;lesson:nama-san',
                 routeHint: 'vocabulary'),
             _a('n5-u01-l04-a2', CurriculumActivityType.quiz,
@@ -545,7 +546,7 @@ List<CurriculumUnit> _n5Units() => [
                         meaning: 'Salam kenal.'),
                     LessonLine(
                         japanese: 'わたしは リヤドです。',
-                        reading: 'わたしは リヤドです。',
+                        reading: 'わたしは たなかです。',
                         meaning: 'Saya Tanaka.'),
                     LessonLine(
                         japanese: 'インドネシアじんです。',
@@ -1604,7 +1605,7 @@ class CurriculumCatalogData {
   /// Level lengkap dengan unit & lesson. Dipisah dari [levels] agar
   /// metadata ringan bisa dipakai tanpa membangun seluruh pohon.
   static List<CurriculumLevel> get fullLevels {
-    final n3Units = _upperUnits('N3', const [
+    final n3Base = _upperUnits('N3', const [
       'Kosakata Menengah',
       'Kanji Menengah',
       'Bunpou Menengah',
@@ -1614,7 +1615,7 @@ class CurriculumCatalogData {
       'Review Terpadu',
       'N3 Final Test',
     ], 'komunikasi mandiri');
-    final n2Units = _upperUnits('N2', const [
+    final n2Base = _upperUnits('N2', const [
       'Kosakata Formal',
       'Kanji Formal',
       'Bunpou Formal',
@@ -1624,7 +1625,7 @@ class CurriculumCatalogData {
       'Review Terpadu',
       'N2 Final Test',
     ], 'bahasa formal');
-    final n1Units = _upperUnits('N1', const [
+    final n1Base = _upperUnits('N1', const [
       'Nuansa Makna',
       'Kanji Lanjut',
       'Keigo Terapan',
@@ -1634,6 +1635,26 @@ class CurriculumCatalogData {
       'Review Terpadu',
       'N1 Final Test',
     ], 'tingkat lanjut');
+    final n5Units = [
+      ..._n5Units(),
+      ...CurriculumDepthCatalog.forLevel('N5', startSequence: 11),
+    ];
+    final n4Units = [
+      ..._n4Units(),
+      ...CurriculumDepthCatalog.forLevel('N4', startSequence: 9),
+    ];
+    final n3Units = [
+      ...n3Base,
+      ...CurriculumDepthCatalog.forLevel('N3', startSequence: n3Base.length + 1),
+    ];
+    final n2Units = [
+      ...n2Base,
+      ...CurriculumDepthCatalog.forLevel('N2', startSequence: n2Base.length + 1),
+    ];
+    final n1Units = [
+      ...n1Base,
+      ...CurriculumDepthCatalog.forLevel('N1', startSequence: n1Base.length + 1),
+    ];
     final jft = _jftUnits();
     return [
       CurriculumLevel(
@@ -1643,7 +1664,7 @@ class CurriculumCatalogData {
           sequence: 1,
           track: 'jlpt',
           description: 'Pemula → N5.',
-          units: _n5Units()),
+          units: n5Units),
       CurriculumLevel(
           id: 'N4',
           title: 'JLPT N4',
@@ -1652,7 +1673,7 @@ class CurriculumCatalogData {
           track: 'jlpt',
           description: 'Penguatan menengah.',
           requiredPreviousLevelId: 'N5',
-          units: _n4Units()),
+          units: n4Units),
       CurriculumLevel(
           id: 'N3',
           title: 'JLPT N3',
