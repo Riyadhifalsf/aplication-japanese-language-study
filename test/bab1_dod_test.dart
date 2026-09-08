@@ -377,6 +377,100 @@ void main() {
     });
   });
 
+  group('DoD §26: blueprint Bab 1', () {
+    test('L0 intro ada: sequence 0, intro+quiz, notes, 3 soal', () {
+      final l00 = CurriculumCatalogData.lessonById('n5-u01-l00')!;
+      expect(l00.sequence, 0);
+      expect(l00.objectives.length, 2);
+      expect(l00.notes.length, 1);
+      expect(l00.notes.first.lines.length, 4);
+      expect(l00.authoredQuestions.length, 3);
+      expect(
+          l00.activities
+              .where((a) => a.type == CurriculumActivityType.introduction),
+          hasLength(1));
+      expect(
+          l00.activities
+              .where((a) => a.type == CurriculumActivityType.quiz),
+          hasLength(1));
+    });
+
+    test('Ownership: introducedInLessonId benar per kunci', () {
+      final n5 = CurriculumCatalogData.levelById('N5')!;
+      final ownership = CurriculumEngine.introducedInLessonId(n5);
+      expect(ownership['v:313'], 'n5-u01-l01');
+      expect(ownership['v:295'], 'n5-u01-l03');
+      expect(ownership['g:n5-no'], 'n5-u01-l04a');
+      // n5-wa sudah diperkenalkan di l01 (kartu grammar salam).
+      expect(ownership['g:n5-wa'], 'n5-u01-l01');
+      expect(ownership['k:179'], 'n5-u01-l03');
+      expect(ownership['p:ph-0001'], 'n5-u01-l01');
+    });
+
+    test('Caps: vocab baru per lesson ≤7, unit unik ≤30', () {
+      final n5 = CurriculumCatalogData.levelById('N5')!;
+      final ownership = CurriculumEngine.introducedInLessonId(n5);
+      final unit = CurriculumCatalogData.unitById('n5-u01')!;
+      final seen = <String>{};
+      for (final lesson in CurriculumEngine.orderedLessons(n5)
+          .where((l) => l.unitId == unit.id)) {
+        var fresh = 0;
+        for (final id in lesson.vocabularyIds) {
+          if (ownership['v:$id'] == lesson.id) fresh++;
+        }
+        expect(fresh, lessThanOrEqualTo(7),
+            reason: '${lesson.id} memperkenalkan $fresh vocab');
+      }
+      final unique =
+          ownership.keys.where((k) => k.startsWith('v:')).toSet();
+      final inUnit = <String>{};
+      for (final lesson in unit.lessons) {
+        for (final id in lesson.vocabularyIds) {
+          inUnit.add('v:$id');
+        }
+      }
+      expect(inUnit.length, lessThanOrEqualTo(30));
+      expect(unique.containsAll(inUnit), true);
+    });
+
+    test('Review l05 tidak memperkenalkan vocab baru', () {
+      final n5 = CurriculumCatalogData.levelById('N5')!;
+      final ownership = CurriculumEngine.introducedInLessonId(n5);
+      final l05 = CurriculumCatalogData.lessonById('n5-u01-l05')!;
+      for (final id in l05.vocabularyIds) {
+        expect(ownership['v:$id'] == 'n5-u01-l05', false,
+            reason: 'v:$id diklaim review');
+      }
+    });
+
+    test('Gate skor: klaim quiz butuh ≥70', () {
+      expect(meetsScoreGate(69), false);
+      expect(meetsScoreGate(70), true);
+      expect(meetsScoreGate(100), true);
+    });
+
+    test('Bonus Bab: pass boss pertama + unit done = +100', () async {
+      final app = _controller();
+      final unit = CurriculumCatalogData.unitById('n5-u01')!;
+      for (final lesson in unit.lessons) {
+        if (lesson.id == 'n5-u01-l06') continue;
+        for (final activity in lesson.activities) {
+          app.completeCurriculumActivity(lesson.id, activity.id);
+        }
+      }
+      final before = app.xp;
+      final passed =
+          app.recordCurriculumFinalTest('n5-u01-l06', 80);
+      expect(passed, true);
+      final delta = app.xp - before;
+      // 50 XP tes (unitTest) + 80 XP kuis (8 benar) + 100 bonus bab.
+      expect(delta, 230);
+      final before2 = app.xp;
+      app.recordCurriculumFinalTest('n5-u01-l06', 80);
+      expect(app.xp - before2, 0);
+    });
+  });
+
   group('DoD Bab 1: audio + grade', () {
     test('TTS speak selesai tanpa throw (mesin boleh absen)', () async {
       final tts = TtsService();
