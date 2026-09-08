@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.0+8 — Industrial quality upgrade
+
+- Expanded JLPT curriculum depth with six-part sub-lessons across N5-N1.
+- Refined Learning terminology and visual level separation.
+- Improved lesson copy and removed cosmetic editing-style UI cues.
+- Hardened password reset for Google-only accounts and fixed reset transaction atomicity.
+- Added stricter Firestore ownership rules and payload validation.
+- Added API/proxy body limits, throttling, security headers and non-root Node 24 container baseline.
+- Added curriculum reference, security hardening and product roadmap documentation.
+- Added backend CI syntax checks.
+
 Semua perubahan penting pada proyek ini dicatat di berkas ini.
 
 ## [1.6.0] - 2026-09-09
