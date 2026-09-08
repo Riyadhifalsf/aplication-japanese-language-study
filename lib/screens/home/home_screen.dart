@@ -9,6 +9,7 @@ import '../../widgets/continue_learning_card.dart';
 import '../../widgets/entrance.dart';
 import '../../widgets/learning_components.dart';
 import '../../widgets/liquid_glass.dart';
+import '../../widgets/weekly_learning_pulse.dart';
 import '../kanji/kanji_detail_screen.dart';
 import '../kanji/kanji_study_screen.dart';
 import '../notifications/notification_center_screen.dart';
@@ -229,7 +230,7 @@ class _TodayMissionCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       lesson?.whyNow ??
-                          'Tidak ada lesson baru yang boleh dibuka sebelum katalog berikutnya tersedia.',
+                          'Review, latihan, dan lesson berikutnya dipilih dari progresmu sekarang.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
