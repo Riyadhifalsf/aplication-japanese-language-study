@@ -44,6 +44,7 @@ class DonationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final methods = DonationConfig.methods;
+    final donors = [...DonationConfig.donors]..sort((a, b) => b.amount.compareTo(a.amount));
     return Scaffold(
       appBar: AppBar(title: const Text('Donasi')),
       body: ListView(
@@ -81,6 +82,8 @@ class DonationScreen extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          _DonorSummary(donors: donors),
           const SizedBox(height: 16),
           const Text('Kanal resmi',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -134,3 +137,93 @@ class DonationScreen extends StatelessWidget {
     );
   }
 }
+
+
+class _DonorSummary extends StatelessWidget {
+  const _DonorSummary({required this.donors});
+
+  final List<DonationRecord> donors;
+
+  String _rupiah(int amount) => 'Rp${amount.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: cs.primaryContainer,
+                  child: const Icon(Icons.favorite_rounded),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Komunitas donatur', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                      SizedBox(height: 3),
+                      Text('Total orang yang sudah berdonasi dan dukungan terbesar.'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _DonationMetric(value: '${DonationConfig.donorCount}', label: 'Orang berdonasi')),
+                Expanded(child: _DonationMetric(value: _rupiah(DonationConfig.totalAmount), label: 'Total donasi')),
+              ],
+            ),
+            if (donors.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 10),
+              const Text('Donatur terbesar', style: TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              for (var i = 0; i < donors.take(10).length; i++)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(child: Text('${i + 1}')),
+                  title: Text(donors[i].displayName, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  trailing: Text(_rupiah(donors[i].amount), style: const TextStyle(fontWeight: FontWeight.w900)),
+                ),
+            ] else
+              Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: Text(
+                  'Belum ada data donatur yang terhubung. Daftar akan otomatis diurutkan dari nominal terbesar saat data server tersedia.',
+                  style: TextStyle(color: cs.onSurfaceVariant, height: 1.4),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DonationMetric extends StatelessWidget {
+  const _DonationMetric({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+        ],
+      );
+}
+
