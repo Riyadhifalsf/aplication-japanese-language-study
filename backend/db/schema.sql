@@ -17,12 +17,27 @@ CREATE TABLE IF NOT EXISTS app_users (
   progress JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  last_login_at TIMESTAMPTZ
+  last_login_at TIMESTAMPTZ,
+  password_changed_at TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_app_users_role ON app_users(role);
 CREATE INDEX IF NOT EXISTS idx_app_users_created ON app_users(created_at);
 CREATE INDEX IF NOT EXISTS idx_app_users_email_trgm ON app_users USING GIN (email gin_trgm_ops);
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+
+-- One-time password reset codes. Only SHA-256 digests are stored.
+CREATE TABLE IF NOT EXISTS password_resets (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0 AND attempts <= 10),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_password_resets_expiry ON password_resets(expires_at);
 
 CREATE TABLE IF NOT EXISTS api_audit_logs (
   id BIGSERIAL PRIMARY KEY,
