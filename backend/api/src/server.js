@@ -23,7 +23,12 @@ app.use(cors({
 }));
 // Batas body 2mb: cukup untuk sync progress penuh user berat, 5x lebih
 // ketat dari sebelumnya terhadap payload raksasa (DoS).
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '1.5mb', strict: true }));
+app.use((err, _req, res, next) => {
+  if (err && err.type === 'entity.too.large') return fail(res, 413, 'PAYLOAD_TOO_LARGE', 'Payload terlalu besar.');
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) return fail(res, 400, 'INVALID_JSON', 'Format JSON tidak valid.');
+  return next(err);
+});
 
 // Request ID + access log ringan (observability; health tidak dilog).
 app.use((req, res, next) => {
@@ -32,6 +37,7 @@ app.use((req, res, next) => {
   } catch (_) {
     req.id = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
   }
+  res.setHeader('X-Request-Id', req.id);
   const started = Date.now();
   res.on('finish', () => {
     if (req.path === '/api/health' || req.path === '/api/v1/health') return;
@@ -162,6 +168,7 @@ app.use('/api', apiLimiter);
 app.use('/api/v1', apiLimiter);
 
 const api = require('express').Router();
+api.use('/auth', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 const audit = (userId, action, req) =>
   pool.query(
@@ -180,6 +187,14 @@ api.get('/health', asyncHandler(async (_req, res) => {
     time: r.rows[0].time,
   });
 }));
+
+// Opportunistic cleanup; expired/used reset rows contain no recoverable secret.
+async function cleanupExpiredResetCodes() {
+  try {
+    await pool.query(`DELETE FROM password_resets WHERE used_at IS NOT NULL OR expires_at < now()`);
+  } catch (_) {}
+}
+setInterval(cleanupExpiredResetCodes, 6 * 60 * 60 * 1000).unref?.();
 
 // ---------- auth / akun ----------
 api.post('/auth/register', authLimiter, asyncHandler(async (req, res) => {
@@ -225,77 +240,90 @@ api.post('/auth/login', authLimiter, asyncHandler(async (req, res) => {
 
 // ---------- verifikasi Google/Firebase ID token (tanpa dep baru) ----------
 const GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+const FIREBASE_CERTS_URL = 'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 const FIREBASE_PROJECT_ID = (process.env.FIREBASE_PROJECT_ID || '').trim();
-const cachedCerts = { keys: null, fetchedAt: 0 };
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const cachedCerts = { google: { keys: null, fetchedAt: 0 }, firebase: { keys: null, fetchedAt: 0 } };
 
 const base64UrlToBuffer = (s) =>
   Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
 
-async function getGoogleCerts() {
-  if (cachedCerts.keys && Date.now() - cachedCerts.fetchedAt < 3600 * 1000) {
-    return cachedCerts.keys;
+async function getJwks(url, cache) {
+  if (cache.keys && Date.now() - cache.fetchedAt < 60 * 60 * 1000) {
+    return cache.keys;
   }
-  const r = await fetch(GOOGLE_CERTS_URL);
-  if (!r.ok) throw new Error('certs');
+  const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+  if (!r.ok) throw new Error('jwks');
   const jwks = await r.json();
-  cachedCerts.keys = jwks.keys || [];
-  cachedCerts.fetchedAt = Date.now();
-  return cachedCerts.keys;
+  cache.keys = Array.isArray(jwks.keys) ? jwks.keys : [];
+  cache.fetchedAt = Date.now();
+  return cache.keys;
 }
 
-async function verifyGoogleIdTokenLocal(idToken) {
+const parseJwtPart = (s) => JSON.parse(base64UrlToBuffer(s).toString('utf8'));
+
+async function verifySignedIdToken(idToken, { firebase = false } = {}) {
   const parts = String(idToken).split('.');
   if (parts.length !== 3) throw new Error('format');
-  const header = JSON.parse(base64UrlToBuffer(parts[0]).toString('utf8'));
+  const header = parseJwtPart(parts[0]);
   if (header.alg !== 'RS256' || !header.kid) throw new Error('alg');
-  const keys = await getGoogleCerts();
+  const keys = firebase
+    ? await getJwks(FIREBASE_CERTS_URL, cachedCerts.firebase)
+    : await getJwks(GOOGLE_CERTS_URL, cachedCerts.google);
   const jwk = keys.find((k) => k.kid === header.kid);
   if (!jwk) throw new Error('kid');
   const verifier = crypto.createVerify('RSA-SHA256');
   verifier.update(`${parts[0]}.${parts[1]}`);
   verifier.end();
   const keyObject = crypto.createPublicKey({ key: jwk, format: 'jwk' });
-  if (!verifier.verify(keyObject, base64UrlToBuffer(parts[2]))) {
-    throw new Error('sig');
-  }
-  const payload = JSON.parse(base64UrlToBuffer(parts[1]).toString('utf8'));
+  if (!verifier.verify(keyObject, base64UrlToBuffer(parts[2]))) throw new Error('sig');
+
+  const payload = parseJwtPart(parts[1]);
   const now = Math.floor(Date.now() / 1000);
-  if (!payload.sub || !payload.exp || payload.exp < now - 30) {
-    throw new Error('exp');
-  }
-  const issOk = payload.iss === 'https://accounts.google.com' ||
-    payload.iss === 'accounts.google.com';
-  if (!issOk) throw new Error('iss');
-  if (FIREBASE_PROJECT_ID && payload.aud !== FIREBASE_PROJECT_ID) {
-    throw new Error('aud');
+  if (!payload.sub || !payload.exp || payload.exp < now - 30 || payload.exp > now + 24 * 60 * 60) throw new Error('exp');
+  if (payload.iat && Number(payload.iat) > now + 60) throw new Error('iat');
+  if (firebase) {
+    if (!FIREBASE_PROJECT_ID) throw new Error('firebase-config');
+    if (payload.iss !== `https://securetoken.google.com/${FIREBASE_PROJECT_ID}` || payload.aud !== FIREBASE_PROJECT_ID) throw new Error('firebase-claims');
+  } else {
+    const issOk = payload.iss === 'https://accounts.google.com' || payload.iss === 'accounts.google.com';
+    if (!issOk) throw new Error('iss');
+    if (!GOOGLE_CLIENT_ID || payload.aud !== GOOGLE_CLIENT_ID) throw new Error('aud');
+    if (payload.email_verified === false) throw new Error('email-unverified');
   }
   return payload;
 }
 
 async function verifyGoogleIdToken(idToken) {
-  // 1. Verifikasi lokal: tanda tangan RS256 + exp + iss + aud (cepat, tahan rate-limit).
+  if (!String(idToken || '').trim()) throw new HttpError(401, 'Token Google tidak valid.', 'AUTH_GOOGLE_INVALID');
+  // App sends a Firebase ID token after Google sign-in. Prefer this path.
   try {
-    const p = await verifyGoogleIdTokenLocal(idToken);
+    const p = await verifySignedIdToken(idToken, { firebase: true });
     return { sub: p.sub, email: p.email, name: p.name, picture: p.picture };
-  } catch (_) {
-    // Lanjut ke fallback di bawah.
-  }
-  // 2. Fallback tokeninfo Google.
+  } catch (_) {}
+  // Optional direct Google ID-token path for trusted web/desktop clients.
   try {
-    const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
-    if (!r.ok) throw new HttpError(401, 'Token Google tidak valid.');
+    const p = await verifySignedIdToken(idToken, { firebase: false });
+    return { sub: p.sub, email: p.email, name: p.name, picture: p.picture };
+  } catch (_) {}
+  // Legacy tokeninfo fallback only when a Google client ID is configured.
+  if (!GOOGLE_CLIENT_ID) throw new HttpError(401, 'Token Google tidak valid.', 'AUTH_GOOGLE_INVALID');
+  try {
+    const r = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) throw new Error('tokeninfo');
     const info = await r.json();
-    if (FIREBASE_PROJECT_ID && info.aud && info.aud !== FIREBASE_PROJECT_ID) {
-      throw new HttpError(401, 'Token Google tidak valid.');
-    }
+    if (info.iss !== 'https://accounts.google.com' && info.iss !== 'accounts.google.com') throw new Error('iss');
+    if (info.aud !== GOOGLE_CLIENT_ID) throw new Error('aud');
+    if (info.email_verified !== 'true' && info.email_verified !== true) throw new Error('email-unverified');
+    if (!info.sub || !info.email) throw new Error('claims');
     return info;
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    throw new HttpError(502, 'Gagal verifikasi token Google.');
+  } catch (_) {
+    throw new HttpError(401, 'Token Google tidak valid.', 'AUTH_GOOGLE_INVALID');
   }
 }
 
 api.post('/auth/google', authLimiter, asyncHandler(async (req, res) => {
+  if (!FIREBASE_PROJECT_ID && !GOOGLE_CLIENT_ID) return fail(res, 503, 'AUTH_GOOGLE_NOT_CONFIGURED', 'Login Google belum dikonfigurasi di server.');
   const idToken = String(req.body.idToken || req.body.id_token || '').trim();
   if (!idToken) return fail(res, 400, 'AUTH_GOOGLE_NO_TOKEN', 'idToken wajib diisi.');
   const info = await verifyGoogleIdToken(idToken);
@@ -368,14 +396,8 @@ api.post('/auth/forgot', passwordLimiter, asyncHandler(async (req, res) => {
   const u = await pool.query('SELECT id, display_name, password_hash FROM app_users WHERE email=$1', [email]);
   if (!u.rowCount) return done();
   const user = u.rows[0];
-  if (!user.password_hash) {
-    // Akun login Google: tidak punya password server. Beri tahu pemilik
-    // inbox (aman: hanya pemilik alamat yang membaca email ini).
-    const tpl = mailer.googleAccountNoticeTemplate({ name: user.display_name });
-    await mailer.sendMail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
-    await audit(user.id, 'password_forgot_google', req).catch(() => {});
-    return done();
-  }
+  // Google-only account may also establish a local password. The reset
+  // challenge is tied to the verified email inbox, not to provider metadata.
   const code = String(crypto.randomInt(100000, 1000000));
   const expiresAt = new Date(Date.now() + RESET_CODE_TTL_MIN * 60 * 1000);
   await pool.query(
@@ -398,8 +420,7 @@ api.post('/auth/reset', passwordLimiter, asyncHandler(async (req, res) => {
   }
   if (weak) return fail(res, 400, 'AUTH_WEAK_PASSWORD', weak);
   const u = await pool.query('SELECT id, password_hash FROM app_users WHERE email=$1', [email]);
-  if (!u.rowCount || !u.rows[0].password_hash) {
-    // Respons generik: jangan bocorkan akun mana yang valid.
+  if (!u.rowCount) {
     return fail(res, 400, 'RESET_INVALID', 'Kode salah atau sudah kedaluwarsa.');
   }
   const userId = u.rows[0].id;
@@ -432,20 +453,23 @@ api.post('/auth/reset', passwordLimiter, asyncHandler(async (req, res) => {
     return fail(res, 400, 'RESET_INVALID', 'Kode salah atau sudah kedaluwarsa.');
   }
   const hash = await bcrypt.hash(String(req.body.newPassword), 12);
-  await pool.query('BEGIN');
+  const client = await pool.connect();
   try {
-    await pool.query(
+    await client.query('BEGIN');
+    await client.query(
       `UPDATE app_users SET password_hash=$2, password_changed_at=now() WHERE id=$1`,
       [userId, hash]
     );
-    await pool.query(
+    await client.query(
       `UPDATE password_resets SET used_at=now() WHERE user_id=$1 AND used_at IS NULL`,
       [userId]
     );
-    await pool.query('COMMIT');
+    await client.query('COMMIT');
   } catch (e) {
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
     throw e;
+  } finally {
+    client.release();
   }
   await audit(userId, 'password_reset', req).catch(() => {});
   res.json({ ok: true, message: 'Password berhasil diubah. Masuk dengan password baru.' });
@@ -458,21 +482,43 @@ api.get('/me', authRequired, asyncHandler(async (req, res) => {
   res.json({ user: publicUser(u), progress: u.progress || {} });
 }));
 
+const sanitizeProfile = (input) => {
+  const allowed = new Set([
+    'display_name', 'photoUrl', 'bio', 'birthDate', 'phone', 'handle',
+    'instagram', 'youtube', 'followers', 'following', 'timezone', 'targetLevel',
+  ]);
+  const out = {};
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return out;
+  for (const [key, value] of Object.entries(input)) {
+    if (!allowed.has(key)) continue;
+    if (typeof value === 'string') out[key] = value.trim().slice(0, 1000);
+    else if (Number.isFinite(Number(value)) && ['followers', 'following'].includes(key)) out[key] = Math.max(0, Math.min(1_000_000_000, Number(value)));
+  }
+  return out;
+};
+
 api.put('/me/profile', authRequired, asyncHandler(async (req, res) => {
-  const profile = req.body && typeof req.body === 'object' ? req.body : {};
+  const profile = sanitizeProfile(req.body);
+  const serialized = JSON.stringify(profile);
+  if (serialized.length > 16_384) return fail(res, 413, 'PROFILE_TOO_LARGE', 'Profil terlalu besar.');
   const r = await pool.query(
     `UPDATE app_users SET display_name=COALESCE($2,display_name),profile=$3 WHERE id=$1 RETURNING *`,
-    [req.auth.sub, profile.display_name ? String(profile.display_name).slice(0, 80) : null, JSON.stringify(profile)]
+    [req.auth.sub, profile.display_name ? String(profile.display_name).slice(0, 80) : null, serialized]
   );
   if (!r.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
   res.json({ user: publicUser(r.rows[0]) });
 }));
 
 api.put('/me/progress', authRequired, asyncHandler(async (req, res) => {
-  const progress = req.body && typeof req.body === 'object' ? req.body : {};
+  const progress = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+    ? req.body
+    : null;
+  if (!progress) return fail(res, 400, 'VALIDATION', 'Progress harus berupa object JSON.');
+  const serialized = JSON.stringify(progress);
+  if (serialized.length > 1_250_000) return fail(res, 413, 'PROGRESS_TOO_LARGE', 'Data progress terlalu besar.');
   const r = await pool.query(
     `UPDATE app_users SET progress=$2 WHERE id=$1 RETURNING updated_at`,
-    [req.auth.sub, JSON.stringify(progress)]
+    [req.auth.sub, serialized]
   );
   if (!r.rowCount) return fail(res, 404, 'USER_NOT_FOUND', 'User tidak ditemukan.');
   res.json({ ok: true, updated_at: r.rows[0].updated_at });
