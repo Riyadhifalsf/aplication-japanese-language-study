@@ -397,6 +397,7 @@ class _LessonInlineContent extends StatelessWidget {
             grammars: grammars,
             kanjis: kanjis,
             listening: true,
+            authored: lesson.authoredQuestions,
           );
     final showPractice = !lesson.isTest &&
         lessonQuestions.length >= 3 &&
@@ -476,6 +477,60 @@ class _LessonInlineContent extends StatelessWidget {
           Text('Konteks: $unitTitle · JLPT ${lesson.levelId}',
               style:
                   TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        ],
+        // Catatan kurikulum (materi standar spesifikasi bab).
+        if (lesson.notes.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          for (final note in lesson.notes)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(note.title,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text(note.body,
+                          style: const TextStyle(height: 1.45)),
+                      for (final line in note.lines) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(line.japanese,
+                                      style: const TextStyle(
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w900,
+                                          height: 1.35)),
+                                  Text(
+                                      '${line.reading} — ${line.meaning}',
+                                      style: TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                          height: 1.35)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Dengarkan',
+                              onPressed: () =>
+                                  app.tts.speak(line.japanese),
+                              icon: const Icon(Icons.volume_up_rounded),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
         const SizedBox(height: 12),
         const Text('Bagian 1 — Materi',
@@ -559,7 +614,10 @@ class _LessonInlineContent extends StatelessWidget {
                   for (final v in showVocabs)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('${v.word} (${v.reading}) — ${v.meaning}',
+                      // Mastery jujur 2-state dari data user (toggle di
+                      // Library): ● dikuasai, ○ baru. Tanpa progres palsu.
+                      child: Text(
+                          '${app.masteredVocabularyIds.contains(v.id) ? '●' : '○'} ${v.word} (${v.reading}) — ${v.meaning}',
                           style: const TextStyle(height: 1.35)),
                     ),
                 ],
@@ -585,7 +643,8 @@ class _LessonInlineContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Grammar: ${grammar.pattern}',
+                      Text(
+                          '${app.completedGrammarIds.contains(grammar.id) ? '●' : '○'} Grammar: ${grammar.pattern}',
                           style:
                               const TextStyle(fontWeight: FontWeight.w900)),
                       Text(grammar.title,
@@ -637,8 +696,11 @@ class _LessonInlineContent extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
+                      // ● mastered, ◑ dipelajari, ○ baru — dari data user.
                       for (final k in showKanjis)
-                        Chip(label: Text('${k.character} · ${k.meaning}')),
+                        Chip(
+                            label: Text(
+                                '${app.masteredKanjiIds.contains(k.id) ? '●' : (app.learnedKanjiIds.contains(k.id) ? '◑' : '○')} ${k.character} · ${k.meaning}')),
                     ],
                   ),
                 ],
@@ -906,16 +968,21 @@ _ResolvedLesson _resolveUnitContent(
   );
 }
 
-/// Soal Tes Bab: dari pool unit (deterministik). ≥6 soal = tes nyata layak.
+/// Soal Tes Bab: dari pool unit (deterministik: ID ter-mapping + soal
+/// authored tiap lesson). ≥6 soal = tes nyata layak.
 List<_PracticeQuestion> _buildUnitQuestions(
     ContentRepository repo, List<CurriculumLesson> lessons) {
   final pool = _resolveUnitContent(repo, lessons);
+  final authored = [
+    for (final lesson in lessons) ...lesson.authoredQuestions,
+  ];
   return _buildLessonQuestions(
     phrases: pool.phrases,
     vocabs: pool.vocabs,
     grammars: pool.grammars,
     kanjis: pool.kanjis,
     listening: true,
+    authored: authored,
   );
 }
 
@@ -929,6 +996,7 @@ List<_PracticeQuestion> _buildLessonQuestions({
   required List<GrammarPoint> grammars,
   required List<Kanji> kanjis,
   bool listening = false,
+  List<AuthoredQuestion> authored = const [],
 }) {
   final qs = <_PracticeQuestion>[];
   // 1. Arti salam (mudah).
@@ -1020,6 +1088,22 @@ List<_PracticeQuestion> _buildLessonQuestions({
       meaning: phrases[1].meaning,
       audio: phrases[1].japanese,
     ));
+  }
+  // 9. Soal authored kurikulum (lesson tanpa ID dataset).
+  for (final a in authored) {
+    if (a.options.length >= 2 &&
+        a.correctIndex >= 0 &&
+        a.correctIndex < a.options.length) {
+      qs.add(_PracticeQuestion(
+        prompt: a.prompt,
+        options: a.options,
+        correctIndex: a.correctIndex,
+        explanation: a.explanation,
+        reading: a.reading,
+        meaning: a.meaning,
+        audio: a.audio,
+      ));
+    }
   }
   return qs;
 }

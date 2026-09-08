@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../features/curriculum/curriculum_catalog.dart';
+import '../../features/curriculum/curriculum_models.dart';
 import '../../models/vocabulary.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/common_widgets.dart';
@@ -40,6 +42,8 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     super.dispose();
   }
 
+  String? _chapter;
+
   void _refresh() {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 180), () {
@@ -50,10 +54,45 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     });
   }
 
+  /// Unit (bab) pada level aktif yang punya mapping kotoba kurikulum.
+  /// Library tetap global secara default; filter Bab mempersempit ke kata
+  /// yang diajarkan bab tersebut (tanpa duplikasi data).
+  List<CurriculumUnit> _mappedUnits() {
+    if (_level == 'Semua') return const [];
+    final level = CurriculumCatalogData.levelById(_level);
+    if (level == null) return const [];
+    return [
+      for (final unit in level.units)
+        if (_vocabIdsOfUnit(unit).isNotEmpty) unit,
+    ];
+  }
+
+  /// Kumpulan id kotoba dari seluruh lesson satu unit (urutan katalog).
+  static Set<int> _vocabIdsOfUnit(CurriculumUnit unit) {
+    final ids = <int>{};
+    for (final lesson in unit.lessons) {
+      for (final raw in lesson.vocabularyIds) {
+        final id = int.tryParse(raw);
+        if (id != null) ids.add(id);
+      }
+    }
+    return ids;
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final items = _filtered(app);
+    final chapters = _mappedUnits();
+    // Tanpa mutasi state saat build: chapter tak dikenal = tampil semua.
+    Set<int>? chapterIds;
+    if (_chapter != null) {
+      final match = [
+        for (final unit in chapters)
+          if (unit.id == _chapter) unit,
+      ];
+      if (match.isNotEmpty) chapterIds = _vocabIdsOfUnit(match.first);
+    }
+    final items = _filtered(app, chapterIds);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kotoba'),
@@ -99,12 +138,45 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
                     child: ChoiceChip(
                       selected: _level == level,
                       label: Text(level == 'Semua' ? 'Semua' : level),
-                      onSelected: (_) => setState(() => _level = level),
+                      onSelected: (_) => setState(() {
+                        _level = level;
+                        _chapter = null;
+                      }),
                     ),
                   ),
               ],
             ),
           ),
+          // Filter Bab: hanya tampil bila level punya bab termapping.
+          // Default (null) = seluruh Library, perilaku lama tidak berubah.
+          if (chapters.isNotEmpty)
+            SizedBox(
+              height: 48,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      selected: _chapter == null,
+                      label: const Text('Semua Bab'),
+                      onSelected: (_) => setState(() => _chapter = null),
+                    ),
+                  ),
+                  for (final unit in chapters)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        selected: _chapter == unit.id,
+                        label: Text('Bab ${unit.sequence}'),
+                        onSelected: (_) => setState(() => _chapter =
+                            _chapter == unit.id ? null : unit.id),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
             child: Row(
@@ -153,11 +225,12 @@ class _VocabularyScreenState extends State<VocabularyScreen> {
     );
   }
 
-  List<Vocabulary> _filtered(AppController app) {
+  List<Vocabulary> _filtered(AppController app, [Set<int>? chapterIds]) {
     final source = _level == 'Semua'
         ? app.repository.vocabulary
         : app.repository.vocabularyForLevel(_level);
     return source.where((item) {
+      if (chapterIds != null && !chapterIds.contains(item.id)) return false;
       if (_masteredOnly && !app.masteredVocabularyIds.contains(item.id)) {
         return false;
       }

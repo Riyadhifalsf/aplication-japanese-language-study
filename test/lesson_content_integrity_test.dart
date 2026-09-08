@@ -102,8 +102,8 @@ void main() {
       final lesson = CurriculumCatalogData.lessonById('n5-u01-l03')!;
       expect(lesson.hasInlineContent, true);
       expect(lesson.objectives.length, 3);
-      expect(lesson.vocabularyIds, ['313', '377', '93']);
-      expect(lesson.kanjiIds, ['42', '41', '40', '29']);
+      expect(lesson.vocabularyIds, ['313', '377', '93', '295']);
+      expect(lesson.kanjiIds, ['42', '41', '40', '29', '179', '138']);
       final vocab = loadList('assets/data/vocabulary.json');
       final vById = {for (final v in vocab) '${v['id']}': v};
       for (final id in lesson.vocabularyIds) {
@@ -116,8 +116,9 @@ void main() {
           hasLength(1));
     });
 
-    test('n5-u01-l04 tanpa speaking, ada listening + quiz', () {
-      final lesson = CurriculumCatalogData.lessonById('n5-u01-l04')!;
+    test('n5-u01-l04a asal & bahasa: tanpa speaking, ada listening + quiz',
+        () {
+      final lesson = CurriculumCatalogData.lessonById('n5-u01-l04a')!;
       expect(lesson.grammarIds, ['n5-no']);
       expect(
           lesson.activities
@@ -131,6 +132,61 @@ void main() {
           lesson.activities
               .where((a) => a.type == CurriculumActivityType.quiz),
           hasLength(1));
+    });
+
+    test('n5-u01-l04 nama & san: notes + soal authored valid', () {
+      final lesson = CurriculumCatalogData.lessonById('n5-u01-l04')!;
+      expect(lesson.objectives.length, 3);
+      expect(lesson.notes.length, 1);
+      expect(lesson.notes.first.lines.length, 3);
+      for (final line in lesson.notes.first.lines) {
+        expect(line.japanese.isNotEmpty, true);
+        expect(line.meaning.isNotEmpty, true);
+      }
+      expect(lesson.authoredQuestions.length, 3);
+      for (final q in lesson.authoredQuestions) {
+        expect(q.options.length, greaterThanOrEqualTo(2));
+        expect(q.correctIndex, inInclusiveRange(0, q.options.length - 1));
+      }
+      expect(
+          lesson.activities
+              .where((a) => a.type == CurriculumActivityType.quiz),
+          hasLength(1));
+    });
+
+    test('l07 じん, l08 listening, l09 reading, l10 speaking template', () {
+      final jin = CurriculumCatalogData.lessonById('n5-u01-l07')!;
+      expect(jin.objectives.length, 3);
+      expect(jin.notes.length, 1);
+      expect(jin.authoredQuestions.length, 3);
+      final listen = CurriculumCatalogData.lessonById('n5-u01-l08')!;
+      expect(
+          listen.activities
+              .where((a) => a.type == CurriculumActivityType.listening),
+          hasLength(1));
+      expect(
+          listen.authoredQuestions
+              .where((q) => q.audio.isNotEmpty),
+          hasLength(3));
+      final read = CurriculumCatalogData.lessonById('n5-u01-l09')!;
+      expect(read.vocabularyIds, ['123', '313']);
+      expect(read.authoredQuestions.length, 3);
+      final speak = CurriculumCatalogData.lessonById('n5-u01-l10')!;
+      expect(
+          speak.activities
+              .where((a) => a.type == CurriculumActivityType.speaking),
+          hasLength(1));
+      expect(
+          speak.activities
+              .where((a) => a.type == CurriculumActivityType.quiz),
+          isEmpty);
+    });
+
+    test('unit 1 urutan 1..11 unik (11 micro-lesson)', () {
+      final unit = CurriculumCatalogData.unitById('n5-u01')!;
+      final sequences =
+          unit.lessons.map((l) => l.sequence).toList()..sort();
+      expect(sequences, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     });
 
     test('n5-u01-l06 tes bab boss skor 70', () {

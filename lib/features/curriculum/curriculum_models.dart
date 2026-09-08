@@ -196,6 +196,60 @@ class LessonActivity {
       );
 }
 
+/// Satu baris contoh dalam catatan lesson (spesifikasi kurikulum owner,
+/// mis. Minna no Nihongo Bab 1). Bukan hasil generate acak.
+class LessonLine {
+  const LessonLine({
+    required this.japanese,
+    required this.reading,
+    required this.meaning,
+  });
+
+  final String japanese;
+  final String reading;
+  final String meaning;
+}
+
+/// Catatan materi lesson (penjelasan + contoh) untuk konten yang belum ada
+/// ID dataset-nya. Ditampilkan inline sebagai kartu belajar + audio TTS.
+/// Aturan: hanya untuk materi standar yang dispesifikasikan kurikulum
+/// (jangan mengarang pola/legenda baru di sini).
+class LessonNote {
+  const LessonNote({
+    required this.title,
+    required this.body,
+    this.lines = const [],
+  });
+
+  final String title;
+  final String body;
+  final List<LessonLine> lines;
+}
+
+/// Soal authored untuk lesson tanpa / di luar pool ID dataset.
+/// Dipakai bila item soal (mis. nama orang, negara) tidak ada ID-nya
+/// tetapi REQUIRED oleh kurikulum bab. Opsi pengecoh harus dari materi
+/// bab yang sama (jangan acak global).
+class AuthoredQuestion {
+  const AuthoredQuestion({
+    required this.prompt,
+    required this.options,
+    required this.correctIndex,
+    required this.explanation,
+    this.reading = '',
+    this.meaning = '',
+    this.audio = '',
+  });
+
+  final String prompt;
+  final List<String> options;
+  final int correctIndex;
+  final String explanation;
+  final String reading;
+  final String meaning;
+  final String audio;
+}
+
 /// Satu lesson: kombinasi 1-4 aktivitas yang bervariasi.
 ///
 /// CONTENT = sumber materi reusable (di ContentRepository).
@@ -223,6 +277,8 @@ class CurriculumLesson {
     this.kanjiIds = const [],
     this.phraseIds = const [],
     this.questionIds = const [],
+    this.notes = const [],
+    this.authoredQuestions = const [],
     this.isFinalTest = false,
     this.isBossTest = false,
     this.isPlacement = false,
@@ -243,6 +299,8 @@ class CurriculumLesson {
   final List<String> kanjiIds;
   final List<String> phraseIds;
   final List<String> questionIds;
+  final List<LessonNote> notes;
+  final List<AuthoredQuestion> authoredQuestions;
   final bool isFinalTest;
   final bool isBossTest;
   final bool isPlacement;
@@ -259,7 +317,9 @@ class CurriculumLesson {
       vocabularyIds.isNotEmpty ||
       grammarIds.isNotEmpty ||
       kanjiIds.isNotEmpty ||
-      phraseIds.isNotEmpty;
+      phraseIds.isNotEmpty ||
+      notes.isNotEmpty ||
+      authoredQuestions.isNotEmpty;
 
   /// Tipe dominan untuk ikon node di UI (aktivitas pertama non-review).
   CurriculumActivityType get primaryType {

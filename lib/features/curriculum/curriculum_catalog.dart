@@ -39,6 +39,8 @@ CurriculumLesson _l(
   List<String> kanjiIds = const [],
   List<String> phraseIds = const [],
   List<String> questionIds = const [],
+  List<LessonNote> notes = const [],
+  List<AuthoredQuestion> authoredQuestions = const [],
   bool isFinalTest = false,
   bool isBossTest = false,
   int requiredScore = 0,
@@ -57,6 +59,8 @@ CurriculumLesson _l(
       kanjiIds: kanjiIds,
       phraseIds: phraseIds,
       questionIds: questionIds,
+      notes: notes,
+      authoredQuestions: authoredQuestions,
       isFinalTest: isFinalTest,
       isBossTest: isBossTest,
       requiredScore: requiredScore,
@@ -151,7 +155,8 @@ List<CurriculumUnit> _n5Units() => [
               vocabularyIds: ['123', '313', '377'],
               grammarIds: ['n5-wa'],
               kanjiIds: ['42', '41', '40']),
-          // Micro-lesson: orang & profesi. Vocab/kanji penyusun kata verified.
+          // Micro-lesson: orang & profesi. Vocab/kanji verified di data
+          // (医者 295 + kanji 医 179/者 138 N5).
           _l('n5-u01-l03', 'n5-u01', 'N5', 3, 'Orang & Profesi', [
             _a('n5-u01-l03-a1', CurriculumActivityType.vocabulary,
                 'Kosakata orang',
@@ -176,22 +181,21 @@ List<CurriculumUnit> _n5Units() => [
                 'Menggunakan kosakata orang dalam perkenalan.',
                 'Mengenali kanji penyusun kata orang/profesi.',
               ],
-              vocabularyIds: ['313', '377', '93'],
-              kanjiIds: ['42', '41', '40', '29']),
-          // Micro-lesson: partikel の. Tanpa speaking (mic tidak tersedia);
-          // aktivitas dengar memakai TTS bawaan aplikasi.
-          _l('n5-u01-l04', 'n5-u01', 'N5', 4, 'Asal & Bahasa', [
-            _a('n5-u01-l04-a1', CurriculumActivityType.grammar,
+              vocabularyIds: ['313', '377', '93', '295'],
+              kanjiIds: ['42', '41', '40', '29', '179', '138']),
+          // Micro-lesson: asal & bahasa + partikel の (ID terverifikasi).
+          _l('n5-u01-l04a', 'n5-u01', 'N5', 4, 'Asal & Bahasa', [
+            _a('n5-u01-l04a-a1', CurriculumActivityType.grammar,
                 'Materi の',
                 description: 'Penghubung kata benda',
                 contentRef: 'level:N5;grammar:no',
                 routeHint: 'grammar'),
-            _a('n5-u01-l04-a2', CurriculumActivityType.listening,
+            _a('n5-u01-l04a-a2', CurriculumActivityType.listening,
                 'Dengarkan: kepemilikan',
                 description: 'Dengar via TTS lalu jawab',
                 contentRef: 'level:N5;listening:no',
                 routeHint: 'listening'),
-            _a('n5-u01-l04-a3', CurriculumActivityType.quiz,
+            _a('n5-u01-l04a-a3', CurriculumActivityType.quiz,
                 'Kuis の',
                 description: 'Soal dari materi lesson ini',
                 contentRef: 'level:N5;quiz:no',
@@ -203,14 +207,344 @@ List<CurriculumUnit> _n5Units() => [
                 'Mendengar dan memahami frasa kepemilikan sederhana.',
               ],
               grammarIds: ['n5-no']),
-          _l('n5-u01-l05', 'n5-u01', 'N5', 5, 'Review Unit 1', [
+          // Micro-lesson: sapaan ～さん. Pola standar spesifikasi kurikulum
+          // (Minna Bab 1); belum ada ID dataset-nya sehingga memakai notes
+          // + soal authored dari materi bab ini saja.
+          _l('n5-u01-l04', 'n5-u01', 'N5', 5, 'Nama & ～さん', [
+            _a('n5-u01-l04-a1', CurriculumActivityType.vocabulary,
+                'Panggilan sopan',
+                description: 'たなかさん, やまださん, りやどさん',
+                contentRef: 'level:N5;lesson:nama-san',
+                routeHint: 'vocabulary'),
+            _a('n5-u01-l04-a2', CurriculumActivityType.quiz,
+                'Kuis ～さん',
+                description: 'Soal dari materi lesson ini',
+                contentRef: 'level:N5;quiz:nama-san',
+                routeHint: 'quiz'),
+          ],
+              subtitle: 'Materi + Kuis',
+              objectives: [
+                'Memahami ～さん sebagai sapaan sopan untuk orang lain.',
+                'Menyebut nama orang dengan ～さん secara tepat.',
+                'Tidak memakai ～さん untuk diri sendiri.',
+              ],
+              notes: [
+                LessonNote(
+                  title: 'Akhiran ～さん',
+                  body: '～さん ditempel di belakang nama orang sebagai sapaan '
+                      'sopan (Tn./Ny.). Dipakai untuk orang lain — bukan '
+                      'untuk diri sendiri.',
+                  lines: [
+                    LessonLine(
+                        japanese: 'たなかさん。',
+                        reading: 'たなかさん。',
+                        meaning: 'Tn. Tanaka.'),
+                    LessonLine(
+                        japanese: 'やまださん。',
+                        reading: 'やまださん。',
+                        meaning: 'Tn. Yamada.'),
+                    LessonLine(
+                        japanese: 'りやどさん。',
+                        reading: 'りやどさん。',
+                        meaning: 'Tn. Riyado.'),
+                  ],
+                ),
+              ],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'たなかさん artinya?',
+                  options: ['Tn. Tanaka', 'Tn. Yamada', 'Tn. Riyado'],
+                  correctIndex: 0,
+                  explanation: 'Nama + ～さん = panggilan sopan.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'Panggilan sopan untuk Yamada?',
+                  options: ['やまださん', 'やまだ', 'さんやまだ'],
+                  correctIndex: 0,
+                  explanation: '～さん selalu di belakang nama.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'Menyebut nama sendiri yang tepat?',
+                  options: [
+                    'わたしは りやどです',
+                    'りやどさんです',
+                    'さんりやどです'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'Jangan pakai ～さん untuk diri sendiri.',
+                ),
+              ]),
+          // Micro-lesson: kewarganegaraan ～じん (spesifikasi kurikulum).
+          _l('n5-u01-l07', 'n5-u01', 'N5', 6, 'Asal Negara ～じん', [
+            _a('n5-u01-l07-a1', CurriculumActivityType.vocabulary,
+                'Orang + negara',
+                description: 'にほんじん, インドネシアじん, アメリカじん',
+                contentRef: 'level:N5;lesson:jin',
+                routeHint: 'vocabulary'),
+            _a('n5-u01-l07-a2', CurriculumActivityType.quiz,
+                'Kuis ～じん',
+                description: 'Soal dari materi lesson ini',
+                contentRef: 'level:N5;quiz:jin',
+                routeHint: 'quiz'),
+          ],
+              subtitle: 'Materi + Kuis',
+              objectives: [
+                'Memahami ～じん = orang/kewarganegaraan.',
+                'Menyebutkan asal negara sederhana.',
+                'Membuat kalimat わたしは___じんです.',
+              ],
+              notes: [
+                LessonNote(
+                  title: 'Akhiran ～じん',
+                  body: '～じん ditempel di belakang nama negara untuk '
+                      'menyatakan orang/kewarganegaraan.',
+                  lines: [
+                    LessonLine(
+                        japanese: 'にほんじん。',
+                        reading: 'にほんじん。',
+                        meaning: 'Orang Jepang.'),
+                    LessonLine(
+                        japanese: 'インドネシアじん。',
+                        reading: 'インドネシアじん。',
+                        meaning: 'Orang Indonesia.'),
+                    LessonLine(
+                        japanese: 'アメリカじん。',
+                        reading: 'アメリカじん。',
+                        meaning: 'Orang Amerika.'),
+                  ],
+                ),
+              ],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'にほんじん artinya?',
+                  options: [
+                    'Orang Jepang',
+                    'Orang Indonesia',
+                    'Orang Amerika'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'にほん (Jepang) + じん.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'Orang Indonesia?',
+                  options: ['インドネシアじん', 'にほんじん', 'アメリカじん'],
+                  correctIndex: 0,
+                  explanation: 'インドネシア + じん.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'わたしは インドネシアじんです artinya?',
+                  options: [
+                    'Saya orang Indonesia',
+                    'Saya orang Jepang',
+                    'Saya orang Amerika'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'Pola A は B です + ～じん.',
+                ),
+              ]),
+          // Micro-lesson: listening Bab 1 (TTS + soal dari pool bab).
+          _l('n5-u01-l08', 'n5-u01', 'N5', 7, 'Listening Bab 1', [
+            _a('n5-u01-l08-a1', CurriculumActivityType.listening,
+                'Dengar percakapan',
+                description: 'Audio TTS + soal bab ini',
+                contentRef: 'level:N5;listening:bab1',
+                routeHint: 'listening'),
+            _a('n5-u01-l08-a2', CurriculumActivityType.quiz,
+                'Kuis dengar',
+                description: 'Soal dari audio bab ini',
+                contentRef: 'level:N5;quiz:listen-bab1',
+                routeHint: 'quiz'),
+          ],
+              subtitle: 'Dengar + Kuis',
+              objectives: [
+                'Memahami salam dan perkenalan yang didengar.',
+                'Menjawab pertanyaan sederhana dari audio.',
+              ],
+              notes: [
+                LessonNote(
+                  title: 'Percakapan perkenalan',
+                  body: 'Dengarkan tiap baris, lalu jawab soalnya.',
+                  lines: [
+                    LessonLine(
+                        japanese: 'はじめまして。',
+                        reading: 'はじめまして。',
+                        meaning: 'Salam kenal.'),
+                    LessonLine(
+                        japanese: 'わたしは たなかです。',
+                        reading: 'わたしは たなかです。',
+                        meaning: 'Saya Tanaka.'),
+                    LessonLine(
+                        japanese: 'にほんじんです。',
+                        reading: 'にほんじんです。',
+                        meaning: 'Orang Jepang.'),
+                    LessonLine(
+                        japanese: 'どうぞよろしく おねがいします。',
+                        reading: 'どうぞよろしく おねがいします。',
+                        meaning: 'Mohon bimbingannya.'),
+                  ],
+                ),
+              ],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'Dengarkan, lalu pilih artinya.',
+                  options: ['Salam kenal', 'Selamat pagi', 'Terima kasih'],
+                  correctIndex: 0,
+                  explanation: 'Audio = salam perkenalan.',
+                  audio: 'はじめまして。',
+                ),
+                AuthoredQuestion(
+                  prompt: 'Dengarkan. Siapa nama orang tersebut?',
+                  options: ['Tanaka', 'Yamada', 'Riyado'],
+                  correctIndex: 0,
+                  explanation: 'Audio menyebut たなか.',
+                  audio: 'わたしは たなかです。',
+                ),
+                AuthoredQuestion(
+                  prompt: 'Dengarkan, lalu pilih artinya.',
+                  options: [
+                    'Orang Jepang',
+                    'Orang Indonesia',
+                    'Pelajar'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'にほん = Jepang.',
+                  audio: 'にほんじんです。',
+                ),
+              ]),
+          // Micro-lesson: reading pendek dari materi yang sudah diajarkan.
+          _l('n5-u01-l09', 'n5-u01', 'N5', 8, 'Reading Bab 1', [
+            _a('n5-u01-l09-a1', CurriculumActivityType.reading,
+                'Baca perkenalan',
+                description: 'Teks pendek + pertanyaan',
+                contentRef: 'level:N5;reading:bab1',
+                routeHint: 'reading'),
+            _a('n5-u01-l09-a2', CurriculumActivityType.quiz,
+                'Kuis bacaan',
+                description: 'Soal dari teks bab ini',
+                contentRef: 'level:N5;quiz:read-bab1',
+                routeHint: 'quiz'),
+          ],
+              subtitle: 'Baca + Kuis',
+              objectives: [
+                'Membaca perkenalan sederhana.',
+                'Menjawab pertanyaan dari teks.',
+              ],
+              vocabularyIds: ['123', '313'],
+              notes: [
+                LessonNote(
+                  title: 'Bacaan: Perkenalan Riyado',
+                  body: 'Bacaan ini hanya memakai salam dan pola yang sudah '
+                      'dipelajari.',
+                  lines: [
+                    LessonLine(
+                        japanese: 'はじめまして。',
+                        reading: 'はじめまして。',
+                        meaning: 'Salam kenal.'),
+                    LessonLine(
+                        japanese: 'わたしは リヤドです。',
+                        reading: 'わたしは リヤドです。',
+                        meaning: 'Saya Riyado.'),
+                    LessonLine(
+                        japanese: 'インドネシアじんです。',
+                        reading: 'インドネシアじんです。',
+                        meaning: 'Orang Indonesia.'),
+                    LessonLine(
+                        japanese: 'どうぞよろしく おねがいします。',
+                        reading: 'どうぞよろしく おねがいします。',
+                        meaning: 'Mohon bimbingannya.'),
+                  ],
+                ),
+              ],
+              authoredQuestions: [
+                AuthoredQuestion(
+                  prompt: 'Siapa yang berkenalan di teks?',
+                  options: ['Riyado', 'Tanaka', 'Yamada'],
+                  correctIndex: 0,
+                  explanation: 'Teks menyebut リヤド.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'リヤドさんは インドネシアじんですか。 Jawaban tepat?',
+                  options: ['はい (Ya)', 'いいえ (Tidak)'],
+                  correctIndex: 0,
+                  explanation: 'Teks: インドネシアじんです.',
+                ),
+                AuthoredQuestion(
+                  prompt: 'どうぞよろしく おねがいします artinya?',
+                  options: [
+                    'Mohon bimbingannya',
+                    'Selamat pagi',
+                    'Terima kasih'
+                  ],
+                  correctIndex: 0,
+                  explanation: 'Penutup perkenalan.',
+                ),
+              ]),
+          // Micro-lesson: template speaking tanpa mic (self-check jujur).
+          _l('n5-u01-l10', 'n5-u01', 'N5', 9, 'Speaking: Perkenalan', [
+            _a('n5-u01-l10-a1', CurriculumActivityType.speaking,
+                'Perkenalkan dirimu',
+                description: 'Ikuti template + contoh TTS',
+                contentRef: 'level:N5;speaking:intro',
+                routeHint: 'speaking'),
+          ],
+              subtitle: 'Template + Praktik mandiri',
+              objectives: [
+                'Mengucapkan perkenalan mengikuti template.',
+                'Menyebut nama dan asal dengan pola Bab 1.',
+              ],
+              notes: [
+                LessonNote(
+                  title: 'Template perkenalan',
+                  body: 'Ucapkan keras-keras mengikuti contoh. Tandai '
+                      'selesai setelah berlatih (tanpa mic).',
+                  lines: [
+                    LessonLine(
+                        japanese: 'はじめまして。',
+                        reading: 'はじめまして。',
+                        meaning: 'Salam kenal.'),
+                    LessonLine(
+                        japanese: 'わたしは ___ です。',
+                        reading: 'わたしは ___ です。',
+                        meaning: 'Saya ___. (isi namamu)'),
+                    LessonLine(
+                        japanese: '___じんです。',
+                        reading: '___じんです。',
+                        meaning: 'Orang ___. (isi negaramu)'),
+                    LessonLine(
+                        japanese: 'どうぞよろしく おねがいします。',
+                        reading: 'どうぞよろしく おねがいします。',
+                        meaning: 'Mohon bimbingannya.'),
+                  ],
+                ),
+              ]),
+          _l('n5-u01-l05', 'n5-u01', 'N5', 10, 'Review Unit 1', [
             _a('n5-u01-l05-a1', CurriculumActivityType.review,
                 'Personal review',
                 description: 'Ulangi yang sering salah',
                 contentRef: 'review:weak',
                 routeHint: 'review'),
-          ], subtitle: 'Review'),
-          _l('n5-u01-l06', 'n5-u01', 'N5', 6, 'Unit 1 Test', [
+            _a('n5-u01-l05-a2', CurriculumActivityType.quiz,
+                'Review Bab 1',
+                description: 'Soal dari materi Bab 1 saja',
+                contentRef: 'level:N5;review:bab1',
+                routeHint: 'quiz'),
+          ],
+              subtitle: 'Review',
+              objectives: [
+                'Mengulang materi Bab 1 yang sudah dipelajari.',
+              ],
+              vocabularyIds: [
+                '123',
+                '124',
+                '313',
+                '377',
+                '405',
+                '93',
+                '295'
+              ],
+              grammarIds: ['n5-wa', 'n5-ka', 'n5-no'],
+              kanjiIds: ['56', '48', '42', '41', '40', '29', '179', '138']),
+          _l('n5-u01-l06', 'n5-u01', 'N5', 11, 'Unit 1 Test', [
             _a('n5-u01-l06-a1', CurriculumActivityType.unitTest,
                 'Boss test Unit 1',
                 description: 'Lulus ≥70% untuk lanjut',

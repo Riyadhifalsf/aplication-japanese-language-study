@@ -2,6 +2,16 @@
 
 Semua perubahan penting pada proyek ini dicatat di berkas ini.
 
+## [1.4.0] - 2026-09
+
+- Bab 1 N5 jadi 11 micro-lesson berurutan: salam, pola です/は,
+  identitas, ～さん, ～じん, listening, reading, speaking template,
+  review, tes bab (unlock satu per satu).
+- Tiap lesson hanya memakai materi babnya (ID terverifikasi di data +
+  catatan kurikulum); tanpa dump vocabulary global.
+- Library Kotoba dapat difilter per Bab.
+- Mastery jujur ●/○/◑ dari data user; XP tetap hanya saat selesai.
+
 ## [1.3.0] - 2026-09
 
 - Bab 1 N5 (はじめまして) gaya Duolingo: micro-lesson berurutan dengan
