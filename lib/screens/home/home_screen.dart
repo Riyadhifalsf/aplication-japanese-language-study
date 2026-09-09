@@ -122,14 +122,30 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
-        // HEADER meta: level + XP + streak (jawab: progress/streak/pencapaian).
+        // HEADER meta: tier mastery + streak (jawab: progress/streak/pencapaian).
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            LevelBadge(level: app.level),
-            XPIndicator(xp: app.xp),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: app.masteryTier.color.withValues(alpha: .16),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.military_tech_rounded,
+                      size: 14, color: app.masteryTier.color),
+                  const SizedBox(width: 4),
+                  Text(app.masteryTier.label,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 12)),
+                ],
+              ),
+            ),
             StreakBadge(streak: app.streak),
           ],
         ),
@@ -546,8 +562,8 @@ class _DailyGoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final goal = app.dailyGoalXp;
-    final done = app.dailyXp.clamp(0, goal);
+    final goal = app.dailyStudyMinutes;
+    final done = app.dailyActiveMinutes.clamp(0, goal);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,7 +575,7 @@ class _DailyGoalCard extends StatelessWidget {
                     style:
                         TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
               ),
-              Text('$done / $goal XP',
+              Text('$done / $goal mnt',
                   style: const TextStyle(fontWeight: FontWeight.w800)),
             ],
           ),
@@ -569,11 +585,11 @@ class _DailyGoalCard extends StatelessWidget {
           Wrap(
             spacing: 6,
             children: [
-              for (final g in AppController.allowedDailyGoals)
+              for (final g in AppController.allowedDailyStudyMinutes)
                 ChoiceChip(
-                  label: Text('$g'),
+                  label: Text('$g mnt'),
                   selected: goal == g,
-                  onSelected: (_) => app.setDailyGoal(g),
+                  onSelected: (_) => app.setDailyStudyMinutes(g),
                 ),
             ],
           ),

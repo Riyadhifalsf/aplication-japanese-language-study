@@ -4,12 +4,12 @@ import 'package:japanese_study/services/progress_sync_service.dart';
 
 void main() {
   group('ProgressSyncService.merge', () {
-    test('counter pakai nilai terbesar agar XP tidak hilang', () {
+    test('counter pakai nilai terbesar agar progres tidak hilang', () {
       final merged = ProgressSyncService.merge(
-        {'xp': 100, 'streak': 3, 'quizCorrect': 5},
-        {'xp': 250, 'streak': 1, 'quizCorrect': 9},
+        {'totalActiveSeconds': 100, 'streak': 3, 'quizCorrect': 5},
+        {'totalActiveSeconds': 250, 'streak': 1, 'quizCorrect': 9},
       );
-      expect(merged['xp'], 250);
+      expect(merged['totalActiveSeconds'], 250);
       expect(merged['streak'], 3);
       expect(merged['quizCorrect'], 9);
     });
@@ -28,15 +28,15 @@ void main() {
 
     test('lokal kosong + server berisi = server mengisi ulang (union)', () {
       final merged = ProgressSyncService.merge(
-        {'learnedKanji': [], 'xp': 0, 'streak': 0},
+        {'learnedKanji': [], 'totalActiveSeconds': 0, 'streak': 0},
         {
           'learnedKanji': [7, 8],
-          'xp': 120,
+          'totalActiveSeconds': 120,
           'streak': 4
         },
       );
       expect((merged['learnedKanji'] as List).toSet(), {7, 8});
-      expect(merged['xp'], 120);
+      expect(merged['totalActiveSeconds'], 120);
       expect(merged['streak'], 4);
     });
 

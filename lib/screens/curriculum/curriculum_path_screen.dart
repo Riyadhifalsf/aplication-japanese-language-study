@@ -75,7 +75,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
             level: current,
             progress: progress,
             streak: app.streak,
-            xp: app.xp,
+            tierLabel: app.masteryTier.label,
           ),
           const SizedBox(height: 14),
           const PromoBanner(),
@@ -356,12 +356,12 @@ class _PathHero extends StatelessWidget {
       {required this.level,
       required this.progress,
       required this.streak,
-      required this.xp});
+      required this.tierLabel});
 
   final CurriculumLevel level;
   final UserLevelProgress progress;
   final int streak;
-  final int xp;
+  final String tierLabel;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -387,7 +387,7 @@ class _PathHero extends StatelessWidget {
                 const Spacer(),
                 _Pill(icon: Icons.local_fire_department_rounded, text: '$streak'),
                 const SizedBox(width: 8),
-                _Pill(icon: Icons.star_rounded, text: '$xp XP'),
+                _Pill(icon: Icons.military_tech_rounded, text: tierLabel),
               ],
             ),
             const SizedBox(height: 6),

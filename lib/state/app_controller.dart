@@ -43,6 +43,48 @@ enum AuthStatus {
   error,
 }
 
+/// Tier progresi ala game (pengganti player level berbasis XP yang dihapus).
+/// Dihitung murni dari penguasaan materi + akurasi — tanpa angka XP.
+enum MasteryTier {
+  warrior,
+  elite,
+  master,
+  grandmaster,
+  epic,
+  legend,
+  mythic;
+
+  static MasteryTier fromScore(double score) {
+    if (score >= 0.9) return MasteryTier.mythic;
+    if (score >= 0.75) return MasteryTier.legend;
+    if (score >= 0.6) return MasteryTier.epic;
+    if (score >= 0.45) return MasteryTier.grandmaster;
+    if (score >= 0.3) return MasteryTier.master;
+    if (score >= 0.15) return MasteryTier.elite;
+    return MasteryTier.warrior;
+  }
+
+  String get label => switch (this) {
+        MasteryTier.warrior => 'Warrior',
+        MasteryTier.elite => 'Elite',
+        MasteryTier.master => 'Master',
+        MasteryTier.grandmaster => 'Grandmaster',
+        MasteryTier.epic => 'Epic',
+        MasteryTier.legend => 'Legend',
+        MasteryTier.mythic => 'Mythic',
+      };
+
+  Color get color => switch (this) {
+        MasteryTier.warrior => const Color(0xFF9E9E9E),
+        MasteryTier.elite => const Color(0xFF4FC3F7),
+        MasteryTier.master => const Color(0xFFBA68C8),
+        MasteryTier.grandmaster => const Color(0xFFFFB300),
+        MasteryTier.epic => const Color(0xFFFF5722),
+        MasteryTier.legend => const Color(0xFFFFD700),
+        MasteryTier.mythic => const Color(0xFFE040FB),
+      };
+}
+
 class AppController extends ChangeNotifier {
   AppController({
     required this.repository,
@@ -142,8 +184,6 @@ class AppController extends ChangeNotifier {
   String lastReminderDismissDate = '';
   String lastDriveBackupLabel = 'belum ada';
   bool driveBackupBusy = false;
-  int xp = 0;
-  int dailyXp = 0;
   int streak = 0;
   int quizCorrect = 0;
   int quizAnswered = 0;
@@ -197,14 +237,12 @@ class AppController extends ChangeNotifier {
       LearningEngine(catalog: JapaneseCurriculum.catalog);
   Map<String, bool> featureFlags = {};
 
-  static const dailyGoal = 100;
-  static const defaultDailyGoal = 100;
-  static const allowedDailyGoals = [20, 50, 100, 150];
   static const kanjiMasteryThreshold = 3;
 
-  /// Daily goal configurable (default 100 XP). Disimpan lokal + ikut sync.
-  /// Static [dailyGoal] dipertahankan untuk kompatibilitas kode lama.
-  int dailyGoalXp = defaultDailyGoal;
+  /// Target belajar harian dalam menit (default 20). Disimpan lokal + sync.
+  /// Pengganti target XP harian yang sudah dihapus.
+  static const defaultDailyStudyMinutes = 20;
+  static const allowedDailyStudyMinutes = [10, 20, 30, 45];
 
   /// Stopwatch umur proses untuk diagnosis cold start (log [STARTUP]).
   static final Stopwatch bootWatch = Stopwatch()..start();
@@ -283,7 +321,11 @@ class AppController extends ChangeNotifier {
     onboardingComplete = prefs.getBool('onboardingComplete') ?? false;
     studyGoal = prefs.getString('studyGoal') ?? 'JLPT';
     selfLevel = prefs.getString('selfLevel') ?? 'Pemula';
-    dailyStudyMinutes = prefs.getInt('dailyStudyMinutes') ?? 20;
+    final loadedMinutes =
+        prefs.getInt('dailyStudyMinutes') ?? defaultDailyStudyMinutes;
+    dailyStudyMinutes = allowedDailyStudyMinutes.contains(loadedMinutes)
+        ? loadedMinutes
+        : defaultDailyStudyMinutes;
     selectedStudyLevel = prefs.getString('selectedStudyLevel') ?? 'N5';
     learningMode = prefs.getString('learningMode') ?? 'Seimbang';
     appLanguage = prefs.getString('appLanguage') ?? 'id';
@@ -359,11 +401,6 @@ class AppController extends ChangeNotifier {
     lastReminderDismissDate = prefs.getString('lastReminderDismissDate') ?? '';
     lastDriveBackupLabel =
         prefs.getString('lastDriveBackupLabel') ?? 'belum ada';
-    xp = prefs.getInt('xp') ?? 0;
-    dailyXp = prefs.getInt('dailyXp') ?? 0;
-    final loadedGoal = prefs.getInt('dailyGoalXp') ?? defaultDailyGoal;
-    dailyGoalXp =
-        allowedDailyGoals.contains(loadedGoal) ? loadedGoal : defaultDailyGoal;
     streak = prefs.getInt('streak') ?? 0;
     quizCorrect = prefs.getInt('quizCorrect') ?? 0;
     quizAnswered = prefs.getInt('quizAnswered') ?? 0;
@@ -517,7 +554,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
     logStartup('content-ready');
     unawaited(HomeWidgetService.instance
-        .update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
+        .update(streak: streak, kanji: todayKanjiCharacter));
     unawaited(NotificationService.instance.syncReviewSchedule(
       enabled: reviewReminderEnabled,
       hour: reviewReminderHour,
@@ -528,21 +565,37 @@ class AppController extends ChangeNotifier {
     unawaited(checkAppUpdateNotes());
   }
 
-  int get level => xp ~/ 500 + 1;
-  int get levelXp => xp % 500;
-  double get levelProgress => levelXp / 500;
-  double get dailyProgress =>
-      (dailyXp / dailyGoalXp).clamp(0.0, 1.0).toDouble();
+  /// Progres target belajar harian (0..1) dari menit aktif hari ini.
+  double get dailyProgress {
+    if (dailyStudyMinutes <= 0) return 0;
+    return (dailyActiveMinutes / dailyStudyMinutes).clamp(0.0, 1.0).toDouble();
+  }
 
-  /// Ganti target harian. Hanya nilai dalam [allowedDailyGoals].
-  /// Tidak mereset XP/streak/progress (migration aman).
-  Future<void> setDailyGoal(int value) async {
-    if (!allowedDailyGoals.contains(value)) return;
-    dailyGoalXp = value;
-    _preferences?.setInt('dailyGoalXp', value);
-    markProgressDirty(const ['dailyGoalXp']);
+  int get dailyActiveMinutes => dailyActiveSeconds ~/ 60;
+
+  /// Ganti target belajar harian (menit). Tidak mereset progres.
+  Future<void> setDailyStudyMinutes(int value) async {
+    if (!allowedDailyStudyMinutes.contains(value)) return;
+    dailyStudyMinutes = value;
+    _preferences?.setInt('dailyStudyMinutes', dailyStudyMinutes);
+    markProgressDirty(const ['dailyStudyMinutes']);
     notifyListeners();
   }
+
+  /// Skor mastery keseluruhan 0..1: 70% rata-rata mastery JLPT + 30% akurasi.
+  double get overallMasteryScore {
+    const levels = ['N5', 'N4', 'N3', 'N2', 'N1'];
+    var sum = 0.0;
+    for (final level in levels) {
+      sum += levelOverallMastery(level).clamp(0.0, 1.0);
+    }
+    return (sum / levels.length * 0.7 + quizAccuracy * 0.3)
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
+
+  /// Tier ala game (pengganti player level berbasis XP yang dihapus).
+  MasteryTier get masteryTier => MasteryTier.fromScore(overallMasteryScore);
   double get quizAccuracy => quizAnswered == 0 ? 0 : quizCorrect / quizAnswered;
 
   int get learnedVocabularyCount => masteredVocabularyIds.length;
@@ -797,18 +850,8 @@ class AppController extends ChangeNotifier {
   String get todayKanjiCharacter =>
       repository.kanjiById(todayKanjiId ?? -1)?.character ?? '日';
 
-  int featureXpRequirement(String feature) => switch (feature) {
-        'kanji' => 20,
-        'quiz_center' => 50,
-        'exam_simulation' => 250,
-        'community' => 400,
-        'advanced_path' => 100,
-        _ => 0,
-      };
-
-  /// Semua fitur terbuka: tidak ada paywall, tidak ada XP gate, tidak ada
-  /// level gate. Satu-satunya urutan yang tersisa adalah pedagogis:
-  /// progres lesson berikutnya tetap tersedia; penyelesaian sebelumnya hanya menjadi rekomendasi
+  /// Semua fitur terbuka: tidak ada paywall, tidak ada gate.
+  /// Satu-satunya urutan yang tersisa adalah pedagogis
   /// (ditangani CurriculumEngine, bukan di sini).
   bool canAccessFeature(String feature) => true;
 
@@ -1736,7 +1779,7 @@ class AppController extends ChangeNotifier {
   }
 
   /// Tandai progress kotor lalu jadwalkan push (dipanggil tiap ada perubahan).
-  void markProgressDirty([Iterable<String> keys = const ['xp']]) {
+  void markProgressDirty([Iterable<String> keys = const ['streak']]) {
     _touchFields(keys);
     final uid = cloudUid ?? _currentUidOrNull();
     if (uid == null || uid.isEmpty) {
@@ -1882,7 +1925,7 @@ class AppController extends ChangeNotifier {
     _preferences?.setString('activeRoadmapStepId', id);
     _preferences?.setStringList(
         'completedLearningSteps', completedLearningStepIds.toList());
-    recordStudy(xpGained: 20, notify: false);
+    recordStudy(notify: false);
     notifyListeners();
   }
 
@@ -2148,7 +2191,7 @@ class AppController extends ChangeNotifier {
   void toggleLearnedKanji(int id) {
     if (!learnedKanjiIds.remove(id)) {
       learnedKanjiIds.add(id);
-      recordStudy(xpGained: 5, notify: false);
+      recordStudy(notify: false);
     }
     _saveIntSet('learnedKanji', learnedKanjiIds);
     notifyListeners();
@@ -2247,10 +2290,7 @@ class AppController extends ChangeNotifier {
       _preferences?.setString('dailyMasteredDate', dailyMasteredDate);
     }
     _saveIntMap('kanjiMasteryStreaks', kanjiMasteryStreaks);
-    recordStudy(
-      xpGained: correct ? (justMastered ? 25 : 5) : 0,
-      notify: false,
-    );
+    recordStudy(notify: false);
     notifyListeners();
     return KanjiMasteryResult(
       correct: correct,
@@ -2282,10 +2322,7 @@ class AppController extends ChangeNotifier {
     }
     kanjiNextReviewDays[kanjiId] = nextReviewDay;
     _scheduleReviewSave();
-    recordStudy(
-      xpGained: correct ? 8 : 0,
-      notify: false,
-    );
+    recordStudy(notify: false);
     notifyListeners();
     return KanjiReviewResult(
       correct: correct,
@@ -2297,7 +2334,7 @@ class AppController extends ChangeNotifier {
   void toggleMasteredVocabulary(int id) {
     if (!masteredVocabularyIds.remove(id)) {
       masteredVocabularyIds.add(id);
-      recordStudy(xpGained: 3, notify: false);
+      recordStudy(notify: false);
     }
     _saveIntSet('masteredVocabulary', masteredVocabularyIds);
     notifyListeners();
@@ -2306,7 +2343,7 @@ class AppController extends ChangeNotifier {
   void toggleGrammarComplete(String id) {
     if (!completedGrammarIds.remove(id)) {
       completedGrammarIds.add(id);
-      recordStudy(xpGained: 8, notify: false);
+      recordStudy(notify: false);
     }
     _preferences?.setStringList(
       'completedGrammar',
@@ -2342,7 +2379,7 @@ class AppController extends ChangeNotifier {
               'completedLearningSteps', completedLearningStepIds.toList());
         }
       }
-      recordStudy(xpGained: 10, notify: false);
+      recordStudy(notify: false);
       notifyListeners();
     }
   }
@@ -2507,24 +2544,23 @@ class AppController extends ChangeNotifier {
     markProgressDirty(const [
       'curriculumProgress',
       'curriculumFinalScores',
-      'xp',
-      'dailyXp',
       'streak',
     ]);
   }
 
-  /// Selesaikan satu aktivitas. Mengembalikan XP yang didapat.
-  /// Otomatis: streak + XP (recordStudy), persist offline, jadwal sync.
+  /// Selesaikan satu aktivitas. Otomatis: streak (recordStudy),
+  /// persist offline, jadwal sync. Mengembalikan 1 bila aktivitas ini
+  /// yang menuntaskan lesson, 0 bila tidak.
   /// Penyelesaian lesson memperbarui progres dan rekomendasi, bukan mengunci lesson berikutnya.
-  int completeCurriculumActivity(
+  bool completeCurriculumActivity(
     String lessonId,
     String activityId, {
     int score = 0,
   }) {
     final lesson = CurriculumCatalogData.lessonById(lessonId);
-    if (lesson == null) return 0;
+    if (lesson == null) return false;
     if (curriculumLessonStatus(lesson) == CurriculumLessonStatus.locked) {
-      return 0;
+      return false;
     }
     final now = DateTime.now();
     final result = CurriculumEngine.completeActivity(
@@ -2535,16 +2571,11 @@ class AppController extends ChangeNotifier {
       now: now,
     );
     setCurriculumActiveLesson(lessonId);
-    if (result.xpGained > 0) {
-      recordStudy(xpGained: result.xpGained, notify: false);
-    } else {
-      _refreshDailyCounter();
-    }
+    recordStudy(notify: false);
     if (result.lessonJustCompleted) {
       recordActivity('curriculum_lesson', 'Lesson selesai: ${lesson.title}',
           meta: {'lessonId': lesson.id, 'level': lesson.levelId});
-      // Jembatani ke sistem lama agar StudyHub/Home lama ikut ter-update
-      // tanpa duplikasi XP besar (sudah diberi via aktivitas).
+      // Jembatani ke sistem lama agar StudyHub/Home lama ikut ter-update.
       completedLearningStepIds.add('curriculum-${lesson.id}');
       _preferences?.setStringList(
           'completedLearningSteps', completedLearningStepIds.toList());
@@ -2563,7 +2594,7 @@ class AppController extends ChangeNotifier {
     }
     _persistCurriculum();
     notifyListeners();
-    return result.xpGained;
+    return result.lessonJustCompleted;
   }
 
   /// Catat skor final/mock/placement. Dipakai Final Test & JLPT Simulation.
@@ -2609,30 +2640,19 @@ class AppController extends ChangeNotifier {
       }
       _tryUnlockNextCurriculumLevel(lesson.levelId, clamped);
     }
-    // Bonus Bab: boss test lulus pertama + seluruh unit selesai = +100
-    // (total 150 dengan 50 XP tes). Anti-farm via best baru + unit done.
+    // Bab selesai pertama kali: catat aktivitas tonggak (tanpa XP).
     if (passed &&
         clamped > prevBest &&
         lesson.isBossTest &&
         _unitLessonsDone(lesson)) {
-      recordStudy(xpGained: 100, notify: false);
       recordActivity('chapter_complete', 'Bab selesai: ${lesson.levelId}',
           meta: {'lessonId': lesson.id, 'level': lesson.levelId});
     }
-    // XP ANTI-FARM: hanya skor terbaik BARU yang lulus yang dapat XP.
-    // Ulangi dengan skor sama/rendah/gagal = 0 XP. Statistik attempt
-    // tetap dicatat (tanpa XP) agar akurasi jujur.
-    recordStudy(
-        xpGained: CurriculumEngine.finalTestXpReward(
-            passed: passed,
-            score: clamped,
-            prevBest: prevBest,
-            totalXp: lesson.totalXp),
-        notify: false);
+    recordStudy(notify: false);
     recordQuiz(
-        correct: (clamped / 10).round(),
-        total: 10,
-        grantXp: passed && clamped > prevBest);
+      correct: (clamped / 10).round(),
+      total: 10,
+    );
     _persistCurriculum();
     notifyListeners();
     return passed;
@@ -2670,7 +2690,7 @@ class AppController extends ChangeNotifier {
   int lessonMasteryScore(String key) => lessonItemMastery[key] ?? 0;
 
   /// Tier tampilan mastery: 2 = ●, 1 = ◑, 0 = ○.
-  static int masteryTier(
+  static int itemMasteryTier(
           {required int score, required bool mastered, bool learned = false}) =>
       (mastered || score >= 3) ? 2 : (learned || score >= 1) ? 1 : 0;
 
@@ -2686,21 +2706,14 @@ class AppController extends ChangeNotifier {
 
   /// Reset progres satu unit/bab (debug/testing + "mulai bab dari nol").
   /// Menghapus: status lesson unit, skor final lesson, best latihan, dan
-  /// mastery item unit. XP dikurangi totalXp lesson yang completed
-  /// (APROKSIMASI terdokumentasi, tidak pernah negatif). Mastery toggle
-  /// Library (pilihan eksplisit user) TIDAK disentuh. Unit lain aman.
+  /// mastery item unit. Mastery toggle Library (pilihan eksplisit user)
+  /// TIDAK disentuh. Unit lain aman.
   Future<void> resetUnitProgress(String unitId) async {
     final unit = CurriculumCatalogData.unitById(unitId);
     if (unit == null) return;
     final ids = unit.lessons.map((lesson) => lesson.id).toSet();
-    var refund = 0;
     for (final id in ids) {
-      final progress = curriculumProgressById.remove(id);
-      if (progress != null &&
-          (progress.status == CurriculumLessonStatus.completed ||
-              progress.status == CurriculumLessonStatus.mastered)) {
-        refund += CurriculumCatalogData.lessonById(id)?.totalXp ?? 0;
-      }
+      curriculumProgressById.remove(id);
       curriculumFinalScores.remove(id);
       practiceBest.remove(id);
     }
@@ -2719,8 +2732,6 @@ class AppController extends ChangeNotifier {
     for (final key in masteryKeys) {
       lessonItemMastery.remove(key);
     }
-    xp = (xp - refund).clamp(0, 1 << 31);
-    _preferences?.setInt('xp', xp);
     _persistCurriculum();
     _preferences?.setString(
         'lessonItemMastery', jsonEncode(lessonItemMastery));
@@ -2730,7 +2741,6 @@ class AppController extends ChangeNotifier {
       'curriculumFinalScores',
       'practiceBest',
       'lessonItemMastery',
-      'xp',
     ]);
     notifyListeners();
   }
@@ -2931,7 +2941,7 @@ class AppController extends ChangeNotifier {
         'lessonId': lesson.id,
         'level': lesson.level,
       });
-      recordStudy(xpGained: 20, notify: false);
+      recordStudy(notify: false);
     } else {
       recordActivity('lesson_remedial', 'Remedial dibutuhkan', meta: {
         'lessonId': lesson.id,
@@ -2964,8 +2974,6 @@ class AppController extends ChangeNotifier {
       'learningEngineState',
       'quizCorrect',
       'quizAnswered',
-      'xp',
-      'dailyXp',
       'activityJournal',
     ]);
   }
@@ -2973,7 +2981,7 @@ class AppController extends ChangeNotifier {
   void togglePhraseComplete(String id) {
     if (!completedPhraseIds.remove(id)) {
       completedPhraseIds.add(id);
-      recordStudy(xpGained: 3, notify: false);
+      recordStudy(notify: false);
     }
     _preferences?.setStringList(
         'completedPhrases', completedPhraseIds.toList());
@@ -2983,7 +2991,7 @@ class AppController extends ChangeNotifier {
   void toggleSentenceComplete(String id) {
     if (!completedSentenceIds.remove(id)) {
       completedSentenceIds.add(id);
-      recordStudy(xpGained: 4, notify: false);
+      recordStudy(notify: false);
     }
     _preferences?.setStringList(
       'completedSentences',
@@ -2995,15 +3003,14 @@ class AppController extends ChangeNotifier {
   void toggleCultureComplete(String id) {
     if (!completedCultureIds.remove(id)) {
       completedCultureIds.add(id);
-      recordStudy(xpGained: 5, notify: false);
+      recordStudy(notify: false);
     }
     _preferences?.setStringList(
         'completedCulture', completedCultureIds.toList());
     notifyListeners();
   }
 
-  void recordQuiz(
-      {required int correct, required int total, bool grantXp = true}) {
+  void recordQuiz({required int correct, required int total}) {
     if (total <= 0) return;
     lastQuizPerfect = correct == total && total >= 5;
     recordActivity('quiz', 'Kuis diselesaikan',
@@ -3012,14 +3019,7 @@ class AppController extends ChangeNotifier {
     quizAnswered += total;
     _preferences?.setInt('quizCorrect', quizCorrect);
     _preferences?.setInt('quizAnswered', quizAnswered);
-    // grantXp=false: catat statistik tanpa XP (anti-farm pengulangan).
-    if (grantXp) {
-      recordStudy(
-        xpGained: correct * 10 + (correct == total ? 20 : 0),
-      );
-    } else {
-      _refreshDailyCounter();
-    }
+    recordStudy();
   }
 
   String examKey(ExamType examType, String level, int stage) =>
@@ -3046,7 +3046,9 @@ class AppController extends ChangeNotifier {
     recordQuiz(correct: correct, total: total);
   }
 
-  void recordStudy({int xpGained = 2, bool notify = true}) {
+  /// Catat satu aktivitas belajar: streak harian, jurnal, widget, sync,
+  /// dan cek misi tersembunyi. Tanpa XP — progres diukur dari mastery.
+  void recordStudy({bool notify = true}) {
     _refreshDailyCounter();
     final today = _dateKey(DateTime.now());
     if (lastStudyDate != today) {
@@ -3060,16 +3062,10 @@ class AppController extends ChangeNotifier {
       _preferences?.setString('lastStudyDate', lastStudyDate);
       _preferences?.setStringList('studyDateKeys', studyDateKeys.toList());
     }
-    xp += xpGained;
-    dailyXp += xpGained;
-    _preferences?.setInt('xp', xp);
-    _preferences?.setInt('dailyXp', dailyXp);
-    recordActivity('study', 'Aktivitas belajar', meta: {'xp': xpGained});
+    recordActivity('study', 'Aktivitas belajar');
     unawaited(HomeWidgetService.instance
-        .update(streak: streak, xp: xp, kanji: todayKanjiCharacter));
+        .update(streak: streak, kanji: todayKanjiCharacter));
     markProgressDirty(const [
-      'xp',
-      'dailyXp',
       'streak',
       'lastStudyDate',
       'studyDateKeys',
@@ -3079,15 +3075,16 @@ class AppController extends ChangeNotifier {
     checkHiddenQuests();
   }
 
-  Future<void> addBonusXp(int amount) async {
-    if (amount <= 0) return;
-    xp += amount;
-    dailyXp += amount;
-    _preferences?.setInt('xp', xp);
-    _preferences?.setInt('dailyXp', dailyXp);
-    recordActivity('reward', 'Bonus iklan', meta: {'xp': amount});
-    markProgressDirty(const ['xp', 'dailyXp', 'activityJournal']);
-    notifyListeners();
+  /// Bonus menit fokus (mis. dari rewarded ad). Menambah waktu aktif
+  /// harian + total, lalu mencatat aktivitas belajar biasa.
+  Future<void> recordStudySession({required int minutes}) async {
+    final seconds = (minutes * 60).clamp(0, 86400);
+    totalActiveSeconds += seconds;
+    dailyActiveSeconds += seconds;
+    _preferences?.setInt('totalActiveSeconds', totalActiveSeconds);
+    _preferences?.setInt('dailyActiveSeconds', dailyActiveSeconds);
+    recordActivity('bonus_session', 'Bonus fokus ($minutes menit)');
+    recordStudy();
   }
 
   String exportProgress() => const JsonEncoder.withIndent('  ').convert({
@@ -3120,9 +3117,6 @@ class AppController extends ChangeNotifier {
         'reviewReminderHour': reviewReminderHour,
         'reviewReminderMinute': reviewReminderMinute,
         'lastDriveBackupLabel': lastDriveBackupLabel,
-        'xp': xp,
-        'dailyXp': dailyXp,
-        'dailyGoalXp': dailyGoalXp,
         'lessonItemMastery': lessonItemMastery,
         'practiceBest': practiceBest,
         'streak': streak,
@@ -3238,19 +3232,12 @@ class AppController extends ChangeNotifier {
               .toInt();
       lastDriveBackupLabel =
           (json['lastDriveBackupLabel'] as String?) ?? lastDriveBackupLabel;
-      xp = (json['xp'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();
-      dailyXp = (json['dailyXp'] as num? ?? 0).toInt().clamp(0, 100000).toInt();
       lessonItemMastery
         ..clear()
         ..addAll(_jsonLessonMastery(json['lessonItemMastery']));
       practiceBest
         ..clear()
         ..addAll(_jsonStringIntMap(json['practiceBest']));
-      final syncedGoal =
-          (json['dailyGoalXp'] as num? ?? defaultDailyGoal).toInt();
-      dailyGoalXp = allowedDailyGoals.contains(syncedGoal)
-          ? syncedGoal
-          : defaultDailyGoal;
       streak = (json['streak'] as num? ?? 0).toInt().clamp(0, 100000).toInt();
       quizCorrect =
           (json['quizCorrect'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();
@@ -3432,8 +3419,6 @@ class AppController extends ChangeNotifier {
           prefs.setInt('reviewReminderHour', reviewReminderHour),
           prefs.setInt('reviewReminderMinute', reviewReminderMinute),
           prefs.setString('lastDriveBackupLabel', lastDriveBackupLabel),
-          prefs.setInt('xp', xp),
-          prefs.setInt('dailyXp', dailyXp),
           prefs.setInt('streak', streak),
           prefs.setInt('quizCorrect', quizCorrect),
           prefs.setInt('quizAnswered', quizAnswered),
@@ -3541,8 +3526,6 @@ class AppController extends ChangeNotifier {
   /// true bila lokal bersih (server ikut terhapus bila sedang login).
   Future<bool> resetProgress() async {
     _reviewSaveTimer?.cancel();
-    xp = 0;
-    dailyXp = 0;
     streak = 0;
     quizCorrect = 0;
     quizAnswered = 0;
@@ -3570,8 +3553,6 @@ class AppController extends ChangeNotifier {
     final prefs = _preferences;
     if (prefs != null) {
       for (final key in [
-        'xp',
-        'dailyXp',
         'streak',
         'quizCorrect',
         'quizAnswered',
@@ -3763,17 +3744,14 @@ class AppController extends ChangeNotifier {
       'kanjiNextReviewDays',
       'learnedKanji',
       'masteredKanji',
-      'xp',
     ]);
   }
 
   void _refreshDailyCounter() {
     final today = _dateKey(DateTime.now());
     if (lastStudyDate.isNotEmpty && lastStudyDate != today) {
-      dailyXp = 0;
       dailyMasteredKanji = 0;
       dailyActiveSeconds = 0;
-      _preferences?.setInt('dailyXp', 0);
       _preferences?.setInt('dailyMasteredKanji', 0);
       _preferences?.setInt('dailyActiveSeconds', 0);
     }
@@ -3785,8 +3763,8 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  /// Cek misi tersembunyi setelah tiap aktivitas. Bonus XP langsung
-  /// (tanpa rekursi) + notifikasi saat misi baru terbuka.
+  /// Cek misi tersembunyi setelah tiap aktivitas: lencana + notifikasi
+  /// saat misi baru terbuka (tanpa XP, tanpa rekursi).
   final Set<String> downloadedPacks = {};
   final Map<String, String> packSyncedAt = {};
 
@@ -3820,26 +3798,17 @@ class AppController extends ChangeNotifier {
     );
     final fresh = HiddenQuests.checkUnlocked(stats, unlockedQuests);
     if (fresh.isEmpty) return;
-    var bonus = 0;
     for (final q in fresh) {
       unlockedQuests.add(q.id);
-      bonus += q.rewardXp;
       pushInboxNotification(
         id: 'quest-${q.id}',
         title: 'Misi tersembunyi: ${q.title}',
-        body: 'Bonus +${q.rewardXp} XP. ${unlockedQuests.length}/'
+        body: 'Misi terbuka. ${unlockedQuests.length}/'
             '${HiddenQuests.defs.length} misi terbuka.',
         kind: 'misi',
       );
       recordActivity('hidden_quest', 'Misi tersembunyi: ${q.title}',
-          meta: {'id': q.id, 'xp': q.rewardXp});
-    }
-    if (bonus > 0) {
-      xp += bonus;
-      dailyXp += bonus;
-      _preferences?.setInt('xp', xp);
-      _preferences?.setInt('dailyXp', dailyXp);
-      markProgressDirty(const ['xp', 'dailyXp']);
+          meta: {'id': q.id});
     }
     _preferences?.setStringList('unlockedQuests', unlockedQuests.toList());
     notifyListeners();

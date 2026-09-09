@@ -4,9 +4,9 @@ import '../services/ads_service.dart';
 import '../state/app_controller.dart';
 
 class RewardAdCard extends StatelessWidget {
-  const RewardAdCard({super.key, this.xpReward = 10});
+  const RewardAdCard({super.key, this.bonusMinutes = 5});
 
-  final int xpReward;
+  final int bonusMinutes;
 
   @override
   Widget build(BuildContext context) {
@@ -25,11 +25,11 @@ class RewardAdCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Bonus XP',
+                    'Bonus streak',
                     style: TextStyle(fontWeight: FontWeight.w900),
                   ),
                   Text(
-                    'Tonton iklan singkat dan dapatkan +$xpReward XP gratis.',
+                    'Tonton iklan singkat dan catat +$bonusMinutes menit fokus.',
                     style: TextStyle(color: cs.onTertiaryContainer.withValues(alpha: .8)),
                   ),
                 ],
@@ -43,9 +43,9 @@ class RewardAdCard extends StatelessWidget {
                 final earned = await AdsService.instance.showRewarded();
                 if (!context.mounted) return;
                 if (earned) {
-                  await app.addBonusXp(xpReward);
+                  await app.recordStudySession(minutes: bonusMinutes);
                   messenger.showSnackBar(
-                    SnackBar(content: Text('+$xpReward XP! Terima kasih sudah menonton.')),
+                    SnackBar(content: Text('+$bonusMinutes mnt! Terima kasih sudah menonton.')),
                   );
                 } else {
                   messenger.showSnackBar(

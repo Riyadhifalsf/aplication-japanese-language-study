@@ -97,10 +97,8 @@ class ProgressSyncService {
       return r.containsKey(key) ? r[key] : fallback;
     }
 
-    // Counter: ambil yang terbesar agar XP tidak hilang saat ganti HP.
+    // Counter: ambil yang terbesar agar progres tidak hilang saat ganti HP.
     for (final k in [
-      'xp',
-      'dailyXp',
       'streak',
       'quizCorrect',
       'quizAnswered',
@@ -157,7 +155,6 @@ class ProgressSyncService {
       'appLanguage',
       'ttsGender',
       'reviewIntervalDays',
-      'dailyGoalXp',
       'membershipPlan',
       'membershipTier',
       'activeRoadmapStepId',

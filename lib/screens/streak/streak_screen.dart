@@ -20,7 +20,7 @@ class StreakScreen extends StatelessWidget {
               Text('${app.streak} hari', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
               Text(app.streakTierName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text('XP total ${app.xp} · level ${app.level}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70)),
+              Text('Tier ${app.masteryTier.label} · ${(app.overallMasteryScore * 100).round()}% mastery', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70)),
             ]);
             if (constraints.maxWidth < 300) {
               return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

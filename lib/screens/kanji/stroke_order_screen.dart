@@ -285,7 +285,7 @@ class _StrokeOrderScreenState extends State<StrokeOrderScreen>
         _practiceIndex++;
         if (_practiceIndex >= data.paths.length) {
           _practiceMessage = 'Bagus! Semua goresan benar.';
-          AppScope.of(context).recordStudy(xpGained: 8);
+          AppScope.of(context).recordStudy();
         } else {
           _practiceMessage = 'Benar. Lanjut goresan ${_practiceIndex + 1}.';
         }

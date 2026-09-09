@@ -221,10 +221,11 @@ class CurriculumEngine {
     );
   }
 
-  /// Tandai aktivitas selesai. Mengembalikan XP yang didapat.
+  /// Tandai aktivitas selesai. Idempotent: aktivitas yang sama tidak
+  /// tercatat dua kali (mencegah progres ganda karena buka/tutup berulang).
   /// Lesson menjadi completed bila semua aktivitas selesai; mastered bila
   /// skor test memenuhi requiredScore atau semua aktivitas + quiz lulus.
-  static ({UserLessonProgress progress, int xpGained, bool lessonJustCompleted})
+  static ({UserLessonProgress progress, bool lessonJustCompleted})
       completeActivity({
     required CurriculumLesson lesson,
     required Map<String, UserLessonProgress> progressById,
@@ -235,11 +236,9 @@ class CurriculumEngine {
     final existing = progressById[lesson.id] ??
         UserLessonProgress(
             lessonId: lesson.id, status: CurriculumLessonStatus.inProgress);
-    // Idempotent: aktivitas yang sudah selesai tidak memberi XP lagi.
-    // Mencegah double XP karena buka/tutup screen berulang.
     if (existing.completedActivityIds.contains(activityId)) {
       progressById[lesson.id] = existing;
-      return (progress: existing, xpGained: 0, lessonJustCompleted: false);
+      return (progress: existing, lessonJustCompleted: false);
     }
     final completed = {...existing.completedActivityIds, activityId};
     existing.completedActivityIds = completed;
@@ -249,13 +248,6 @@ class CurriculumEngine {
     if (existing.status == CurriculumLessonStatus.locked ||
         existing.status == CurriculumLessonStatus.available) {
       existing.status = CurriculumLessonStatus.inProgress;
-    }
-    var xp = 0;
-    for (final activity in lesson.activities) {
-      if (activity.id == activityId) {
-        xp = activity.xp;
-        break;
-      }
     }
     var justCompleted = false;
     final allIds = lesson.activities.map((a) => a.id).toSet();
@@ -272,25 +264,11 @@ class CurriculumEngine {
         existing.status = existing.mastered
             ? CurriculumLessonStatus.mastered
             : CurriculumLessonStatus.completed;
-        // Bonus XP lesson test sudah termasuk di aktivitas; tambah bonus
-        // kecil agar final terasa rewarding tanpa merusak ekonomi XP.
-        if (lesson.isFinalTest) xp += 20;
       }
     }
     progressById[lesson.id] = existing;
-    return (progress: existing, xpGained: xp, lessonJustCompleted: justCompleted);
+    return (progress: existing, lessonJustCompleted: justCompleted);
   }
-
-  /// XP final test ANTI-FARM (murni, mudah dites): hanya skor terbaik BARU
-  /// yang lulus yang memberi XP. Ulangi dengan skor sama/lebih rendah atau
-  /// gagal = 0 XP (statistik attempt tetap dicatat pemanggil).
-  static int finalTestXpReward({
-    required bool passed,
-    required int score,
-    required int prevBest,
-    required int totalXp,
-  }) =>
-      (passed && score > prevBest) ? totalXp : 0;
 
   /// introducedInLessonId per kunci konten ('v:313' / 'g:n5-wa' /
   /// 'k:42' / 'p:ph-0001') = lesson PERTAMA (urutan sequence) yang

@@ -40,7 +40,6 @@ class QuizCenterScreen extends StatelessWidget {
       );
     }
     final level = app.selectedStudyLevel == 'JFT' ? 'N5' : app.selectedStudyLevel;
-    final examLocked = !app.canAccessFeature('exam_simulation');
     return ListView(padding: const EdgeInsets.fromLTRB(18, 16, 18, 32), children: [
       Entrance(
         keyName: 'quiz-header',
@@ -62,8 +61,7 @@ class QuizCenterScreen extends StatelessWidget {
       const SizedBox(height:22),
       _Section(title:'Ujian & simulasi', subtitle:'Paket ujian dipisahkan dari latihan harian.'),
       const SizedBox(height:10),
-      _Grid(items:[_Item('Simulasi JLPT','N5 sampai N1',Icons.school_rounded,()=>_open(context,const ExamHubScreen())),_Item('Simulasi JFT-Basic','Paket latihan A2',Icons.badge_rounded,()=>_open(context,const ExamHubScreen(initialType:ExamType.jft)))], enabled:!examLocked),
-      if(examLocked) Padding(padding:const EdgeInsets.only(top:10),child:_XpLock(requiredXp:app.featureXpRequirement('exam_simulation'))),
+      _Grid(items:[_Item('Simulasi JLPT','N5 sampai N1',Icons.school_rounded,()=>_open(context,const ExamHubScreen())),_Item('Simulasi JFT-Basic','Paket latihan A2',Icons.badge_rounded,()=>_open(context,const ExamHubScreen(initialType:ExamType.jft)))], enabled:true),
     ]);
   }
 }
@@ -71,4 +69,3 @@ class _Section extends StatelessWidget { const _Section({required this.title,req
 class _Grid extends StatelessWidget { const _Grid({required this.items,required this.enabled}); final List<_Item> items; final bool enabled; @override Widget build(BuildContext context)=>GridView.builder(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:260,childAspectRatio:1.18,mainAxisSpacing:10,crossAxisSpacing:10),itemCount:items.length,itemBuilder:(_,i){final item=items[i];final on=item.enabledOverride??enabled;return Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:on?item.onTap:null,child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(children:[CircleAvatar(child:Icon(on?item.icon:Icons.lock_rounded)),const Spacer(),if(item.beta) const _BetaBadge()]),const Spacer(),Text(item.title,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:3),Text(item.subtitle,maxLines:2,overflow:TextOverflow.ellipsis,style:TextStyle(fontSize:12,color:Theme.of(context).colorScheme.onSurfaceVariant))]))));}); }
 class _BetaBadge extends StatelessWidget { const _BetaBadge(); @override Widget build(BuildContext context)=>Container(padding:const EdgeInsets.symmetric(horizontal:7,vertical:4),decoration:BoxDecoration(color:Theme.of(context).colorScheme.tertiaryContainer,borderRadius:BorderRadius.circular(99)),child:Text('BETA',style:TextStyle(fontSize:9,fontWeight:FontWeight.w900,color:Theme.of(context).colorScheme.onTertiaryContainer))); }
 class _Item { const _Item(this.title,this.subtitle,this.icon,this.onTap,{this.beta=false,this.enabledOverride,this.flagKey}); final String title,subtitle; final IconData icon; final VoidCallback onTap; final bool beta; final bool? enabledOverride; final String? flagKey; }
-class _XpLock extends StatelessWidget { const _XpLock({required this.requiredXp}); final int requiredXp; @override Widget build(BuildContext context)=>Card(color:Theme.of(context).colorScheme.secondaryContainer.withValues(alpha:.55),child:ListTile(leading:const Icon(Icons.lock_rounded),title:const Text('Fitur ini belum terbuka',style:TextStyle(fontWeight:FontWeight.w900)),subtitle:Text('Kumpulkan ${requiredXp} XP untuk membuka akses.'))); }

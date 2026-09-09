@@ -8,7 +8,6 @@ class HomeWidgetService {
 
   Future<void> update({
     required int streak,
-    required int xp,
     required String kanji,
   }) async {}
 }

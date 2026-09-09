@@ -78,28 +78,6 @@ enum CurriculumActivityType {
         CurriculumActivityType.placementTest => 'Placement Test',
       };
 
-  /// XP reward default per aktivitas (bisa di-override per activity).
-  int get defaultXp => switch (this) {
-        CurriculumActivityType.introduction => 5,
-        CurriculumActivityType.vocabulary => 10,
-        CurriculumActivityType.kanji => 15,
-        CurriculumActivityType.grammar => 15,
-        CurriculumActivityType.exampleSentences => 10,
-        CurriculumActivityType.reading => 15,
-        CurriculumActivityType.listening => 20,
-        CurriculumActivityType.speaking => 15,
-        CurriculumActivityType.shadowing => 15,
-        CurriculumActivityType.conversation => 15,
-        CurriculumActivityType.quiz => 20,
-        CurriculumActivityType.review => 10,
-        CurriculumActivityType.writing => 15,
-        CurriculumActivityType.unitTest => 50,
-        CurriculumActivityType.bossTest => 50,
-        CurriculumActivityType.finalTest => 100,
-        CurriculumActivityType.mockTest => 50,
-        CurriculumActivityType.placementTest => 0,
-      };
-
   /// Skill terkait untuk adaptive learning & review system.
   String get skillKey => switch (this) {
         CurriculumActivityType.introduction => 'mixed',
@@ -149,7 +127,6 @@ class LessonActivity {
     required this.type,
     required this.title,
     this.description = '',
-    this.xpReward,
     this.estimatedMinutes = 5,
     this.contentRef = '',
     this.contentIds = const [],
@@ -161,21 +138,17 @@ class LessonActivity {
   final CurriculumActivityType type;
   final String title;
   final String description;
-  final int? xpReward;
   final int estimatedMinutes;
   final String contentRef;
   final List<String> contentIds;
   final String routeHint;
   final String? reusedLessonId;
 
-  int get xp => xpReward ?? type.defaultXp;
-
   Map<String, Object?> toJson() => {
         'id': id,
         'type': type.name,
         'title': title,
         'description': description,
-        'xpReward': xpReward,
         'estimatedMinutes': estimatedMinutes,
         'contentRef': contentRef,
         'contentIds': contentIds,
@@ -189,7 +162,6 @@ class LessonActivity {
         type: CurriculumActivityType.fromName(raw['type']),
         title: '${raw['title'] ?? ''}',
         description: '${raw['description'] ?? ''}',
-        xpReward: (raw['xpReward'] as num?)?.toInt(),
         estimatedMinutes: ((raw['estimatedMinutes'] as num?) ?? 5).toInt(),
         contentRef: '${raw['contentRef'] ?? ''}',
         contentIds: ((raw['contentIds'] as List? ?? const [])
@@ -318,8 +290,8 @@ class CurriculumLesson {
   final int requiredScore;
   final int estimatedMinutes;
 
-  int get totalXp =>
-      activities.fold<int>(0, (sum, activity) => sum + activity.xp);
+  int get totalMinutes =>
+      activities.fold<int>(0, (sum, activity) => sum + activity.estimatedMinutes);
 
   /// True bila lesson punya kurikulum inline nyata (bukan sekadar
   /// kumpulan shortcut): ada objectives atau referensi konten terisi.
@@ -407,8 +379,8 @@ class CurriculumLevel {
 
   int get totalLessons => allLessons.length;
 
-  int get totalXp =>
-      allLessons.fold<int>(0, (sum, lesson) => sum + lesson.totalXp);
+  int get totalMinutes =>
+      allLessons.fold<int>(0, (sum, lesson) => sum + lesson.totalMinutes);
 }
 
 /// Progress satu lesson milik pengguna. Disimpan offline-first di

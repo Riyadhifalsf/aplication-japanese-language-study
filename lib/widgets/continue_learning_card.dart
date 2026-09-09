@@ -232,8 +232,8 @@ class ContinueLearningCard extends StatelessWidget {
             Expanded(
                 child: _MiniStat(
                     icon: Icons.star_rounded,
-                    label: 'XP',
-                    value: '${app.xp}')),
+                    label: 'Tier',
+                    value: app.masteryTier.label)),
           ],
         ),
       ],

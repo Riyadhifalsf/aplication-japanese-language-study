@@ -436,7 +436,7 @@ class _StudyOverview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${app.streak} hari rentetan · ${app.xp} XP',
+                    '${app.streak} hari rentetan · ${app.dailyActiveMinutes}/${app.dailyStudyMinutes} mnt',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context)

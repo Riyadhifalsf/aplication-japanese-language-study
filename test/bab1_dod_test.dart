@@ -274,25 +274,27 @@ void main() {
     });
   });
 
-  group('DoD Bab 1: XP anti-farm + mastery + best', () {
-    test('Test 9 XP final: hanya best baru yang lulus dapat XP', () {
-      const total = 60;
-      expect(
-          CurriculumEngine.finalTestXpReward(
-              passed: true, score: 80, prevBest: 0, totalXp: total),
-          total);
-      expect(
-          CurriculumEngine.finalTestXpReward(
-              passed: true, score: 80, prevBest: 80, totalXp: total),
-          0);
-      expect(
-          CurriculumEngine.finalTestXpReward(
-              passed: true, score: 70, prevBest: 80, totalXp: total),
-          0);
-      expect(
-          CurriculumEngine.finalTestXpReward(
-              passed: false, score: 60, prevBest: 0, totalXp: total),
-          0);
+  group('DoD Bab 1: best-only + mastery + best', () {
+    test('Test 9 final: hanya best baru yang dicatat, lulus ikut requiredScore', () {
+      final app = _controller();
+      // final test lesson N5 (requiredScore default 70 bila 0).
+      final lesson = CurriculumCatalogData.levelById('N5')!
+          .allLessons
+          .firstWhere((l) => l.isFinalTest);
+      final first = app.recordCurriculumFinalTest(lesson.id, 80);
+      expect(first, isTrue);
+      expect(app.curriculumFinalScores[lesson.id], 80);
+      final same = app.recordCurriculumFinalTest(lesson.id, 80);
+      expect(same, isTrue);
+      expect(app.curriculumFinalScores[lesson.id], 80);
+      final lower = app.recordCurriculumFinalTest(lesson.id, 70);
+      expect(lower, isTrue);
+      // best tidak turun.
+      expect(app.curriculumFinalScores[lesson.id], 80);
+      final fail = app.recordCurriculumFinalTest(lesson.id, 10);
+      // skor 10 < required → gagal, best tetap.
+      expect(fail, isFalse);
+      expect(app.curriculumFinalScores[lesson.id], 80);
     });
 
     test('Mastery: +1/-1 clamp -5..+10', () {
@@ -309,10 +311,10 @@ void main() {
             correctKeys: const [], wrongKeys: const ['v:313']);
       }
       expect(app.lessonMasteryScore('v:313'), -5);
-      expect(AppController.masteryTier(score: 3, mastered: false), 2);
-      expect(AppController.masteryTier(score: 1, mastered: false), 1);
-      expect(AppController.masteryTier(score: 0, mastered: false), 0);
-      expect(AppController.masteryTier(score: 0, mastered: true), 2);
+      expect(AppController.itemMasteryTier(score: 3, mastered: false), 2);
+      expect(AppController.itemMasteryTier(score: 1, mastered: false), 1);
+      expect(AppController.itemMasteryTier(score: 0, mastered: false), 0);
+      expect(AppController.itemMasteryTier(score: 0, mastered: true), 2);
     });
 
     test('Best latihan hanya naik', () {
@@ -350,8 +352,6 @@ void main() {
       app.recordLessonMastery(
           correctKeys: const ['v:313'], wrongKeys: const []);
       app.recordPracticeBest('n5-u01-l01', 80);
-      final xpBefore = app.xp;
-      expect(xpBefore, greaterThan(0));
       expect(
           app.curriculumProgressById['n5-u01-l01']?.status,
           CurriculumLessonStatus.completed);
@@ -369,11 +369,10 @@ void main() {
       for (final lesson in ordered.skip(1)) {
         expect(statuses[lesson.id], CurriculumLessonStatus.locked);
       }
-      // Mastery + best bersih, XP berkurang.
+      // Mastery + best bersih, progres unit ter-reset.
       expect(app.lessonMasteryScore('v:313'), 0);
       expect(app.practiceBest.containsKey('n5-u01-l01'), false);
-      expect(app.xp, lessThan(xpBefore));
-      expect(app.xp, greaterThanOrEqualTo(0));
+      expect(app.curriculumProgressById.containsKey('n5-u01-l01'), isFalse);
     });
   });
 
@@ -449,7 +448,7 @@ void main() {
       expect(meetsScoreGate(100), true);
     });
 
-    test('Bonus Bab: pass boss pertama + unit done = +100', () async {
+    test('Bonus Bab: pass boss pertama + unit done tercatat sekali', () async {
       final app = _controller();
       final unit = CurriculumCatalogData.unitById('n5-u01')!;
       for (final lesson in unit.lessons) {
@@ -458,16 +457,14 @@ void main() {
           app.completeCurriculumActivity(lesson.id, activity.id);
         }
       }
-      final before = app.xp;
       final passed =
           app.recordCurriculumFinalTest('n5-u01-l06', 80);
       expect(passed, true);
-      final delta = app.xp - before;
-      // 50 XP tes (unitTest) + 80 XP kuis (8 benar) + 100 bonus bab.
-      expect(delta, 230);
-      final before2 = app.xp;
+      expect(app.curriculumFinalScores['n5-u01-l06'], 80);
+      final bestBefore = app.curriculumFinalScores['n5-u01-l06'];
       app.recordCurriculumFinalTest('n5-u01-l06', 80);
-      expect(app.xp - before2, 0);
+      // best tidak naik bila skor sama.
+      expect(app.curriculumFinalScores['n5-u01-l06'], bestBefore);
     });
   });
 

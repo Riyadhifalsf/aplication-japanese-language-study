@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 /// Misi Tersembunyi: pencapaian rahasia dengan syarat khusus.
 ///
 /// Ide: user TIDAK diberi tahu syarat pastinya — hanya hint samar.
-/// Yang terbuka tampil; yang terkunci tampil sebagai "???". Setiap misi
-/// memberi bonus XP + notifikasi saat terbuka.
+/// Yang terbuka tampil; yang terkunci tampil sebagai "???". Membuka misi
+/// memberi lencana + notifikasi (tanpa XP).
 ///
 /// Syarat dirancang dari perilaku belajar nyata (waktu, konsistensi,
-// * ketepatan, eksplorasi), bukan sekadar grind XP.
+// * ketepatan, eksplorasi), bukan sekadar grind.
 class QuestStats {
   const QuestStats({
     required this.hour,
@@ -31,7 +31,6 @@ class HiddenQuestDef {
     required this.id,
     required this.title,
     required this.hint,
-    required this.rewardXp,
     required this.icon,
     required this.check,
   });
@@ -41,7 +40,6 @@ class HiddenQuestDef {
 
   /// Petunjuk samar untuk misi yang belum terbuka.
   final String hint;
-  final int rewardXp;
   final IconData icon;
   final bool Function(QuestStats s) check;
 }
@@ -54,7 +52,6 @@ class HiddenQuests {
       id: 'bangau-pagi',
       title: 'Bangau Pagi',
       hint: 'Ada yang rajin sebelum matahari terbit...',
-      rewardXp: 50,
       icon: Icons.wb_twilight_rounded,
       check: _before6,
     ),
@@ -62,7 +59,6 @@ class HiddenQuests {
       id: 'burung-hantu',
       title: 'Burung Hantu',
       hint: 'Belajar paling nikmat saat semua orang tidur?',
-      rewardXp: 50,
       icon: Icons.nights_stay_rounded,
       check: _after23,
     ),
@@ -70,7 +66,6 @@ class HiddenQuests {
       id: 'sempurna',
       title: 'Tanpa Cela',
       hint: 'Jawaban sempurna dalam satu sesi penuh...',
-      rewardXp: 100,
       icon: Icons.verified_rounded,
       check: _perfect,
     ),
@@ -78,7 +73,6 @@ class HiddenQuests {
       id: 'pelahap-kanji',
       title: 'Pelahap Kanji',
       hint: 'Kuasai banyak kanji dalam sehari.',
-      rewardXp: 100,
       icon: Icons.menu_book_rounded,
       check: _kanji5,
     ),
@@ -86,7 +80,6 @@ class HiddenQuests {
       id: 'maraton',
       title: 'Maraton 45',
       hint: 'Duduk lama demi satu tujuan.',
-      rewardXp: 150,
       icon: Icons.directions_run_rounded,
       check: _marathon,
     ),
@@ -94,7 +87,6 @@ class HiddenQuests {
       id: 'seminggu-penuh',
       title: 'Seminggu Penuh',
       hint: 'Datang setiap hari tanpa putus.',
-      rewardXp: 200,
       icon: Icons.calendar_month_rounded,
       check: _streak7,
     ),

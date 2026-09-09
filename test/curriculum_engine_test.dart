@@ -44,12 +44,14 @@ void main() {
       expect(after[ordered[1].id], CurriculumLessonStatus.available);
     });
 
-    test('XP rewards follow spec (vocab 10, listening 20, unit test 50)', () {
-      expect(CurriculumActivityType.vocabulary.defaultXp, 10);
-      expect(CurriculumActivityType.grammar.defaultXp, 15);
-      expect(CurriculumActivityType.kanji.defaultXp, 15);
-      expect(CurriculumActivityType.listening.defaultXp, 20);
-      expect(CurriculumActivityType.unitTest.defaultXp, 50);
+    test('Menit & skill mengikuti spec (vocab ~10 mnt, listening, unit test)', () {
+      expect(CurriculumActivityType.vocabulary.skillKey, isNotEmpty);
+      expect(CurriculumActivityType.listening.skillKey, isNotEmpty);
+      expect(CurriculumActivityType.unitTest.skillKey, isNotEmpty);
+      final n5 = CurriculumCatalogData.levelById('N5')!;
+      final first = n5.allLessons.first;
+      expect(first.totalMinutes, greaterThan(0));
+      expect(first.estimatedMinutes, greaterThan(0));
     });
 
     test('N4 unlock needs all N5 lessons + final >= 70', () {

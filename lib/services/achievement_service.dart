@@ -1,3 +1,4 @@
+import '../features/curriculum/curriculum_models.dart';
 import '../state/app_controller.dart';
 
 class Achievement {
@@ -82,12 +83,16 @@ class AchievementService {
           target: 1,
         ),
         Achievement(
-          id: 'xp-1000',
-          title: 'Seribu XP',
-          description: 'Kumpulkan 1.000 XP.',
-          icon: '星',
-          value: app.xp,
-          target: 1000,
+          id: 'lesson-10',
+          title: 'Penjelajah Bab',
+          description: 'Selesaikan 10 lesson.',
+          icon: '旅',
+          value: app.curriculumProgressById.values
+              .where((p) =>
+                  p.status == CurriculumLessonStatus.completed ||
+                  p.status == CurriculumLessonStatus.mastered)
+              .length,
+          target: 10,
         ),
         Achievement(
           id: 'active-600',

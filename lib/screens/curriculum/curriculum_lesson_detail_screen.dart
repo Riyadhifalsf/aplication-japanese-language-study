@@ -93,7 +93,7 @@ class _CurriculumLessonDetailScreenState
               doneCount: doneIds.length,
               totalCount: lesson.activities.length,
               quizActivityId: _quizActivityId(lesson),
-              quizXp: _quizXp(lesson, _quizActivityId(lesson)),
+              quizMinutes: _quizMinutes(lesson, _quizActivityId(lesson)),
               doneIds: doneIds,
               onProgressChanged: () => setState(() {}),
               unitLessons: unit?.lessons ?? const [],
@@ -104,7 +104,7 @@ class _CurriculumLessonDetailScreenState
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
           Text(
-            'Semua sub-aktivitas terbuka. Kamu bisa memilih bagian yang ingin dipelajari dulu; XP tetap mengikuti aktivitas yang diselesaikan.',
+            'Semua sub-aktivitas terbuka. Kamu bisa memilih bagian yang ingin dipelajari dulu; progres mengikuti aktivitas yang diselesaikan.',
             style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
@@ -235,10 +235,10 @@ class _CurriculumLessonDetailScreenState
   String _jlptOrNull(String levelId) =>
       {'N5', 'N4', 'N3', 'N2', 'N1'}.contains(levelId) ? levelId : 'Semua';
 
-  /// XP aktivitas quiz untuk info hasil latihan terpandu.
-  static int _quizXp(CurriculumLesson lesson, String activityId) {
+  /// Menit aktivitas quiz untuk info hasil latihan terpandu.
+  static int _quizMinutes(CurriculumLesson lesson, String activityId) {
     for (final activity in lesson.activities) {
-      if (activity.id == activityId) return activity.xp;
+      if (activity.id == activityId) return activity.estimatedMinutes;
     }
     return 0;
   }
@@ -279,7 +279,7 @@ class _CurriculumLessonDetailScreenState
                     fontSize: 19, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
             Text(
-              'Menyelesaikan aktivitas memberi +${activity.xp} XP dan memperbarui streak harianmu. Progresmu diperbarui dan materi yang masih perlu diulang bisa masuk ke review.',
+              'Menyelesaikan aktivitas memperbarui streak harianmu (~${activity.estimatedMinutes} mnt). Progresmu diperbarui dan materi yang masih perlu diulang bisa masuk ke review.',
               style: const TextStyle(height: 1.4),
             ),
             const SizedBox(height: 16),
@@ -295,19 +295,19 @@ class _CurriculumLessonDetailScreenState
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: () {
-                      final xp = app.completeCurriculumActivity(
+                      final done = app.completeCurriculumActivity(
                           lesson.id, activity.id);
                       Navigator.pop(sheetContext);
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text(
-                                '+$xp XP · ${activity.title} selesai')),
+                                done ? '${activity.title} selesai · lesson tuntas' : '${activity.title} selesai')),
                       );
                       setState(() {});
                     },
                     icon: const Icon(Icons.check_rounded),
-                    label: Text('+${activity.xp} XP'),
+                    label: Text('Selesai (~${activity.estimatedMinutes} mnt)'),
                   ),
                 ),
               ],
@@ -332,8 +332,8 @@ class _CurriculumLessonDetailScreenState
         title: Text(passed ? 'Lulus $score%' : 'Skor $score%'),
         content: Text(passed
             ? (lesson.isFinalTest
-                ? 'Final test lulus (≥${lesson.requiredScore == 0 ? 70 : lesson.requiredScore}%). Level berikutnya bisa dibuka setelah checkpoint level terpenuhi. +${lesson.totalXp} XP.'
-                : 'Unit test lulus. Progres unit diperbarui. +${lesson.totalXp} XP.')
+                ? 'Final test lulus (≥${lesson.requiredScore == 0 ? 70 : lesson.requiredScore}%). Level berikutnya bisa dibuka setelah checkpoint level terpenuhi. (~${lesson.totalMinutes} mnt).'
+                : 'Unit test lulus. Progres unit diperbarui. (~${lesson.totalMinutes} mnt).')
             : 'Belum mencapai ${lesson.requiredScore == 0 ? 70 : lesson.requiredScore}%. Pelajari lagi aktivitas di atas lalu coba lagi. Materi yang sering salah masuk antrean review.'),
         actions: [
           FilledButton(
@@ -377,7 +377,7 @@ class _StatusBanner extends StatelessWidget {
           const Icon(Icons.info_outline_rounded),
           const SizedBox(width: 10),
           Expanded(child: Text(text, style: const TextStyle(height: 1.35))),
-          Text('+${lesson.totalXp} XP',
+          Text('~${lesson.totalMinutes} mnt',
               style: const TextStyle(fontWeight: FontWeight.w900)),
         ],
       ),
@@ -399,7 +399,7 @@ class _LessonInlineContent extends StatelessWidget {
       required this.doneCount,
       required this.totalCount,
       required this.quizActivityId,
-      required this.quizXp,
+      required this.quizMinutes,
       required this.doneIds,
       required this.onProgressChanged,
       required this.unitLessons,
@@ -412,7 +412,7 @@ class _LessonInlineContent extends StatelessWidget {
   final int doneCount;
   final int totalCount;
   final String quizActivityId;
-  final int quizXp;
+  final int quizMinutes;
   final Set<String> doneIds;
   final VoidCallback onProgressChanged;
   final List<CurriculumLesson> unitLessons;
@@ -662,7 +662,7 @@ class _LessonInlineContent extends StatelessWidget {
                       // Mastery jujur dari data user: toggle Library +
                       // skor latihan (±, tanpa XP). ●/◑/○, tanpa palsu.
                       child: Text(
-                          '${_masteryGlyph(AppController.masteryTier(score: app.lessonMasteryScore('v:${v.id}'), mastered: app.masteredVocabularyIds.contains(v.id)))} ${v.word} (${v.reading}) — ${v.meaning}',
+                          '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('v:${v.id}'), mastered: app.masteredVocabularyIds.contains(v.id)))} ${v.word} (${v.reading}) — ${v.meaning}',
                           style: const TextStyle(height: 1.35)),
                     ),
                 ],
@@ -689,7 +689,7 @@ class _LessonInlineContent extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                          '${_masteryGlyph(AppController.masteryTier(score: app.lessonMasteryScore('g:${grammar.id}'), mastered: app.completedGrammarIds.contains(grammar.id)))} Grammar: ${grammar.pattern}',
+                          '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('g:${grammar.id}'), mastered: app.completedGrammarIds.contains(grammar.id)))} Grammar: ${grammar.pattern}',
                           style:
                               const TextStyle(fontWeight: FontWeight.w900)),
                       Text(grammar.title,
@@ -745,7 +745,7 @@ class _LessonInlineContent extends StatelessWidget {
                       for (final k in showKanjis)
                         Chip(
                             label: Text(
-                                '${_masteryGlyph(AppController.masteryTier(score: app.lessonMasteryScore('k:${k.id}'), mastered: app.masteredKanjiIds.contains(k.id), learned: app.learnedKanjiIds.contains(k.id)))} ${k.character} · ${k.meaning}')),
+                                '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('k:${k.id}'), mastered: app.masteredKanjiIds.contains(k.id), learned: app.learnedKanjiIds.contains(k.id)))} ${k.character} · ${k.meaning}')),
                     ],
                   ),
                 ],
@@ -838,7 +838,7 @@ class _LessonInlineContent extends StatelessWidget {
             lesson: lesson,
             questions: lessonQuestions,
             quizActivityId: quizActivityId,
-            quizXp: quizXp,
+            quizMinutes: quizMinutes,
             alreadyDone: doneIds.contains(quizActivityId),
             onCompleted: onProgressChanged,
           ),
@@ -859,7 +859,7 @@ class _LessonInlineContent extends StatelessWidget {
             lesson: lesson,
             questions: unitQuestions,
             quizActivityId: quizActivityId,
-            quizXp: lesson.totalXp,
+            quizMinutes: lesson.totalMinutes,
             alreadyDone: false,
             onCompleted: onProgressChanged,
             isTest: true,
@@ -1000,7 +1000,7 @@ class _LessonGuidedPractice extends StatefulWidget {
     required this.lesson,
     required this.questions,
     required this.quizActivityId,
-    required this.quizXp,
+    required this.quizMinutes,
     required this.alreadyDone,
     required this.onCompleted,
     this.isTest = false,
@@ -1010,7 +1010,7 @@ class _LessonGuidedPractice extends StatefulWidget {
   final CurriculumLesson lesson;
   final List<PracticeQuestion> questions;
   final String quizActivityId;
-  final int quizXp;
+  final int quizMinutes;
   final bool alreadyDone;
   final VoidCallback onCompleted;
   final bool isTest;
@@ -1130,12 +1130,12 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
   Future<void> _claim(BuildContext context, AppController app) async {
     if (_claimed || widget.alreadyDone) return;
     setState(() => _claimed = true);
-    final xp = app.completeCurriculumActivity(
+    final done = app.completeCurriculumActivity(
         widget.lesson.id, widget.quizActivityId);
     widget.onCompleted();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('+$xp XP · Latihan ${widget.lesson.title} selesai')),
+      SnackBar(content: Text(done ? 'Latihan ${widget.lesson.title} selesai · lesson tuntas' : 'Latihan ${widget.lesson.title} selesai')),
     );
   }
 
@@ -1292,7 +1292,7 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
               Text('Nilai: ${gradeFor(percent)} (lulus ≥70%)',
                   style: const TextStyle(fontWeight: FontWeight.w700))
             else
-              Text('+${widget.quizXp} XP bila ditandai selesai',
+              Text('~${widget.quizMinutes} mnt bila ditandai selesai',
                   style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant)),
             if (_wrong.isNotEmpty) ...[
@@ -1337,7 +1337,7 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
                           child: Text(done
                               ? 'Selesai ✓'
                               : (meetsScoreGate(percent)
-                                  ? 'Tandai selesai +${widget.quizXp} XP'
+                                  ? 'Tandai selesai (~${widget.quizMinutes} mnt)'
                                   : 'Butuh ≥70% (ulangi)')),
                         ),
                 ),
@@ -1384,7 +1384,7 @@ class _ActivityTile extends StatelessWidget {
         title: Text(activity.title,
             style: const TextStyle(fontWeight: FontWeight.w900)),
         subtitle: Text(
-          '${activity.type.label} · +${activity.xp} XP · ~${activity.estimatedMinutes} mnt${activity.description.isEmpty ? '' : '\n${activity.description}'}',
+          '${activity.type.label} · ~${activity.estimatedMinutes} mnt${activity.description.isEmpty ? '' : '\n${activity.description}'}',
           style: const TextStyle(height: 1.3),
         ),
         isThreeLine: activity.description.isNotEmpty,
@@ -1535,7 +1535,7 @@ class _CelebrationCardState extends State<_CelebrationCard>
                             fontSize: 19,
                             fontWeight: FontWeight.w900)),
                     Text(
-                      '${widget.lesson.title} · +${widget.lesson.totalXp} XP. Progresmu diperbarui.',
+                      '${widget.lesson.title} · ~${widget.lesson.totalMinutes} mnt. Progresmu diperbarui.',
                       style: const TextStyle(
                           color: Colors.white70, height: 1.35),
                     ),

@@ -158,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Row(
                     children: [
-                      _CompactMetric('XP', '${app.xp}'),
+                      _CompactMetric('Tier', app.masteryTier.label),
                       _CompactMetric('Streak', '${app.streak}'),
                       _CompactMetric('Kanji', '${app.learnedKanjiCount}'),
                       _CompactMetric('Aktif', '${app.totalActiveMinutes}m'),

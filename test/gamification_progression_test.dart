@@ -3,26 +3,23 @@ import 'package:japanese_study/features/curriculum/curriculum_catalog.dart';
 import 'package:japanese_study/features/curriculum/curriculum_engine.dart';
 import 'package:japanese_study/features/curriculum/curriculum_models.dart';
 import 'package:japanese_study/features/learning/domain/learning_models.dart';
+import 'package:japanese_study/state/app_controller.dart';
 
 void main() {
   group('Gamification + Progression (Phase 2 redesign)', () {
-    test('XP akumulasi: 10 + 20 = 30', () {
-      const gained = [10, 20];
-      final total = gained.reduce((a, b) => a + b);
-      expect(total, 30);
-      // mapping ke spec: vocab 10, quiz 20
-      expect(CurriculumActivityType.vocabulary.defaultXp, 10);
-      expect(CurriculumActivityType.quiz.defaultXp, 20);
+    test('Menit lesson terhitung dari aktivitas', () {
+      final n5 = CurriculumCatalogData.levelById('N5')!;
+      final first = n5.allLessons.first;
+      final total = first.activities.fold<int>(
+          0, (sum, a) => sum + a.estimatedMinutes);
+      expect(first.totalMinutes, total);
+      expect(total, greaterThan(0));
     });
 
-    test('Level: xp 0 -> Lv1, xp 500 -> Lv2, sisa 0', () {
-      int level(int xp) => xp ~/ 500 + 1;
-      int levelXp(int xp) => xp % 500;
-      expect(level(0), 1);
-      expect(level(499), 1);
-      expect(level(500), 2);
-      expect(levelXp(500), 0);
-      expect(levelXp(750), 250);
+    test('Tier mastery dari skor 0..1', () {
+      expect(MasteryTier.fromScore(0.0), MasteryTier.warrior);
+      expect(MasteryTier.fromScore(0.95), MasteryTier.mythic);
+      expect(MasteryTier.warrior.label, isNotEmpty);
     });
 
     test('Lesson completed -> next lesson unlocked (progression, bukan paywall)',
@@ -84,7 +81,7 @@ void main() {
       expect(progress, 0.8);
     });
 
-    test('XP idempotent: aktivitas sama tidak memberi XP dua kali', () {
+    test('Idempotent: aktivitas sama tidak tercatat dua kali', () {
       final n5 = CurriculumCatalogData.levelById('N5')!;
       final ordered = CurriculumEngine.orderedLessons(n5);
       final lesson = ordered.first;
@@ -95,18 +92,22 @@ void main() {
           progressById: progress,
           activityId: lesson.activities.first.id,
           now: now);
-      expect(first.xpGained, greaterThan(0));
+      expect(first.progress.completedActivityIds,
+          contains(lesson.activities.first.id));
+      final countBefore =
+          first.progress.completedActivityIds.length;
       final second = CurriculumEngine.completeActivity(
           lesson: lesson,
           progressById: progress,
           activityId: lesson.activities.first.id,
           now: now);
-      expect(second.xpGained, 0);
+      expect(second.lessonJustCompleted, isFalse);
+      expect(second.progress.completedActivityIds.length, countBefore);
     });
 
-    test('Daily goal allowed values 20/50/100/150', () {
-      expect([20, 50, 100, 150], contains(100));
-      expect([20, 50, 100, 150], isNot(contains(30)));
+    test('Daily study allowed values 10/20/30/45', () {
+      expect(AppController.allowedDailyStudyMinutes, contains(20));
+      expect(AppController.allowedDailyStudyMinutes, isNot(contains(30 + 1)));
     });
   });
 }

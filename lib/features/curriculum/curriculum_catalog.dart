@@ -6,7 +6,6 @@ LessonActivity _a(
   CurriculumActivityType type,
   String title, {
   String description = '',
-  int? xp,
   int minutes = 5,
   String contentRef = '',
   List<String> contentIds = const [],
@@ -18,7 +17,6 @@ LessonActivity _a(
       type: type,
       title: title,
       description: description,
-      xpReward: xp,
       estimatedMinutes: minutes,
       contentRef: contentRef,
       contentIds: contentIds,
