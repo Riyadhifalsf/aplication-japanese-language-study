@@ -2,11 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../services/ads_service.dart';
-import '../state/app_controller.dart';
-import '../widgets/admob_banner_slot.dart';
 import '../widgets/auth_gate.dart';
-import '../widgets/common_widgets.dart';
+import '../state/app_controller.dart';
 import 'curriculum/reference_learning_path_screen.dart';
 import 'donation/donation_screen.dart';
 import 'home/home_screen.dart';
@@ -55,7 +52,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Future<void> _select(int value) async {
     setState(() => _index = value);
-    unawaited(AdsService.instance.onTabChange());
   }
 
   @override
@@ -116,27 +112,20 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           const VerticalDivider(width: 1),
           Expanded(child: body),
         ]),
-        bottomNavigationBar: AdmobBannerSlot(hidden: false),
       );
     }
     return Scaffold(
       body: body,
       appBar: null,
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AdmobBannerSlot(hidden: false),
-          NavigationBar(
-            selectedIndex: _index,
-            onDestinationSelected: _select,
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
-              NavigationDestination(icon: Icon(Icons.route_outlined), selectedIcon: Icon(Icons.route_rounded), label: 'Learning'),
-              NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
-              NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
-              NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
-            ],
-          ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: _select,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
+          NavigationDestination(icon: Icon(Icons.route_outlined), selectedIcon: Icon(Icons.route_rounded), label: 'Learning'),
+          NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
+          NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
         ],
       ),
     );
