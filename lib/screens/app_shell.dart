@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../widgets/auth_gate.dart';
 import '../state/app_controller.dart';
-import 'curriculum/reference_learning_path_screen.dart';
 import 'donation/donation_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
@@ -67,7 +66,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Widget _page(AppController app) => switch (_index) {
         0 => HomeScreen(onOpenStudy: () => _select(1), onOpenQuiz: () => _select(2), onOpenProfile: _openProfile),
-        1 => ReferenceLearningPathScreen(initialLevel: app.curriculumActiveLevelId),
+        1 => const StudyHubScreen(),
         2 => const QuizCenterScreen(),
         3 => const StudyHubScreen(),
         _ => const DonationScreen(),
@@ -79,7 +78,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final wide = MediaQuery.sizeOf(context).width >= 840;
     final pages = [
       const NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Beranda')),
-      const NavigationRailDestination(icon: Icon(Icons.auto_stories_outlined), selectedIcon: Icon(Icons.auto_stories_rounded), label: Text('Learning')),
+      const NavigationRailDestination(icon: Icon(Icons.play_lesson_outlined), selectedIcon: Icon(Icons.play_lesson_rounded), label: Text('Belajar')),
       const NavigationRailDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: Text('Practice')),
       const NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: Text('Library')),
       const NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
@@ -122,7 +121,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         onDestinationSelected: _select,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
-          NavigationDestination(icon: Icon(Icons.route_outlined), selectedIcon: Icon(Icons.route_rounded), label: 'Learning'),
+          NavigationDestination(icon: Icon(Icons.play_lesson_outlined), selectedIcon: Icon(Icons.play_lesson_rounded), label: 'Belajar'),
           NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
           NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
           NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
