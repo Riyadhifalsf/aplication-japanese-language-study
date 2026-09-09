@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../features/curriculum/curriculum_models.dart';
 import '../../state/app_controller.dart';
+import '../quiz/reference_quiz_screen.dart';
 import 'curriculum_lesson_detail_screen.dart';
 
-/// Unit detail: lessons are presented as large touch-friendly cards, not a
-/// dense settings/list UI. Every lesson can be opened directly.
 class CurriculumUnitScreen extends StatelessWidget {
   const CurriculumUnitScreen({super.key, required this.level, required this.unit});
 
@@ -17,6 +16,8 @@ class CurriculumUnitScreen extends StatelessWidget {
     final app = AppScope.of(context);
     final lessons = [...unit.lessons]..sort((a, b) => a.sequence.compareTo(b.sequence));
     final progress = app.curriculumUnitProgress(unit);
+    final firstLesson = lessons.isEmpty ? null : lessons.first;
+    final color = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: Text('Bab ${unit.sequence}')),
@@ -25,12 +26,9 @@ class CurriculumUnitScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
           sliver: SliverToBoxAdapter(child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(26),
-              color: Theme.of(context).colorScheme.secondaryContainer,
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(26), color: color.secondaryContainer),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(level.id, style: TextStyle(fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary)),
+              Text(level.id, style: TextStyle(fontWeight: FontWeight.w900, color: color.primary)),
               const SizedBox(height: 4),
               Text('Bab ${unit.sequence}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 2),
@@ -40,17 +38,25 @@ class CurriculumUnitScreen extends StatelessWidget {
               Text('${progress.done}/${progress.total} pelajaran selesai', style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 7),
               ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: progress.total == 0 ? 0 : progress.done / progress.total, minHeight: 8)),
+              if (firstLesson != null) ...[
+                const SizedBox(height: 16),
+                SizedBox(width: double.infinity, height: 52, child: FilledButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReferenceQuizScreen(lessonId: firstLesson.id))),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('MULAI LATIHAN', style: TextStyle(fontWeight: FontWeight.w900)),
+                )),
+              ],
             ]),
           )),
         ),
+        const SliverPadding(padding: EdgeInsets.symmetric(horizontal: 18), sliver: SliverToBoxAdapter(child: _SectionLabel())),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 32),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 32),
           sliver: SliverGrid(
             delegate: SliverChildBuilderDelegate((context, index) {
               final lesson = lessons[index];
               final status = app.curriculumLessonStatus(lesson);
               final done = status == CurriculumLessonStatus.completed || status == CurriculumLessonStatus.mastered;
-              final color = Theme.of(context).colorScheme;
               return Card(
                 elevation: 0,
                 clipBehavior: Clip.antiAlias,
@@ -79,4 +85,17 @@ class CurriculumUnitScreen extends StatelessWidget {
       ]),
     );
   }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel();
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 2),
+    child: Row(children: [
+      Icon(Icons.menu_book_rounded, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: 8),
+      Text('Belajar dengan praktik', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+    ]),
+  );
 }
