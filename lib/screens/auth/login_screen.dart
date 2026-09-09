@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../state/app_controller.dart';
 import '../../widgets/brand_icons.dart';
@@ -9,7 +10,6 @@ import '../onboarding_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -24,16 +24,26 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() { _email.dispose(); _password.dispose(); super.dispose(); }
 
+  String _onboardingKey(String email) => 'onboardingComplete_${email.trim().toLowerCase()}';
+
+  Future<bool> _onboardingDone(AppController app) async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = app.profileEmail.trim().toLowerCase();
+    if (email.isEmpty) return app.onboardingComplete;
+    return prefs.getBool(_onboardingKey(email)) ?? app.onboardingComplete;
+  }
+
   Future<void> _emailLogin() async {
     setState(() { _busy = true; _error = ''; });
-    final error = await AppScope.of(context).loginWithEmail(_email.text, _password.text);
+    final app = AppScope.of(context);
+    final error = await app.loginWithEmail(_email.text, _password.text);
     if (!mounted) return;
     setState(() => _busy = false);
     if (error != null) {
       setState(() => _error = error);
       return;
     }
-    _goNext();
+    await _goNext(app);
   }
 
   Future<void> _googleLogin() async {
@@ -44,20 +54,18 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       setState(() => _busy = false);
       if (!ok) { setState(() => _error = app.lastAuthError ?? 'Login Google dibatalkan atau gagal.'); return; }
-      _goNext();
+      await _goNext(app);
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = 'Google Login belum dikonfigurasi pada project ini.';
-      });
+      setState(() { _busy = false; _error = 'Google Login belum dikonfigurasi pada project ini.'; });
     }
   }
 
-  void _goNext() {
-    final app = AppScope.of(context);
+  Future<void> _goNext(AppController app) async {
+    final done = await _onboardingDone(app);
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => app.onboardingComplete ? const AppShell() : const OnboardingScreen()),
+      MaterialPageRoute(builder: (_) => done ? const AppShell() : const OnboardingScreen()),
       (_) => false,
     );
   }
@@ -65,10 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520), child: ListView(padding: const EdgeInsets.fromLTRB(24, 42, 24, 28), children: [
-      Center(
-        child: Image.asset('assets/branding/japanese_study_logo.png',
-            width: 168, height: 168, fit: BoxFit.contain),
-      ),
+      Center(child: Image.asset('assets/branding/japanese_study_logo.png', width: 168, height: 168, fit: BoxFit.contain)),
       const SizedBox(height: 24),
       FilledButton.icon(onPressed: _busy ? null : _googleLogin, icon: const GoogleGIcon(), label: const Text('Lanjut dengan Google'), style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: Colors.white, foregroundColor: Colors.black87)),
       const SizedBox(height: 20),
@@ -80,19 +85,8 @@ class _LoginScreenState extends State<LoginScreen> {
       const SizedBox(height: 14),
       if (_error.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(_error, style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700))),
       FilledButton(onPressed: _busy ? null : _emailLogin, style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)), child: _busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Masuk')),
-      Align(
-        alignment: Alignment.centerRight,
-        child: TextButton(
-          onPressed: _busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ForgotPasswordScreen(initialEmail: _email.text))),
-          child: const Text('Lupa password?'),
-        ),
-      ),
+      Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ForgotPasswordScreen(initialEmail: _email.text))), child: const Text('Lupa password?'))),
       const SizedBox(height: 4),
-      OutlinedButton.icon(
-        onPressed: _busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
-        icon: const Icon(Icons.person_add_alt_1_rounded),
-        label: const Text('Buat akun baru'),
-        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-      ),
+      OutlinedButton.icon(onPressed: _busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())), icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Buat akun baru'), style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50))),
     ])))));
 }
