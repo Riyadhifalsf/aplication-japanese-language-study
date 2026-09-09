@@ -1,16 +1,21 @@
 # Japanese Language Study
 
-A modern Flutter application for learning Japanese through a structured, chapter-based learning path from JLPT N5 to N1.
+**Flutter 3.47.2**  
+**Dart 3.13.2**  
+**Application Version 1.7.1+9**
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.47.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
-[![Dart](https://img.shields.io/badge/Dart-3.13.x-0175C2?logo=dart&logoColor=white)](https://dart.dev/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
+[![Dart](https://img.shields.io/badge/Dart-3.13.2-0175C2?logo=dart&logoColor=white)](https://dart.dev/)
+[![Version](https://img.shields.io/badge/version-1.7.1%2B9-blue)](https://github.com/Riyadhifalsf/aplication-japanese-language-study/releases)
 [![License](https://img.shields.io/badge/license-see%20repository-lightgrey)](LICENSE)
+
+A modern Flutter application for learning Japanese through a structured, chapter-based learning path from JLPT N5 to N1.
 
 ## Overview
 
-Japanese Language Study is designed as a self-study application with one clear primary course journey. Learners progress through chapters, lessons, exercises, review, and tests without having to choose between duplicate learning paths.
+Japanese Language Study is designed as a self-study application with one clear primary course journey. Learners progress through chapters, lessons, exercises, review, and tests without duplicate learning paths.
 
-The application currently focuses on a deep N5 and N4 curriculum while the higher JLPT levels are being expanded.
+The current release focuses on a deeper N5 and N4 curriculum, a continuous Learning Path, richer chapter content, and a cleaner supporting Library.
 
 ## Features
 
@@ -25,8 +30,18 @@ The application currently focuses on a deep N5 and N4 curriculum while the highe
 - Guided exercises and quizzes
 - Chapter tests and review flows
 - Learning progress, streaks, and statistics
-- Donation page with contribution totals and amount-based ranking
+- Donation page with amount-based ranking
 - Modern responsive Flutter interface
+
+## Current Release
+
+**Version:** `1.7.1+9`  
+**Flutter:** `3.47.2`  
+**Dart:** `3.13.2`
+
+This version continues the Learning Path and curriculum expansion work while keeping the application navigation focused and simple.
+
+APK releases are published through GitHub Releases. Pre-release builds are used for testing before a stable release.
 
 ## Learning Path
 
@@ -115,7 +130,7 @@ It currently provides:
 - Ranking ordered by donation amount
 - Indonesian Rupiah formatting
 
-Donation content is not mixed into Library or the main learning path.
+The README intentionally does not hard-code a Trakteer URL until the official project donation URL is confirmed.
 
 ## Architecture
 
@@ -151,8 +166,8 @@ The curriculum is data-driven. Curriculum models and catalogs define the learnin
 
 ## Tech Stack
 
-- Flutter
-- Dart
+- Flutter 3.47.2
+- Dart 3.13.2
 - Firebase Core
 - Firebase Authentication
 - Cloud Firestore
@@ -203,10 +218,6 @@ lib/features/curriculum/
 └── curriculum_depth_catalog.dart
 ```
 
-- `curriculum_models.dart` contains the core curriculum domain models.
-- `curriculum_catalog.dart` defines the main level and chapter composition.
-- `curriculum_depth_catalog.dart` provides deeper chapter and lesson blueprints.
-
 ### Learning Path
 
 ```text
@@ -222,9 +233,9 @@ These screens handle the level selector, continuous chapter path, chapter conten
 
 ### Requirements
 
-- Flutter SDK
+- Flutter SDK 3.47.2 or compatible
 - Dart SDK included with Flutter
-- Android Studio or an Android SDK for Android builds
+- Android Studio or Android SDK for Android builds
 - A configured Firebase project for Firebase features
 
 ### Install
@@ -254,12 +265,25 @@ flutter test
 ### Build Android APK
 
 ```bash
-flutter build apk
+flutter build apk --release
 ```
+
+## Release Process
+
+1. Update the application version in `pubspec.yaml`.
+2. Run `flutter pub get`.
+3. Run `flutter analyze`.
+4. Run `flutter test`.
+5. Build the release APK.
+6. Create a GitHub Release with the matching version tag.
+7. Mark testing builds as **Pre-release**.
+8. Attach the generated APK to the release.
+
+Stable releases should only be marked as such after the corresponding APK has been tested.
 
 ## Git Workflow
 
-Check the working tree before making a significant change:
+The main development branch is `main`.
 
 ```bash
 git status
@@ -268,8 +292,6 @@ git diff
 ```
 
 Keep commits focused and avoid destructive operations that can remove unrelated work.
-
-The main development branch is `main`.
 
 ## Security
 
@@ -290,8 +312,6 @@ If a credential is exposed, rotate it and update the local configuration rather 
 
 ## UI Principles
 
-The interface follows a simple learning-first approach:
-
 - Clear hierarchy
 - One primary action per learning step
 - Continuous vertical learning path
@@ -300,8 +320,6 @@ The interface follows a simple learning-first approach:
 - Comfortable touch targets
 - Responsive mobile layout
 - Modern surfaces without unnecessary visual noise
-
-The design takes inspiration from established language-learning applications while keeping the implementation and product identity original.
 
 ## Project Status
 
