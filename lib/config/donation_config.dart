@@ -15,18 +15,6 @@ class DonationMethod {
   final IconData icon;
 }
 
-/// CARA ISI: tambahkan entri dengan nomor/akun resmi, contoh:
-/// ```dart
-/// static const methods = <DonationMethod>[
-///   DonationMethod(
-///     label: 'QRIS',
-///     value: '0812XXXXXXX',
-///     note: 'a.n. Japanese Study',
-///     icon: Icons.qr_code_rounded,
-///   ),
-/// ];
-/// ```
-/// Kosong = layar Donasi hanya menampilkan dukungan gratis (rating).
 class DonationRecord {
   const DonationRecord({required this.displayName, required this.amount});
 
@@ -37,16 +25,25 @@ class DonationRecord {
 class DonationConfig {
   DonationConfig._();
 
-  static const methods = <DonationMethod>[];
+  /// Halaman pembayaran resmi aplikasi.
+  static const saweriaUrl = 'https://saweria.co/Riyadhifalsf';
 
-  /// Feed leaderboard donasi. Ganti dengan hasil API/backend ketika sistem
-  /// pembayaran sudah terhubung. Jangan menyimpan data pembayaran sensitif di aplikasi.
+  static const methods = <DonationMethod>[
+    DonationMethod(
+      label: 'Saweria',
+      value: saweriaUrl,
+      note: 'Donasi melalui halaman resmi Japanese Language Study.',
+      icon: Icons.favorite_rounded,
+    ),
+  ];
+
+  /// Feed leaderboard. Untuk data dinamis, isi dari backend/database yang
+  /// menerima data donasi Saweria. Jangan menyimpan data pembayaran sensitif di aplikasi.
   static const donors = <DonationRecord>[];
 
   static int get donorCount => donors.length;
   static int get totalAmount => donors.fold(0, (sum, donor) => sum + donor.amount);
 
-
-  /// ID paket Android untuk tautan Play Store (fakta dari konfigurasi rilis).
+  /// ID paket Android untuk tautan Play Store.
   static const playPackage = 'com.babeh.japanese_study';
 }
