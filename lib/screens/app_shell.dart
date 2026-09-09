@@ -49,9 +49,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())));
   }
 
-  Future<void> _select(int value) async {
-    setState(() => _index = value);
-  }
+  void _select(int value) => setState(() => _index = value);
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -64,29 +62,28 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
-  Widget _page(AppController app) => switch (_index) {
+  Widget _page() => switch (_index) {
         0 => HomeScreen(onOpenStudy: () => _select(2), onOpenQuiz: () => _select(1), onOpenProfile: _openProfile),
         1 => const QuizCenterScreen(),
         2 => const StudyHubScreen(),
         3 => const DonationScreen(),
-        _ => const HomeScreen(onOpenStudy: null, onOpenQuiz: null, onOpenProfile: null),
+        _ => HomeScreen(onOpenStudy: () => _select(2), onOpenQuiz: () => _select(1), onOpenProfile: _openProfile),
       };
 
   @override
   Widget build(BuildContext context) {
-    final app = _app ?? AppScope.of(context);
     final wide = MediaQuery.sizeOf(context).width >= 840;
     final destinations = const [
       NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
       NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
       NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
-      NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
+      NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism_rounded), label: 'Donasi'),
     ];
     final railDestinations = const [
       NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Beranda')),
       NavigationRailDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: Text('Practice')),
       NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: Text('Library')),
-      NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
+      NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined), selectedIcon: Icon(Icons.volunteer_activism_rounded), label: Text('Donasi')),
     ];
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final body = SafeArea(
@@ -99,7 +96,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
             return FadeTransition(opacity: curved, child: ScaleTransition(scale: Tween<double>(begin: .985, end: 1).animate(curved), child: child));
           },
-          child: KeyedSubtree(key: ValueKey(_index), child: _page(app)),
+          child: KeyedSubtree(key: ValueKey(_index), child: _page()),
         ),
       ),
     );
@@ -118,14 +115,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         ]),
       );
     }
-    return Scaffold(
-      body: body,
-      appBar: null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _select,
-        destinations: destinations,
-      ),
-    );
+    return Scaffold(body: body, bottomNavigationBar: NavigationBar(selectedIndex: _index, onDestinationSelected: _select, destinations: destinations));
   }
 }
