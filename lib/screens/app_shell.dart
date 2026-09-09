@@ -65,23 +65,28 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   Widget _page(AppController app) => switch (_index) {
-        0 => HomeScreen(onOpenStudy: () => _select(1), onOpenQuiz: () => _select(2), onOpenProfile: _openProfile),
-        1 => const StudyHubScreen(),
-        2 => const QuizCenterScreen(),
-        3 => const StudyHubScreen(),
-        _ => const DonationScreen(),
+        0 => HomeScreen(onOpenStudy: () => _select(2), onOpenQuiz: () => _select(1), onOpenProfile: _openProfile),
+        1 => const QuizCenterScreen(),
+        2 => const StudyHubScreen(),
+        3 => const DonationScreen(),
+        _ => const HomeScreen(onOpenStudy: null, onOpenQuiz: null, onOpenProfile: null),
       };
 
   @override
   Widget build(BuildContext context) {
     final app = _app ?? AppScope.of(context);
     final wide = MediaQuery.sizeOf(context).width >= 840;
-    final pages = [
-      const NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Beranda')),
-      const NavigationRailDestination(icon: Icon(Icons.play_lesson_outlined), selectedIcon: Icon(Icons.play_lesson_rounded), label: Text('Belajar')),
-      const NavigationRailDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: Text('Practice')),
-      const NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: Text('Library')),
-      const NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
+    final destinations = const [
+      NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
+      NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
+      NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
+      NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
+    ];
+    final railDestinations = const [
+      NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Beranda')),
+      NavigationRailDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: Text('Practice')),
+      NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: Text('Library')),
+      NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
     ];
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final body = SafeArea(
@@ -106,7 +111,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             onDestinationSelected: _select,
             extended: MediaQuery.sizeOf(context).width >= 1120,
             leading: Padding(padding: const EdgeInsets.fromLTRB(10, 14, 10, 20), child: Image.asset('assets/branding/japanese_study_logo.png', width: 48, height: 48)),
-            destinations: pages,
+            destinations: railDestinations,
           ),
           const VerticalDivider(width: 1),
           Expanded(child: body),
@@ -119,13 +124,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _select,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
-          NavigationDestination(icon: Icon(Icons.play_lesson_outlined), selectedIcon: Icon(Icons.play_lesson_rounded), label: 'Belajar'),
-          NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
-          NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
-          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
-        ],
+        destinations: destinations,
       ),
     );
   }
