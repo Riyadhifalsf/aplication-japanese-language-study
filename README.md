@@ -1,15 +1,39 @@
 # Japanese Language Study
 
-**Flutter 3.47.2**  
-**Dart 3.13.2**  
-**Application Version 1.7.1+9**
+> A modern Flutter application for learning Japanese through a structured, chapter-based learning path from JLPT N5 to N1.
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.47.2-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
 [![Dart](https://img.shields.io/badge/Dart-3.13.2-0175C2?logo=dart&logoColor=white)](https://dart.dev/)
-[![Version](https://img.shields.io/badge/version-1.7.1%2B9-blue)](https://github.com/Riyadhifalsf/aplication-japanese-language-study/releases)
-[![License](https://img.shields.io/badge/license-see%20repository-lightgrey)](LICENSE)
+[![App Version](https://img.shields.io/badge/App%20Version-1.7.1%2B9-4C8BF5)](https://github.com/Riyadhifalsf/aplication-japanese-language-study/releases)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?logo=android&logoColor=white)](https://github.com/Riyadhifalsf/aplication-japanese-language-study/releases)
+[![License](https://img.shields.io/badge/License-Repository-lightgrey)](LICENSE)
 
-A modern Flutter application for learning Japanese through a structured, chapter-based learning path from JLPT N5 to N1.
+## Project Information
+
+| Item | Version / Information |
+| --- | --- |
+| Flutter | **3.47.2** |
+| Dart | **3.13.2** |
+| Application | **1.7.1+9** |
+| Platform | Android / Flutter |
+| Main branch | `main` |
+| Curriculum | JLPT N5–N1 |
+
+## Support the Project
+
+If this application is useful, support development through Saweria:
+
+**[Support via Saweria](https://saweria.co/Riyadhifalsf)**
+
+## Download
+
+### Android APK
+
+Release APK builds are published on GitHub Releases.
+
+**[Download the latest APK / View Releases](https://github.com/Riyadhifalsf/aplication-japanese-language-study/releases)**
+
+Pre-release builds are intended for testing before a stable release. Stable releases should only be published after the corresponding APK has been tested.
 
 ## Overview
 
@@ -32,16 +56,6 @@ The current release focuses on a deeper N5 and N4 curriculum, a continuous Learn
 - Learning progress, streaks, and statistics
 - Donation page with amount-based ranking
 - Modern responsive Flutter interface
-
-## Current Release
-
-**Version:** `1.7.1+9`  
-**Flutter:** `3.47.2`  
-**Dart:** `3.13.2`
-
-This version continues the Learning Path and curriculum expansion work while keeping the application navigation focused and simple.
-
-APK releases are published through GitHub Releases. Pre-release builds are used for testing before a stable release.
 
 ## Learning Path
 
@@ -130,7 +144,7 @@ It currently provides:
 - Ranking ordered by donation amount
 - Indonesian Rupiah formatting
 
-The README intentionally does not hard-code a Trakteer URL until the official project donation URL is confirmed.
+Donation support is available through [Saweria](https://saweria.co/Riyadhifalsf).
 
 ## Architecture
 
@@ -278,8 +292,6 @@ flutter build apk --release
 6. Create a GitHub Release with the matching version tag.
 7. Mark testing builds as **Pre-release**.
 8. Attach the generated APK to the release.
-
-Stable releases should only be marked as such after the corresponding APK has been tested.
 
 ## Git Workflow
 
