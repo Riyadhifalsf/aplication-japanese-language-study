@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../features/curriculum/curriculum_catalog.dart';
+import '../../features/curriculum/curriculum_models.dart';
 import '../../state/app_controller.dart';
 import '../counters/counter_catalog_screen.dart';
 import '../culture/culture_screen.dart';
@@ -16,6 +18,7 @@ import '../vocab/vocabulary_screen.dart';
 import '../games/game_hub_screen.dart';
 import '../review/mistake_review_screen.dart';
 import '../profile/study_stats_screen.dart';
+import '../curriculum/curriculum_lesson_detail_screen.dart';
 
 class StudyHubScreen extends StatelessWidget {
   const StudyHubScreen({super.key});
@@ -23,11 +26,20 @@ class StudyHubScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
+    final level = CurriculumCatalogData.fullLevels.firstWhere(
+      (item) => item.id == app.curriculumActiveLevelId,
+      orElse: () => CurriculumCatalogData.fullLevels.first,
+    );
+    final units = [...level.units]..sort((a, b) => a.sequence.compareTo(b.sequence));
+    final progress = app.curriculumLevelProgress(level.id);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
       children: [
         const _Header(),
         const SizedBox(height: 16),
+        _ActiveLearning(app: app, level: level, units: units, progress: progress),
+        const SizedBox(height: 22),
         _Stats(app: app),
         const SizedBox(height: 24),
         _Shelf(title: 'Kosakata & tata bahasa', cards: [
@@ -73,11 +85,116 @@ class _Header extends StatelessWidget {
         SizedBox(height: 7),
         Text('Pustaka belajar', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
         SizedBox(height: 6),
-        Text('Referensi dan latihan tambahan. Course utama ada di Learning.', style: TextStyle(color: Colors.white70, height: 1.4)),
+        Text('Learning aktif dan materi pendukung ada di satu tempat.', style: TextStyle(color: Colors.white70, height: 1.4)),
       ])),
       CircleAvatar(backgroundColor: Colors.white24, child: Icon(Icons.menu_book_rounded, color: Colors.white)),
     ]),
   );
+}
+
+class _ActiveLearning extends StatelessWidget {
+  const _ActiveLearning({required this.app, required this.level, required this.units, required this.progress});
+  final AppController app;
+  final CurriculumLevel level;
+  final List<CurriculumUnit> units;
+  final UserLevelProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final percent = (progress.percent * 100).round();
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        InkWell(
+          onTap: () => _showAllProgress(context),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Expanded(child: Text('Learning aktif', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900))),
+                Text(level.id, style: TextStyle(fontWeight: FontWeight.w900, color: cs.primary)),
+                const SizedBox(width: 5),
+                const Icon(Icons.open_in_new_rounded, size: 17),
+              ]),
+              const SizedBox(height: 5),
+              Text('${progress.completedLessons}/${progress.totalLessons} lesson · $percent% tercapai', style: TextStyle(color: cs.onSurfaceVariant)),
+              const SizedBox(height: 10),
+              LinearProgressIndicator(value: progress.percent.clamp(0.0, 1.0).toDouble(), minHeight: 7),
+            ]),
+          ),
+        ),
+        const Divider(height: 1),
+        for (var i = 0; i < units.length; i++)
+          _UnitProgressRow(unit: units[i], app: app, onTap: () => _openUnit(context, units[i])),
+      ]),
+    );
+  }
+
+  void _openUnit(BuildContext context, CurriculumUnit unit) {
+    final lessons = [...unit.lessons]..sort((a, b) => a.sequence.compareTo(b.sequence));
+    if (lessons.isEmpty) return;
+    final next = lessons.firstWhere(
+      (lesson) {
+        final status = app.curriculumLessonStatus(lesson);
+        return status != CurriculumLessonStatus.completed && status != CurriculumLessonStatus.mastered;
+      },
+      orElse: () => lessons.first,
+    );
+    app.setCurriculumActiveLesson(next.id);
+    Navigator.push(context, MaterialPageRoute(builder: (_) => CurriculumLessonDetailScreen(lessonId: next.id)));
+  }
+
+  void _showAllProgress(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          shrinkWrap: true,
+          children: [
+            Text('Pencapaian ${level.id}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 5),
+            Text('${progress.completedLessons}/${progress.totalLessons} lesson selesai.', style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 18),
+            for (final unit in units)
+              _UnitProgressRow(unit: unit, app: app, onTap: () { Navigator.pop(context); _openUnit(context, unit); }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnitProgressRow extends StatelessWidget {
+  const _UnitProgressRow({required this.unit, required this.app, required this.onTap});
+  final CurriculumUnit unit;
+  final AppController app;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = app.curriculumUnitProgress(unit);
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Row(children: [
+          Container(width: 38, height: 38, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, color: cs.surfaceContainerHighest), child: Text('${unit.sequence}', style: const TextStyle(fontWeight: FontWeight.w900))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Bab ${unit.sequence} · ${unit.title}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 3),
+            Text('${progress.done}/${progress.total} lesson selesai', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          ])),
+          const Icon(Icons.chevron_right_rounded),
+        ]),
+      ),
+    );
+  }
 }
 
 class _Stats extends StatelessWidget {
