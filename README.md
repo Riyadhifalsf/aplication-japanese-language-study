@@ -1,182 +1,265 @@
-# Japanese Language Study 🇯🇵
+# Japanese Language Study
 
-A modern Flutter application for learning Japanese from **JLPT N5 to N1**, with a structured, linear learning path and a large chapter-based curriculum.
+A modern Flutter application for learning Japanese through a structured, chapter-based learning path from JLPT N5 to N1.
 
-> **Status:** Active development  
-> **Current curriculum:** N5 — 30 chapters · N4 — 25 chapters  
-> **Repository:** `Riyadhifalsf/aplication-japanese-language-study`
+[![Flutter](https://img.shields.io/badge/Flutter-3.47.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
+[![Dart](https://img.shields.io/badge/Dart-3.13.x-0175C2?logo=dart&logoColor=white)](https://dart.dev/)
+[![License](https://img.shields.io/badge/license-see%20repository-lightgrey)](LICENSE)
 
-## ✨ Overview
+## Overview
 
-**Japanese Language Study** is built as a complete self-study companion. The primary course journey lives in **Learning Path**; **Library** is reserved for supporting references and practice tools.
+Japanese Language Study is designed as a self-study application with one clear primary course journey. Learners progress through chapters, lessons, exercises, review, and tests without having to choose between duplicate learning paths.
 
-## 🧭 Navigation
+The application currently focuses on a deep N5 and N4 curriculum while the higher JLPT levels are being expanded.
 
-| Section | Purpose |
-|---|---|
-| 🏠 **Beranda** | Daily overview, progress, streak, and quick actions |
-| 🗺️ **Learning** | Main structured JLPT learning path |
-| 🏋️ **Practice** | Standalone practice, quizzes, and drills |
-| 📚 **Library** | Supplementary vocabulary, grammar, kanji, reading, and tools |
-| 💝 **Donasi** | Donation totals, contributor count, and amount-based ranking |
+## Features
 
-**Learning Path is the single primary course.** Library intentionally does not duplicate the active-learning journey.
+- Structured Learning Path from N5 to N1
+- 30 N5 chapters and 25 N4 chapters
+- Deep chapter and lesson structure
+- Hiragana and Katakana foundations
+- Vocabulary and grammar study
+- Kanji learning and review
+- Reading and listening activities
+- Conversation and practical Japanese
+- Guided exercises and quizzes
+- Chapter tests and review flows
+- Learning progress, streaks, and statistics
+- Donation page with contribution totals and amount-based ranking
+- Modern responsive Flutter interface
 
-## 🎯 Features
+## Learning Path
 
-- 🗺️ Linear Learning Path
-- 📚 Deep multi-lesson chapters
-- 🈁 Hiragana & Katakana
-- 🧩 Vocabulary
-- 🧠 Grammar / Bunpou
-- 漢 Kanji
-- 🗣️ Conversation & shadowing
-- 🎧 Listening with TTS-assisted activities
-- 📖 Reading and comprehension
-- ✍️ Writing / production
-- 🎯 Quiz, unit tests, mock tests, and final tests
-- 🔁 Review and weak-area practice
-- 📊 Learning statistics
-- 💝 Donation totals and ranking by contribution amount
+Learning Path is the primary course experience.
 
-## 📖 Chapter & lesson design
+```text
+Learning
+│
+├── N5
+│   ├── Chapter 01
+│   ├── Chapter 02
+│   ├── Chapter 03
+│   ├── ...
+│   └── Chapter 30
+│
+├── N4
+│   ├── Chapter 01
+│   ├── Chapter 02
+│   ├── Chapter 03
+│   ├── ...
+│   └── Chapter 25
+│
+├── N3
+├── N2
+└── N1
+```
 
-A chapter is deliberately substantial. Depending on the topic, a learner may work through:
+Each chapter is intended to contain multiple learning activities instead of a short single-screen lesson.
 
-1. 📌 Learning objective
-2. 📘 Concept explanation
-3. 🧩 Vocabulary
-4. 🧠 Grammar / sentence patterns
-5. 🗣️ Examples and dialogue
-6. 🎧 Listening
-7. 📖 Reading
-8. ✍️ Writing / production
-9. 🧪 Quiz
-10. 🔁 Review
-11. ✅ Checkpoint / unit test
-12. 🏆 Boss or final test
+A typical chapter can contain:
 
-Every chapter has a clear **Lanjut** flow so the learner knows what to do next.
+1. Learning objectives
+2. Explanation and notes
+3. Vocabulary
+4. Grammar and sentence patterns
+5. Examples and dialogue
+6. Listening
+7. Reading
+8. Writing or production practice
+9. Guided exercises
+10. Quiz
+11. Review
+12. Chapter checkpoint or test
 
-## 🎓 Curriculum
+The learner always has a clear `Lanjut` action to continue through the course.
 
-| Level | Chapters | Focus |
-|---|---:|---|
-| 🇯🇵 **N5** | **30** | Foundations, kana, vocabulary, kanji, grammar, everyday communication |
-| 🇯🇵 **N4** | **25** | Practical intermediate grammar, reading, listening, conversation |
-| 🇯🇵 **N3** | In progress | Independent intermediate Japanese |
-| 🇯🇵 **N2** | In progress | Formal language, news, argumentation |
-| 🇯🇵 **N1** | In progress | Advanced nuance, long reading, professional Japanese |
+## Curriculum
+
+| Level | Chapters | Status |
+| --- | ---: | --- |
+| N5 | 30 | Active |
+| N4 | 25 | Active |
+| N3 | In progress | Expansion planned |
+| N2 | In progress | Expansion planned |
+| N1 | In progress | Expansion planned |
 
 ### N5
 
-N5 is divided into **30 chapters** so concepts can be taught in smaller, deeper units while keeping one continuous path.
-
-Example themes: greetings, introductions, family, people, rooms, ownership, places, directions, time, schedules, transport, food, shopping, routines, adjectives, preferences, requests, invitations, health, weather, reading, listening, and integrated review.
+The N5 course is divided into 30 chapters covering foundational Japanese and everyday communication. Topics include kana, greetings, introductions, people, family, places, directions, time, schedules, transport, food, shopping, routines, descriptions, preferences, requests, invitations, health, weather, reading, listening, and integrated review.
 
 ### N4
 
-N4 contains **25 chapters** with progressively stronger control of grammar, vocabulary, reading, listening, and practical conversation.
+The N4 course contains 25 chapters focused on practical intermediate Japanese. Topics include plain forms, reasons, potential forms, plans, preparation, completion, conditions, permission, obligation, giving and receiving, passive forms, transitivity, relative clauses, nominalization, connectors, contrast, change, practical situations, workplace communication, and integrated review.
 
-Example themes: plain forms, reasons, potential, plans, preparation, completion, conditionals, permission, obligation, giving/receiving, passive, transitivity, relative clauses, nominalization, connectors, contrast, change, practical situations, workplace communication, and integrated review.
+## Application Navigation
 
-## 💝 Donations
+| Section | Purpose |
+| --- | --- |
+| Home | Daily overview, progress, streak, and shortcuts |
+| Learning | Primary JLPT learning path |
+| Practice | Standalone quizzes, drills, and practice activities |
+| Library | Supporting vocabulary, grammar, kanji, reading, and reference tools |
+| Donation | Donation totals and contribution ranking |
 
-Donations are a dedicated product area and are **not mixed into Library or Learning Path**.
+Library is intentionally separate from the primary Learning Path. It does not contain a duplicate active-learning journey.
 
-The donation experience includes:
+## Donation
 
-- 💰 **Total donation amount**
-- 👥 **Contributor count**
-- 🏆 **Top contributor ranking**
-- 📈 **Ranking by amount**, highest contribution first
-- 🇮🇩 **Rupiah formatting (`Rp`)**
+The Donation section is a separate product area.
 
-The current structure leaves room for a production payment provider without redesigning the learning navigation.
+It currently provides:
 
-## 🏗️ Architecture
+- Total donation amount
+- Number of contributors
+- Contributor ranking
+- Ranking ordered by donation amount
+- Indonesian Rupiah formatting
+
+Donation content is not mixed into Library or the main learning path.
+
+## Architecture
 
 ```text
 Flutter UI
-   ↓
+    |
+    v
 Presentation / State
-   ↓
+    |
+    v
 Application Layer
-   ↓
-Learning / Assessment / Mastery / Remediation Engine
-   ↓
+    |
+    v
+Learning / Assessment / Mastery / Remediation
+    |
+    v
 Curriculum Repository
-   ↓
+    |
+    v
 Knowledge Graph
-   ↓
+    |
+    v
 Local Storage
-   ↓
+    |
+    v
 Sync
-   ↓
+    |
+    v
 Cloud / Backend
 ```
 
-The curriculum is data-driven: chapter and lesson data belong in the curriculum/domain layer, while UI widgets render that data.
+The curriculum is data-driven. Curriculum models and catalogs define the learning structure while screens and widgets render that data.
 
-## 🛠️ Tech stack
+## Tech Stack
 
-- **Flutter** 3.47.x
-- **Dart** 3.13.x
-- **Firebase** — Core, Authentication, Firestore
-- **Google Sign-In**
-- **Local storage** — SharedPreferences, Flutter Secure Storage
-- **Networking** — HTTP
-- **Charts** — fl_chart
-- **Notifications** — flutter_local_notifications + timezone
-- **Utilities** — image_picker, path_drawing, url_launcher
-- **Backend** — Node.js API + PostgreSQL
-- **UI** — Material-based Flutter UI with modern/glass surfaces where appropriate
+- Flutter
+- Dart
+- Firebase Core
+- Firebase Authentication
+- Cloud Firestore
+- Google Sign-In
+- SharedPreferences
+- Flutter Secure Storage
+- HTTP
+- fl_chart
+- flutter_local_notifications
+- timezone
+- image_picker
+- path_drawing
+- url_launcher
+- google_mobile_ads
+- Node.js backend
+- PostgreSQL
 
-## 📂 Repository structure
+## Repository Structure
 
 ```text
 .
-├── android/                       # Android configuration
-├── assets/                        # Images and packaged assets
-├── backend/                       # API / proxy services
-├── docs/                          # Product, architecture, UI, and project docs
+├── android/                    Android application configuration
+├── assets/                     Application assets and data
+├── backend/                    API and proxy services
+├── docs/                       Product and technical documentation
 ├── lib/
-│   ├── core/                      # Core configuration and theme
+│   ├── core/                   Core configuration and theme
 │   ├── features/
-│   │   ├── curriculum/            # N5–N1 curriculum models and catalogs
-│   │   ├── learning/              # Learning engine and progress
+│   │   ├── curriculum/         Curriculum models and catalogs
+│   │   ├── learning/           Learning and progress logic
 │   │   └── ...
-│   ├── screens/                   # Main application screens
-│   └── widgets/                   # Reusable UI components
-├── test/                          # Automated tests
-├── .gitignore
-├── pubspec.yaml
-└── README.md
+│   ├── screens/                Application screens
+│   └── widgets/                Reusable UI components
+├── test/                       Automated tests
+├── pubspec.yaml                Flutter dependencies and metadata
+├── analysis_options.yaml       Dart analysis configuration
+└── README.md                   Project documentation
 ```
 
-## 🧩 Important curriculum files
+## Important Files
 
-- `lib/features/curriculum/curriculum_models.dart` — core curriculum domain models.
-- `lib/features/curriculum/curriculum_catalog.dart` — main level/unit composition.
-- `lib/features/curriculum/curriculum_depth_catalog.dart` — deep chapter blueprints.
-- `lib/screens/curriculum/` — Learning Path, chapter, lesson, and continue-navigation UI.
+### Curriculum
 
-## 🧪 Development
+```text
+lib/features/curriculum/
+├── curriculum_models.dart
+├── curriculum_catalog.dart
+└── curriculum_depth_catalog.dart
+```
+
+- `curriculum_models.dart` contains the core curriculum domain models.
+- `curriculum_catalog.dart` defines the main level and chapter composition.
+- `curriculum_depth_catalog.dart` provides deeper chapter and lesson blueprints.
+
+### Learning Path
+
+```text
+lib/screens/curriculum/
+├── curriculum_path_screen.dart
+├── curriculum_unit_screen.dart
+└── curriculum_lesson_detail_screen.dart
+```
+
+These screens handle the level selector, continuous chapter path, chapter contents, lessons, and next-step navigation.
+
+## Development
+
+### Requirements
+
+- Flutter SDK
+- Dart SDK included with Flutter
+- Android Studio or an Android SDK for Android builds
+- A configured Firebase project for Firebase features
+
+### Install
 
 ```bash
 flutter pub get
-flutter analyze
-flutter test
+```
+
+### Run
+
+```bash
 flutter run
 ```
 
-Android APK:
+### Analyze
+
+```bash
+flutter analyze
+```
+
+### Test
+
+```bash
+flutter test
+```
+
+### Build Android APK
 
 ```bash
 flutter build apk
 ```
 
-Before a large change or release:
+## Git Workflow
+
+Check the working tree before making a significant change:
 
 ```bash
 git status
@@ -184,9 +267,15 @@ git diff --stat
 git diff
 ```
 
-## 🔐 Security
+Keep commits focused and avoid destructive operations that can remove unrelated work.
 
-Keep secrets and signing material out of Git:
+The main development branch is `main`.
+
+## Security
+
+Do not commit credentials, API keys, signing keys, or private configuration files.
+
+Common protected files include:
 
 ```text
 .env
@@ -197,78 +286,73 @@ android/key.properties
 **/GoogleService-Info.plist
 ```
 
-Never place API keys, passwords, private tokens, or signing credentials in source code or documentation.
+If a credential is exposed, rotate it and update the local configuration rather than committing the secret.
 
-## 🔄 Development principles
+## UI Principles
 
-1. Read the current implementation before editing.
-2. Treat source code as implementation truth.
-3. Treat the current product requirement as requirement truth.
-4. Keep Learning Path as the primary course journey.
-5. Keep Library as supplementary content/tools.
-6. Add curriculum through data/models rather than duplicate UI logic.
-7. Preserve unrelated work and learner progress data.
-8. Run analysis/tests before declaring a change healthy.
-9. Update documentation when product or architecture behavior changes.
+The interface follows a simple learning-first approach:
 
-## 🎨 UI / UX principles
+- Clear hierarchy
+- One primary action per learning step
+- Continuous vertical learning path
+- Visible chapter numbers
+- Prominent `Lanjut` navigation
+- Comfortable touch targets
+- Responsive mobile layout
+- Modern surfaces without unnecessary visual noise
 
-- ✨ Modern card-based surfaces
-- 🪟 Glass-style surfaces where useful
-- 🧭 Clear linear progression
-- 🔢 Chapter numbers always visible
-- ▶️ Prominent **Lanjut** action
-- 📱 Mobile-first layout
-- 🎯 One obvious primary action per learning step
-- ♿ Readable hierarchy and comfortable touch targets
-- 📊 Progress shown clearly without excessive noise
+The design takes inspiration from established language-learning applications while keeping the implementation and product identity original.
 
-Visual references are used as inspiration only; the implementation remains original.
+## Project Status
 
-## 📝 Naming
+Current focus:
 
-### User-facing product name
+- Deepening the N5 and N4 curriculum
+- Expanding lesson content and exercises
+- Improving Learning Path navigation
+- Improving mastery and review flows
+- Expanding N3, N2, and N1 content
+- Increasing automated regression coverage
 
-**Japanese Language Study 🇯🇵**
+## Roadmap
 
-### Repository name
+### Current
 
-**`aplication-japanese-language-study`**
-
-The repository slug stays unchanged so existing Git remotes, links, history, and integrations continue to work. The user-facing product name is **Japanese Language Study**.
-
-## 🗺️ Roadmap
-
-### ✅ Current
-
-- 30 N5 chapters
-- 25 N4 chapters
-- Deep multi-lesson chapter structure
-- Linear Learning Path
-- Chapter-level **Lanjut** navigation
-- Library separated from the primary learning journey
+- N5: 30 chapters
+- N4: 25 chapters
+- Continuous Learning Path
+- Chapter-level `Lanjut` navigation
+- Deep chapter presentation
+- Library separated from the main course
 - Donation ranking by amount
-- Ad placeholders removed from product navigation
+- Ad placeholders removed from the learning navigation
 
-### 🔜 Next
+### Planned
 
-- Expand N3, N2, and N1 to the same depth
-- Add larger authored content pools per lesson
+- Expand N3, N2, and N1
+- Add larger authored content pools
 - Expand reading and listening datasets
-- Increase question variety per lesson
-- Strengthen mastery and remediation
-- Connect production-ready donation/payment processing
-- Add broader automated regression coverage
+- Increase exercise variety
+- Improve mastery and remediation
+- Add production-ready donation/payment processing
+- Expand automated tests
 
-## 🤝 Contribution notes
+## Project Name
 
-Keep commits focused. Avoid destructive Git operations when another change may be in progress. Add or update tests when changing learning logic.
+User-facing name:
 
-## 📄 License
+`Japanese Language Study`
 
-Refer to the repository license configuration for the current licensing terms.
+Repository name:
 
----
+`aplication-japanese-language-study`
 
-**Japanese Language Study 🇯🇵**  
-*Belajar bahasa Jepang langkah demi langkah, bab demi bab.*
+The repository slug remains unchanged so existing Git remotes, links, and integrations continue to work.
+
+## License
+
+See the repository license for the current licensing terms.
+
+## Contributing
+
+Contributions are welcome. Before changing curriculum or learning logic, review the existing implementation and related tests. Keep changes focused and update documentation when product behavior changes.
