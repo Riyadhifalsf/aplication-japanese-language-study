@@ -4,10 +4,8 @@ import '../../state/app_controller.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({super.key});
-
   @override
-  State<NotificationCenterScreen> createState() =>
-      _NotificationCenterScreenState();
+  State<NotificationCenterScreen> createState() => _NotificationCenterScreenState();
 }
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
@@ -28,9 +26,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   String _dateLabel(DateTime at) {
     final now = DateTime.now();
-    final days = DateUtils.dateOnly(now)
-        .difference(DateUtils.dateOnly(at))
-        .inDays;
+    final days = DateUtils.dateOnly(now).difference(DateUtils.dateOnly(at)).inDays;
     if (days <= 0) return 'Hari ini';
     if (days == 1) return 'Kemarin';
     if (days < 30) return '$days hari lalu';
@@ -53,16 +49,14 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         'konten' => 'Konten baru',
         'pengumuman' => 'Pengumuman',
         'pengingat' => 'Pengingat',
-        'misi' => 'Misi tersembunyi',
+        'misi' => 'Misi',
         _ => 'Info',
       };
 
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final inbox = app.inbox.toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
+    final inbox = app.inbox.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return Scaffold(
       appBar: AppBar(title: const Text('Notifikasi')),
       body: loading
@@ -75,33 +69,20 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     child: ListTile(
                       leading: Icon(Icons.notifications_none_rounded),
                       title: Text('Belum ada notifikasi'),
-                      subtitle: Text(
-                        'Update aplikasi, konten baru, dan pengingat belajar akan muncul di sini.',
-                      ),
+                      subtitle: Text('Update aplikasi, konten baru, dan pengingat belajar akan muncul di sini.'),
                     ),
                   ),
                 if (inbox.isNotEmpty) ...[
                   const Padding(
                     padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
-                    child: Text(
-                      'Terbaru',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    child: Text('Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
                   ),
                   for (final n in inbox)
                     Card(
                       margin: const EdgeInsets.only(bottom: 10),
                       child: ListTile(
-                        leading: CircleAvatar(
-                          child: Icon(_kindIcon(n.kind), size: 20),
-                        ),
-                        title: Text(
-                          n.title,
-                          style: const TextStyle(fontWeight: FontWeight.w900),
-                        ),
+                        leading: CircleAvatar(child: Icon(_kindIcon(n.kind), size: 20)),
+                        title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.w900)),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 5),
                           child: Column(
@@ -112,34 +93,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .secondaryContainer,
+                                      color: Theme.of(context).colorScheme.secondaryContainer,
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: Text(
-                                      _kindLabel(n.kind),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    child: Text(_kindLabel(n.kind), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    _dateLabel(n.createdAt),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
-                                    ),
-                                  ),
+                                  Text(_dateLabel(n.createdAt), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                                 ],
                               ),
                             ],
@@ -149,23 +111,15 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(4, 12, 4, 4),
-                    child: Text(
-                      'Notifikasi tersimpan otomatis selama 90 hari.',
-                      style: TextStyle(fontSize: 12),
-                    ),
+                    child: Text('Notifikasi tersimpan otomatis dan akan kedaluwarsa setelah 90 hari.', style: TextStyle(fontSize: 12)),
                   ),
                 ],
                 if (app.dueKanjiReviewCount > 0)
                   Card(
                     child: ListTile(
                       leading: const Icon(Icons.schedule_rounded),
-                      title: const Text(
-                        'Ulangan Kanji jatuh tempo',
-                        style: TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                      subtitle: Text(
-                        '${app.dueKanjiReviewCount} kanji perlu diulang.',
-                      ),
+                      title: const Text('Ulangan Kanji jatuh tempo', style: TextStyle(fontWeight: FontWeight.w900)),
+                      subtitle: Text('${app.dueKanjiReviewCount} kanji perlu diulang.'),
                     ),
                   ),
               ],
