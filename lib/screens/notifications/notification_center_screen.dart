@@ -49,7 +49,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         'konten' => 'Konten baru',
         'pengumuman' => 'Pengumuman',
         'pengingat' => 'Pengingat',
-        'misi' => 'Misi',
+        'misi' => 'Misi tersembunyi',
         _ => 'Info',
       };
 
@@ -111,7 +111,7 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                     ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(4, 12, 4, 4),
-                    child: Text('Notifikasi tersimpan otomatis dan akan kedaluwarsa setelah 90 hari.', style: TextStyle(fontSize: 12)),
+                    child: Text('Notifikasi tersimpan otomatis selama 90 hari.', style: TextStyle(fontSize: 12)),
                   ),
                 ],
                 if (app.dueKanjiReviewCount > 0)
