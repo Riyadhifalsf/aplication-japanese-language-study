@@ -1,0 +1,42 @@
+import 'n5_n4_course_content.dart';
+
+/// Additional authored vocabulary for the N5 roadmap.
+/// This is an internal curriculum target, not an official JLPT list.
+class N5VocabularyExpansion {
+  const N5VocabularyExpansion._();
+
+  static List<CourseTerm> forChapter(int chapter) => _data[chapter] ?? const [];
+
+  static const Map<int, List<CourseTerm>> _data = {
+    1: [
+      CourseTerm('おはようございます','ohayou gozaimasu','selamat pagi'), CourseTerm('こんにちは','konnichiwa','halo/selamat siang'), CourseTerm('こんばんは','konbanwa','selamat malam'), CourseTerm('さようなら','sayounara','selamat tinggal'), CourseTerm('ありがとう','arigatou','terima kasih'), CourseTerm('どういたしまして','dou itashimashite','sama-sama'), CourseTerm('よろしくお願いします','yoroshiku onegaishimasu','mohon bantuannya'), CourseTerm('お名前','onamae','nama'), CourseTerm('男の人','otoko no hito','laki-laki'), CourseTerm('女の人','onna no hito','perempuan'), CourseTerm('日本人','nihonjin','orang Jepang'), CourseTerm('先生','sensei','guru'), CourseTerm('学生','gakusei','pelajar'), CourseTerm('大学生','daigakusei','mahasiswa'), CourseTerm('会社','kaisha','perusahaan'), CourseTerm('社員','shain','pegawai'), CourseTerm('会社員','kaishain','karyawan perusahaan'), CourseTerm('銀行員','ginkouin','pegawai bank'), CourseTerm('エンジニア','enjinia','insinyur'), CourseTerm('名前を言う','namae o iu','menyebut nama'),
+    ],
+    2: [
+      CourseTerm('これ','kore','ini'), CourseTerm('それ','sore','itu'), CourseTerm('あれ','are','itu di sana'), CourseTerm('この','kono','ini + kata benda'), CourseTerm('その','sono','itu + kata benda'), CourseTerm('あの','ano','itu di sana + kata benda'), CourseTerm('何','nani','apa'), CourseTerm('誰','dare','siapa'), CourseTerm('本','hon','buku'), CourseTerm('ノート','nooto','buku catatan'), CourseTerm('教科書','kyoukasho','buku pelajaran'), CourseTerm('辞書','jisho','kamus'), CourseTerm('新聞','shinbun','koran'), CourseTerm('雑誌','zasshi','majalah'), CourseTerm('ペン','pen','pena'), CourseTerm('鉛筆','enpitsu','pensil'), CourseTerm('消しゴム','keshigomu','penghapus'), CourseTerm('定規','jougi','penggaris'), CourseTerm('机','tsukue','meja'), CourseTerm('椅子','isu','kursi'),
+    ],
+    3: [
+      CourseTerm('教室','kyoushitsu','ruang kelas'), CourseTerm('食堂','shokudou','kantin'), CourseTerm('事務所','jimusho','kantor'), CourseTerm('受付','uketsuke','resepsionis/meja penerimaan'), CourseTerm('トイレ','toire','toilet'), CourseTerm('階段','kaidan','tangga'), CourseTerm('エレベーター','erebeetaa','lift'), CourseTerm('エスカレーター','esukareetaa','eskalator'), CourseTerm('入口','iriguchi','pintu masuk'), CourseTerm('出口','deguchi','pintu keluar'), CourseTerm('駅','eki','stasiun'), CourseTerm('銀行','ginkou','bank'), CourseTerm('郵便局','yuubinkyoku','kantor pos'), CourseTerm('病院','byouin','rumah sakit'), CourseTerm('薬局','yakkyoku','apotek'), CourseTerm('学校','gakkou','sekolah'), CourseTerm('大学','daigaku','universitas'), CourseTerm('図書館','toshokan','perpustakaan'), CourseTerm('公園','kouen','taman'), CourseTerm('店','mise','toko'),
+    ],
+    4: [
+      CourseTerm('今','ima','sekarang'), CourseTerm('今日','kyou','hari ini'), CourseTerm('明日','ashita','besok'), CourseTerm('昨日','kinou','kemarin'), CourseTerm('朝','asa','pagi'), CourseTerm('昼','hiru','siang'), CourseTerm('夜','yoru','malam'), CourseTerm('午前','gozen','sebelum siang/AM'), CourseTerm('午後','gogo','setelah siang/PM'), CourseTerm('毎日','mainichi','setiap hari'), CourseTerm('毎朝','maiasa','setiap pagi'), CourseTerm('毎晩','maiban','setiap malam'), CourseTerm('月曜日','getsuyoubi','Senin'), CourseTerm('火曜日','kayoubi','Selasa'), CourseTerm('水曜日','suiyoubi','Rabu'), CourseTerm('木曜日','mokuyoubi','Kamis'), CourseTerm('金曜日','kinyoubi','Jumat'), CourseTerm('土曜日','doyoubi','Sabtu'), CourseTerm('日曜日','nichiyoubi','Minggu'), CourseTerm('時間','jikan','waktu/jam'),
+    ],
+    5: [
+      CourseTerm('家族','kazoku','keluarga'), CourseTerm('父','chichi','ayah sendiri'), CourseTerm('お父さん','otousan','ayah orang lain/ayah dengan sopan'), CourseTerm('母','haha','ibu sendiri'), CourseTerm('お母さん','okaasan','ibu orang lain/ibu dengan sopan'), CourseTerm('兄','ani','kakak laki-laki sendiri'), CourseTerm('お兄さん','oniisan','kakak laki-laki orang lain'), CourseTerm('姉','ane','kakak perempuan sendiri'), CourseTerm('お姉さん','oneesan','kakak perempuan orang lain'), CourseTerm('弟','otouto','adik laki-laki'), CourseTerm('妹','imouto','adik perempuan'), CourseTerm('祖父','sofu','kakek sendiri'), CourseTerm('祖母','sobo','nenek sendiri'), CourseTerm('夫','otto','suami'), CourseTerm('妻','tsuma','istri'), CourseTerm('子ども','kodomo','anak'), CourseTerm('友だち','tomodachi','teman'), CourseTerm('人','hito','orang'), CourseTerm('歳','sai','tahun usia'), CourseTerm('一人','hitori','satu orang/sendiri'),
+    ],
+    6: [
+      CourseTerm('時計','tokei','jam'), CourseTerm('腕時計','udedokei','jam tangan'), CourseTerm('財布','saifu','dompet'), CourseTerm('鍵','kagi','kunci'), CourseTerm('傘','kasa','payung'), CourseTerm('かばん','kaban','tas'), CourseTerm('携帯電話','keitai denwa','telepon genggam'), CourseTerm('スマートフォン','sumaatofon','smartphone'), CourseTerm('写真','shashin','foto'), CourseTerm('カメラ','kamera','kamera'), CourseTerm('テレビ','terebi','televisi'), CourseTerm('ラジオ','rajio','radio'), CourseTerm('コンピューター','konpyuutaa','komputer'), CourseTerm('車','kuruma','mobil'), CourseTerm('自転車','jitensha','sepeda'), CourseTerm('ボールペン','boorupen','bolpoin'), CourseTerm('眼鏡','megane','kacamata'), CourseTerm('帽子','boushi','topi'), CourseTerm('靴','kutsu','sepatu'), CourseTerm('服','fuku','pakaian'),
+    ],
+    7: [
+      CourseTerm('上','ue','atas'), CourseTerm('下','shita','bawah'), CourseTerm('中','naka','dalam/tengah'), CourseTerm('外','soto','luar'), CourseTerm('前','mae','depan'), CourseTerm('後ろ','ushiro','belakang'), CourseTerm('右','migi','kanan'), CourseTerm('左','hidari','kiri'), CourseTerm('隣','tonari','sebelah'), CourseTerm('近く','chikaku','dekat'), CourseTerm('遠く','tooku','jauh'), CourseTerm('間','aida','di antara'), CourseTerm('横','yoko','samping'), CourseTerm('角','kado','sudut'), CourseTerm('町','machi','kota/daerah'), CourseTerm('道','michi','jalan'), CourseTerm('建物','tatemono','bangunan'), CourseTerm('部屋','heya','kamar'), CourseTerm('窓','mado','jendela'), CourseTerm('ドア','doa','pintu'),
+    ],
+    8: [
+      CourseTerm('行く','iku','pergi'), CourseTerm('来る','kuru','datang'), CourseTerm('帰る','kaeru','pulang'), CourseTerm('電車','densha','kereta'), CourseTerm('地下鉄','chikatetsu','kereta bawah tanah'), CourseTerm('バス','basu','bus'), CourseTerm('タクシー','takushii','taksi'), CourseTerm('飛行機','hikouki','pesawat'), CourseTerm('船','fune','kapal'), CourseTerm('新幹線','shinkansen','shinkansen'), CourseTerm('空港','kuukou','bandara'), CourseTerm('駅','eki','stasiun'), CourseTerm('旅行','ryokou','perjalanan'), CourseTerm('出発','shuppatsu','keberangkatan'), CourseTerm('到着','touchaku','kedatangan'), CourseTerm('切符','kippu','tiket'), CourseTerm('乗る','noru','naik kendaraan'), CourseTerm('降りる','oriru','turun kendaraan'), CourseTerm('歩く','aruku','berjalan kaki'), CourseTerm('遠い','tooi','jauh'),
+    ],
+    9: [
+      CourseTerm('起きる','okiru','bangun'), CourseTerm('寝る','neru','tidur'), CourseTerm('食べる','taberu','makan'), CourseTerm('飲む','nomu','minum'), CourseTerm('見る','miru','melihat/menonton'), CourseTerm('聞く','kiku','mendengar/bertanya'), CourseTerm('読む','yomu','membaca'), CourseTerm('書く','kaku','menulis'), CourseTerm('話す','hanasu','berbicara'), CourseTerm('勉強する','benkyou suru','belajar'), CourseTerm('働く','hataraku','bekerja'), CourseTerm('休む','yasumu','istirahat/libur'), CourseTerm('買う','kau','membeli'), CourseTerm('作る','tsukuru','membuat'), CourseTerm('使う','tsukau','menggunakan'), CourseTerm('会う','au','bertemu'), CourseTerm('帰る','kaeru','pulang'), CourseTerm('遊ぶ','asobu','bermain'), CourseTerm('料理する','ryouri suru','memasak'), CourseTerm('掃除する','souji suru','membersihkan'),
+    ],
+    10: [
+      CourseTerm('ご飯','gohan','nasi/makanan'), CourseTerm('朝ご飯','asagohan','sarapan'), CourseTerm('昼ご飯','hirugohan','makan siang'), CourseTerm('晩ご飯','bangohan','makan malam'), CourseTerm('水','mizu','air'), CourseTerm('お茶','ocha','teh'), CourseTerm('紅茶','koucha','teh hitam'), CourseTerm('コーヒー','koohii','kopi'), CourseTerm('ジュース','juusu','jus'), CourseTerm('牛乳','gyuunyuu','susu'), CourseTerm('パン','pan','roti'), CourseTerm('ご飯','gohan','nasi'), CourseTerm('肉','niku','daging'), CourseTerm('魚','sakana','ikan'), CourseTerm('野菜','yasai','sayuran'), CourseTerm('果物','kudamono','buah'), CourseTerm('りんご','ringo','apel'), CourseTerm('みかん','mikan','jeruk'), CourseTerm('ラーメン','raamen','ramen'), CourseTerm('値段','nedan','harga'),
+    ],
+  };
+}
