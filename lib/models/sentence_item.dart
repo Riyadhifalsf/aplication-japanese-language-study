@@ -1,3 +1,4 @@
+import '../services/meaning_localizer.dart';
 import '../services/romaji.dart';
 
 class SentenceItem {
@@ -29,8 +30,8 @@ class SentenceItem {
         category: json['category'] as String? ?? 'Umum',
         japanese: json['japanese'] as String? ?? '',
         reading: json['reading'] as String? ?? '',
-        meaning: json['meaning'] as String? ?? '',
-        pattern: json['pattern'] as String? ?? '',
-        note: json['note'] as String? ?? '',
+        meaning: MeaningLocalizer.cleanId(json['meaning'] as String? ?? ''),
+        pattern: MeaningLocalizer.cleanId(json['pattern'] as String? ?? ''),
+        note: MeaningLocalizer.cleanId(json['note'] as String? ?? ''),
       );
 }
