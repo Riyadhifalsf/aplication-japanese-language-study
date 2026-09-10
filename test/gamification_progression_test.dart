@@ -17,9 +17,9 @@ void main() {
     });
 
     test('Tier mastery dari skor 0..1', () {
-      expect(MasteryTier.fromScore(0.0), MasteryTier.warrior);
-      expect(MasteryTier.fromScore(0.95), MasteryTier.mythic);
-      expect(MasteryTier.warrior.label, isNotEmpty);
+      expect(MasteryTier.fromScore(0.0), MasteryTier.n5);
+      expect(MasteryTier.fromScore(0.95), MasteryTier.n1);
+      expect(MasteryTier.n5.label, isNotEmpty);
     });
 
     test('Lesson completed -> next lesson unlocked (progression, bukan paywall)',

@@ -318,7 +318,7 @@ ResolvedLesson resolveLessonContent(
     }
     grammars.addAll(repo.grammar.where((g) => matchesText('${g.pattern} ${g.title} ${g.explanation}')).take(4));
     if (grammars.isEmpty) grammars.addAll(repo.grammar.where((g) => g.id.toLowerCase().startsWith(level.toLowerCase())).take(3));
-    kanjis.addAll(repo.kanji.where((k) => k.level == level && matchesText('${k.character} ${k.meaning} ${k.onReading} ${k.kunReading}')).take(8));
+    kanjis.addAll(repo.kanji.where((k) => k.level == level && matchesText('${k.character} ${k.meaning} ${k.onyomi} ${k.kunyomi}')).take(8));
     if (kanjis.isEmpty) kanjis.addAll(repo.kanji.where((k) => k.level == level).skip((lesson.sequence * 5) % 100).take(6));
     phrases.addAll(repo.phrases.where((p) => matchesText('${p.category} ${p.japanese} ${p.meaning}')).take(4));
   }
