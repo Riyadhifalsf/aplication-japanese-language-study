@@ -284,17 +284,6 @@ class _CurriculumLessonDetailScreenState
               style: const TextStyle(height: 1.4),
             ),
             const SizedBox(height: 16),
-            if (!isTest && done && nextLesson != null) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => _continueToNextLesson(context, nextLesson),
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: Text('Lanjut ke ${CurriculumCatalogData.unitById(widget.lesson.unitId)?.sequence ?? ''}.${unitLessons.indexWhere((lesson) => lesson.id == nextLesson.id) + 1}'),
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
             Row(
               children: [
                 Expanded(
@@ -1277,6 +1266,16 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
         ),
       ),
     );
+  }
+
+  List<CurriculumLesson> get unitLessons {
+    final unit = CurriculumCatalogData.unitById(widget.lesson.unitId);
+    final lessons = unit?.lessons
+            .where((lesson) => lesson.sequence > 0)
+            .toList() ??
+        <CurriculumLesson>[];
+    lessons.sort((a, b) => a.sequence.compareTo(b.sequence));
+    return lessons;
   }
 
   CurriculumLesson? _nextLessonInChapter() {

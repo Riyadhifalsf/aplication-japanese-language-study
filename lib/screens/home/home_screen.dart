@@ -381,6 +381,58 @@ class _StreakCard extends StatelessWidget {
   }
 }
 
+class _KanjiStreak extends StatelessWidget {
+  const _KanjiStreak({
+    required this.item,
+    required this.active,
+    required this.selected,
+  });
+
+  final String item;
+  final bool active;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
+      decoration: BoxDecoration(
+        color: active ? cs.primary : cs.surface.withValues(alpha: .48),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected ? cs.onPrimaryContainer : cs.outlineVariant,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              item,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: active ? cs.onPrimary : cs.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Icon(
+            active ? Icons.check_circle_rounded : Icons.remove_rounded,
+            size: 15,
+            color: active ? cs.onPrimary : cs.onSurfaceVariant,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TodayKanjiCarousel extends StatelessWidget {
   const _TodayKanjiCarousel({required this.app});
 

@@ -135,7 +135,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
               Text('${level.id} · Sub-bab ${currentLesson.sequence}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 10),
               SizedBox(width: double.infinity, child: FilledButton.icon(
-                onPressed: () => _openChapter(context, app, currentUnit),
+                onPressed: () => _openChapter(context, app, level, currentUnit),
                 icon: const Icon(Icons.arrow_forward_rounded),
                 label: const Text('Lanjut belajar'),
               )),

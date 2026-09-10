@@ -61,6 +61,21 @@ enum MasteryTier {
   }
 
   String get label => 'JLPT ${name.toUpperCase()}';
+
+  Color get color {
+    switch (this) {
+      case MasteryTier.n5:
+        return Colors.blueGrey;
+      case MasteryTier.n4:
+        return Colors.teal;
+      case MasteryTier.n3:
+        return Colors.indigo;
+      case MasteryTier.n2:
+        return Colors.deepPurple;
+      case MasteryTier.n1:
+        return Colors.amber.shade800;
+    }
+  }
 }
 
 
