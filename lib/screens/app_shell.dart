@@ -75,7 +75,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       child: AdaptiveContent(
         child: Column(
           children: [
-            if (_index != 0)
+            // Learning memiliki header sendiri agar level + Profil berada
+            // dalam satu baris yang simetris untuk N5 sampai N1.
+            if (_index != 0 && _index != 1)
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
                 child: Row(
