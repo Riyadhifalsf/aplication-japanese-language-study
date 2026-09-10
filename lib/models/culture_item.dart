@@ -1,3 +1,5 @@
+import '../services/meaning_localizer.dart';
+
 class CultureItem {
   const CultureItem({
     required this.id,
@@ -20,12 +22,12 @@ class CultureItem {
   factory CultureItem.fromJson(Map<String, dynamic> json) => CultureItem(
         id: json['id'] as String? ?? '',
         category: json['category'] as String? ?? 'Budaya',
-        title: json['title'] as String? ?? '',
-        summary: json['summary'] as String? ?? '',
-        detail: json['detail'] as String? ?? '',
-        example: json['example'] as String? ?? '',
+        title: MeaningLocalizer.cleanId(json['title'] as String? ?? ''),
+        summary: MeaningLocalizer.cleanId(json['summary'] as String? ?? ''),
+        detail: MeaningLocalizer.cleanId(json['detail'] as String? ?? ''),
+        example: MeaningLocalizer.cleanId(json['example'] as String? ?? ''),
         tips: (json['tips'] as List<dynamic>? ?? const [])
-            .map((item) => '$item')
+            .map((item) => MeaningLocalizer.cleanId('$item'))
             .toList(growable: false),
       );
 }
