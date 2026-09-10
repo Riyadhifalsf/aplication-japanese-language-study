@@ -6,6 +6,7 @@
 - Menghapus duplikasi schema PostgreSQL yang tidak dipakai langsung oleh Docker build.
 - Menyamakan label notifikasi misi tersembunyi dengan versi GitHub terbaru.
 
+
 ## 1.7.1+9 — Security + on-demand content
 
 - Firebase Android API key no longer committed: injected at build time via `--dart-define=FIREBASE_ANDROID_API_KEY` (see `docs/firebase-config.md`).

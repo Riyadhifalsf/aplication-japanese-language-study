@@ -2375,7 +2375,7 @@
   {
     "word": "元気",
     "reading": "げんき",
-    "meaning": "health(y), energetic",
+    "meaning": "sehat; bugar",
     "level": "N5",
     "id": 339
   },
@@ -6400,7 +6400,7 @@
   {
     "word": "運ぶ",
     "reading": "はこぶ",
-    "meaning": "untuk transport, membawa",
+    "meaning": "membawa; mengangkut",
     "level": "N4",
     "id": 914
   },
@@ -6981,7 +6981,7 @@
   {
     "word": "文法",
     "reading": "ぶんぽう",
-    "meaning": "grammar",
+    "meaning": "tata bahasa",
     "level": "N4",
     "id": 997
   },
@@ -7079,7 +7079,7 @@
   {
     "word": "予定",
     "reading": "よてい",
-    "meaning": "plans, susunan",
+    "meaning": "rencana; susunan",
     "level": "N4",
     "id": 1011
   },
@@ -15682,7 +15682,7 @@
   {
     "word": "住民",
     "reading": "じゅうみん",
-    "meaning": "inhabitants, residents",
+    "meaning": "penduduk; penghuni",
     "level": "N3",
     "id": 2240
   },
@@ -18902,7 +18902,7 @@
   {
     "word": "目的",
     "reading": "もくてき",
-    "meaning": "tujuan, goal",
+    "meaning": "tujuan; maksud",
     "level": "N3",
     "id": 2700
   },
@@ -24495,7 +24495,7 @@
   {
     "word": "容態",
     "reading": "ようだい/ようたい",
-    "meaning": "milik seseorang kondisi, health",
+    "meaning": "kondisi seseorang",
     "level": "N3",
     "id": 3499
   },
@@ -30928,7 +30928,7 @@
   {
     "word": "所有権",
     "reading": "しょゆうけん",
-    "meaning": "kanan ownership",
+    "meaning": "hak kepemilikan",
     "level": "N2",
     "id": 4418
   },
@@ -33133,7 +33133,7 @@
   {
     "word": "更新する",
     "reading": "こうしんする",
-    "meaning": "renew, update",
+    "meaning": "memperbarui; melakukan pembaruan",
     "level": "N2",
     "id": 4733
   },
@@ -36738,7 +36738,7 @@
   {
     "word": "日課",
     "reading": "にっか",
-    "meaning": "daily routine",
+    "meaning": "kebiasaan harian",
     "level": "N2",
     "id": 5248
   },

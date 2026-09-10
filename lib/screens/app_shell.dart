@@ -7,6 +7,7 @@ import '../state/app_controller.dart';
 import '../widgets/admob_banner_slot.dart';
 import '../widgets/auth_gate.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/brand_icons.dart';
 import 'donation/donation_screen.dart';
 import 'home/home_screen.dart';
 import 'curriculum/curriculum_path_screen.dart';
@@ -50,11 +51,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   Widget _page(AppController app) => switch (_index) {
-    0 => HomeScreen(onOpenStudy: () => _select(1), onOpenQuiz: () => _select(2), onOpenProfile: _openProfile),
+    0 => HomeScreen(onOpenStudy: () => _select(1), onOpenQuiz: () => _select(3), onOpenProfile: _openProfile),
     1 => CurriculumPathScreen(initialLevel: app.curriculumActiveLevelId),
-    2 => const QuizCenterScreen(),
-    3 => const StudyHubScreen(),
-    _ => const DonationScreen(),
+    2 => const DonationScreen(),
+    3 => const QuizCenterScreen(),
+    _ => const StudyHubScreen(),
   };
 
   @override
@@ -64,22 +65,58 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final pages = [
       const NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Beranda')),
       const NavigationRailDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book_rounded), label: Text('Learning')),
+      const NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
       const NavigationRailDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: Text('Practice')),
       const NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: Text('Library')),
-      const NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
     ];
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final body = SafeArea(
       bottom: false,
       child: AdaptiveContent(
-        child: AnimatedSwitcher(
-          duration: disableAnimations ? Duration.zero : const Duration(milliseconds: 240),
-          reverseDuration: disableAnimations ? Duration.zero : const Duration(milliseconds: 180),
-          transitionBuilder: (child, animation) {
-            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-            return FadeTransition(opacity: curved, child: ScaleTransition(scale: Tween<double>(begin: .985, end: 1).animate(curved), child: child));
-          },
-          child: KeyedSubtree(key: ValueKey(_index), child: _page(app)),
+        child: Column(
+          children: [
+            if (_index != 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      child: Text(
+                        app.profileName.isEmpty ? '日' : app.profileName.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(app.profileName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+                          Text(app.selectedStudyLevel, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                    IconButton(tooltip: 'Profil', onPressed: _openProfile, icon: const Icon(Icons.person_outline_rounded)),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: disableAnimations ? Duration.zero : const Duration(milliseconds: 240),
+                reverseDuration: disableAnimations ? Duration.zero : const Duration(milliseconds: 180),
+                transitionBuilder: (child, animation) {
+                  final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+                  return FadeTransition(
+                    opacity: curved,
+                    child: ScaleTransition(scale: Tween<double>(begin: .985, end: 1).animate(curved), child: child),
+                  );
+                },
+                child: KeyedSubtree(key: ValueKey(_index), child: _page(app)),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -101,9 +138,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         NavigationBar(selectedIndex: _index, onDestinationSelected: _select, destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book_rounded), label: 'Learning'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
           NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
           NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
-          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
         ]),
       ]),
     );

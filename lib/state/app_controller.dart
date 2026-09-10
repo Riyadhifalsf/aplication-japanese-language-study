@@ -46,44 +46,23 @@ enum AuthStatus {
 /// Tier progresi ala game (pengganti player level berbasis XP yang dihapus).
 /// Dihitung murni dari penguasaan materi + akurasi — tanpa angka XP.
 enum MasteryTier {
-  warrior,
-  elite,
-  master,
-  grandmaster,
-  epic,
-  legend,
-  mythic;
+  n5,
+  n4,
+  n3,
+  n2,
+  n1;
 
   static MasteryTier fromScore(double score) {
-    if (score >= 0.9) return MasteryTier.mythic;
-    if (score >= 0.75) return MasteryTier.legend;
-    if (score >= 0.6) return MasteryTier.epic;
-    if (score >= 0.45) return MasteryTier.grandmaster;
-    if (score >= 0.3) return MasteryTier.master;
-    if (score >= 0.15) return MasteryTier.elite;
-    return MasteryTier.warrior;
+    if (score >= 0.80) return MasteryTier.n1;
+    if (score >= 0.60) return MasteryTier.n2;
+    if (score >= 0.40) return MasteryTier.n3;
+    if (score >= 0.20) return MasteryTier.n4;
+    return MasteryTier.n5;
   }
 
-  String get label => switch (this) {
-        MasteryTier.warrior => 'Warrior',
-        MasteryTier.elite => 'Elite',
-        MasteryTier.master => 'Master',
-        MasteryTier.grandmaster => 'Grandmaster',
-        MasteryTier.epic => 'Epic',
-        MasteryTier.legend => 'Legend',
-        MasteryTier.mythic => 'Mythic',
-      };
-
-  Color get color => switch (this) {
-        MasteryTier.warrior => const Color(0xFF9E9E9E),
-        MasteryTier.elite => const Color(0xFF4FC3F7),
-        MasteryTier.master => const Color(0xFFBA68C8),
-        MasteryTier.grandmaster => const Color(0xFFFFB300),
-        MasteryTier.epic => const Color(0xFFFF5722),
-        MasteryTier.legend => const Color(0xFFFFD700),
-        MasteryTier.mythic => const Color(0xFFE040FB),
-      };
+  String get label => 'JLPT ${name.toUpperCase()}';
 }
+
 
 class AppController extends ChangeNotifier {
   AppController({
@@ -148,6 +127,13 @@ class AppController extends ChangeNotifier {
   String learningMode = 'Seimbang';
   String appLanguage = 'id';
   String ttsGender = 'auto';
+  String region = 'Asia Tenggara';
+  String country = 'Indonesia';
+  bool soundEffectsEnabled = true;
+  bool streakNotificationsEnabled = true;
+  bool studyNotificationsEnabled = true;
+  bool repeatWeakMaterials = true;
+  String studyPlan = '20 menit per hari';
   int reviewIntervalDays = 2;
   bool googleLinked = false;
   bool isAuthenticated = false;
@@ -193,7 +179,6 @@ class AppController extends ChangeNotifier {
   final Set<String> studyDateKeys = {};
   final Set<int> reviewReminderWeekdays = {1, 2, 3, 4, 5, 6, 7};
   bool calendarReminderEnabled = false;
-  bool glassTheme = true;
   String todayKanjiMode = 'adaptive';
   int todayKanjiPinnedId = 0;
   DateTime? firstUsedAt;
@@ -330,6 +315,13 @@ class AppController extends ChangeNotifier {
     learningMode = prefs.getString('learningMode') ?? 'Seimbang';
     appLanguage = prefs.getString('appLanguage') ?? 'id';
     ttsGender = prefs.getString('ttsGender') ?? 'auto';
+    region = prefs.getString('region') ?? 'Asia Tenggara';
+    country = prefs.getString('country') ?? 'Indonesia';
+    soundEffectsEnabled = prefs.getBool('soundEffectsEnabled') ?? true;
+    streakNotificationsEnabled = prefs.getBool('streakNotificationsEnabled') ?? true;
+    studyNotificationsEnabled = prefs.getBool('studyNotificationsEnabled') ?? true;
+    repeatWeakMaterials = prefs.getBool('repeatWeakMaterials') ?? true;
+    studyPlan = prefs.getString('studyPlan') ?? '20 menit per hari';
     reviewIntervalDays =
         ((prefs.getInt('reviewIntervalDays') ?? 2).clamp(1, 30)).toInt();
     googleLinked = prefs.getBool('googleLinked') ?? false;
@@ -424,7 +416,6 @@ class AppController extends ChangeNotifier {
       reviewReminderWeekdays.addAll({1, 2, 3, 4, 5, 6, 7});
     }
     calendarReminderEnabled = prefs.getBool('calendarReminderEnabled') ?? false;
-    glassTheme = prefs.getBool('glassTheme') ?? true;
     todayKanjiMode = prefs.getString('todayKanjiMode') ?? 'adaptive';
     todayKanjiPinnedId = prefs.getInt('todayKanjiPinnedId') ?? 0;
     featureFlags = await FeatureFlagsService.load();
@@ -940,11 +931,6 @@ class AppController extends ChangeNotifier {
     return !now.isBefore(reminderMoment);
   }
 
-  void toggleGlassTheme() {
-    glassTheme = !glassTheme;
-    _preferences?.setBool('glassTheme', glassTheme);
-    notifyListeners();
-  }
 
   void setTodayKanjiMode(String mode, {int? pinnedId}) {
     if (!{'adaptive', 'favorites', 'due', 'manual'}.contains(mode)) return;
@@ -1051,6 +1037,120 @@ class AppController extends ChangeNotifier {
   void setLearningMode(String mode) {
     learningMode = mode;
     _preferences?.setString('learningMode', mode);
+    notifyListeners();
+  }
+
+
+  String get installationId => _installIdentitySeed;
+
+  Future<void> resetPracticeSettings() async {
+    learningMode = 'Seimbang';
+    reviewIntervalDays = 2;
+    repeatWeakMaterials = true;
+    soundEffectsEnabled = true;
+    todayKanjiMode = 'adaptive';
+    streakNotificationsEnabled = true;
+    studyNotificationsEnabled = true;
+    studyPlan = '20 menit per hari';
+    dailyStudyMinutes = 20;
+    await Future.wait([
+      _preferences?.setString('learningMode', learningMode) ?? Future.value(false),
+      _preferences?.setInt('reviewIntervalDays', reviewIntervalDays) ?? Future.value(false),
+      _preferences?.setBool('repeatWeakMaterials', repeatWeakMaterials) ?? Future.value(false),
+      _preferences?.setBool('soundEffectsEnabled', soundEffectsEnabled) ?? Future.value(false),
+      _preferences?.setString('todayKanjiMode', todayKanjiMode) ?? Future.value(false),
+      _preferences?.setBool('streakNotificationsEnabled', streakNotificationsEnabled) ?? Future.value(false),
+      _preferences?.setBool('studyNotificationsEnabled', studyNotificationsEnabled) ?? Future.value(false),
+      _preferences?.setString('studyPlan', studyPlan) ?? Future.value(false),
+      _preferences?.setInt('dailyStudyMinutes', dailyStudyMinutes) ?? Future.value(false),
+    ]);
+    notifyListeners();
+  }
+
+  Future<void> resetLearningData() async {
+    learnedKanjiIds.clear();
+    masteredKanjiIds.clear();
+    masteredVocabularyIds.clear();
+    completedGrammarIds.clear();
+    completedLearningStepIds.clear();
+    completedPhraseIds.clear();
+    completedSentenceIds.clear();
+    completedCultureIds.clear();
+    curriculumProgressById.clear();
+    curriculumFinalScores.clear();
+    lessonItemMastery.clear();
+    practiceBest.clear();
+    streak = 0;
+    quizCorrect = 0;
+    quizAnswered = 0;
+    examPoints = 0;
+    studyDateKeys.clear();
+    activityJournal.clear();
+    totalActiveSeconds = 0;
+    sessionCount = 0;
+    await resetPracticeSettings();
+    final prefs = _preferences;
+    if (prefs != null) {
+      for (final key in [
+        'learnedKanji','masteredKanji','masteredVocabulary','completedGrammar',
+        'completedLearningStepIds','completedPhraseIds','completedSentenceIds',
+        'completedCultureIds','curriculumProgress','curriculumFinalScores',
+        'lessonItemMastery','practiceBest','studyDateKeys','activityJournal_v1',
+        'streak','quizCorrect','quizAnswered','examPoints','totalActiveSeconds','sessionCount',
+      ]) { await prefs.remove(key); }
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearApplicationData() async {
+    final prefs = _preferences;
+    if (prefs == null) return;
+    final installId = _installIdentitySeed;
+    await prefs.clear();
+    await prefs.setString('installIdentitySeed', installId);
+    await load();
+  }
+
+  void setRegionCountry(String newRegion, String newCountry) {
+    region = newRegion.trim().isEmpty ? region : newRegion.trim();
+    country = newCountry.trim().isEmpty ? country : newCountry.trim();
+    _preferences?.setString('region', region);
+    _preferences?.setString('country', country);
+    notifyListeners();
+  }
+
+  void setSoundEffectsEnabled(bool value) {
+    soundEffectsEnabled = value;
+    _preferences?.setBool('soundEffectsEnabled', value);
+    notifyListeners();
+  }
+
+  void setStreakNotificationsEnabled(bool value) {
+    streakNotificationsEnabled = value;
+    _preferences?.setBool('streakNotificationsEnabled', value);
+    notifyListeners();
+  }
+
+  void setStudyNotificationsEnabled(bool value) {
+    studyNotificationsEnabled = value;
+    _preferences?.setBool('studyNotificationsEnabled', value);
+    notifyListeners();
+  }
+
+  void setRepeatWeakMaterials(bool value) {
+    repeatWeakMaterials = value;
+    _preferences?.setBool('repeatWeakMaterials', value);
+    notifyListeners();
+  }
+
+  void setStudyPlan(String value) {
+    studyPlan = value;
+    _preferences?.setString('studyPlan', value);
+    if (value.contains('10')) dailyStudyMinutes = 10;
+    if (value.contains('20')) dailyStudyMinutes = 20;
+    if (value.contains('30')) dailyStudyMinutes = 30;
+    if (value.contains('45')) dailyStudyMinutes = 45;
+    _preferences?.setInt('dailyStudyMinutes', dailyStudyMinutes);
     notifyListeners();
   }
 
@@ -3102,6 +3202,13 @@ class AppController extends ChangeNotifier {
         'learningMode': learningMode,
         'appLanguage': appLanguage,
         'ttsGender': ttsGender,
+        'region': region,
+        'country': country,
+        'soundEffectsEnabled': soundEffectsEnabled,
+        'streakNotificationsEnabled': streakNotificationsEnabled,
+        'studyNotificationsEnabled': studyNotificationsEnabled,
+        'repeatWeakMaterials': repeatWeakMaterials,
+        'studyPlan': studyPlan,
         'reviewIntervalDays': reviewIntervalDays,
         'googleLinked': googleLinked,
         'isPremium': isPremium,
@@ -3124,7 +3231,6 @@ class AppController extends ChangeNotifier {
         'studyDateKeys': studyDateKeys.toList()..sort(),
         'reviewReminderWeekdays': reviewReminderWeekdays.toList()..sort(),
         'calendarReminderEnabled': calendarReminderEnabled,
-        'glassTheme': glassTheme,
         'todayKanjiMode': todayKanjiMode,
         'todayKanjiPinnedId': todayKanjiPinnedId,
         'firstUsedAt': firstUsedAt?.toIso8601String(),
@@ -3190,6 +3296,13 @@ class AppController extends ChangeNotifier {
       learningMode = (json['learningMode'] as String?) ?? learningMode;
       appLanguage = (json['appLanguage'] as String?) ?? appLanguage;
       ttsGender = (json['ttsGender'] as String?) ?? ttsGender;
+      region = (json['region'] as String?) ?? region;
+      country = (json['country'] as String?) ?? country;
+      soundEffectsEnabled = json['soundEffectsEnabled'] as bool? ?? soundEffectsEnabled;
+      streakNotificationsEnabled = json['streakNotificationsEnabled'] as bool? ?? streakNotificationsEnabled;
+      studyNotificationsEnabled = json['studyNotificationsEnabled'] as bool? ?? studyNotificationsEnabled;
+      repeatWeakMaterials = json['repeatWeakMaterials'] as bool? ?? repeatWeakMaterials;
+      studyPlan = (json['studyPlan'] as String?) ?? studyPlan;
       reviewIntervalDays =
           ((json['reviewIntervalDays'] as num?) ?? reviewIntervalDays)
               .toInt()
@@ -3263,7 +3376,6 @@ class AppController extends ChangeNotifier {
       }
       calendarReminderEnabled =
           json['calendarReminderEnabled'] as bool? ?? calendarReminderEnabled;
-      glassTheme = json['glassTheme'] as bool? ?? glassTheme;
       todayKanjiMode = (json['todayKanjiMode'] as String?) ?? todayKanjiMode;
       todayKanjiPinnedId =
           (json['todayKanjiPinnedId'] as num? ?? todayKanjiPinnedId).toInt();

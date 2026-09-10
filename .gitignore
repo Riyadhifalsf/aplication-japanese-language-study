@@ -46,8 +46,6 @@ desktop.ini
 # Logs / temp
 *.log
 __pycache__/
-tool/flutter_build_web.err.log
-tool/flutter_build_web.log
 *.tmp
 *.bak
 *.swp

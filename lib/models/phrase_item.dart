@@ -1,3 +1,5 @@
+import '../services/romaji.dart';
+
 class PhraseItem {
   const PhraseItem({
     required this.id,
@@ -15,6 +17,8 @@ class PhraseItem {
   final String japanese;
   final String reading;
   final String meaning;
+
+  String get romaji => Romaji.toRomaji(reading);
   final String politeness;
   final String note;
   final List<String> tags;

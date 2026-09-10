@@ -57,12 +57,12 @@ class WeeklyLearningPulse extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text('${values[i]}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                          Text('${values[i]}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
                           const SizedBox(height: 6),
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 250),
                             height: maxValue == 0 ? 8 : 12 + (92 * values[i] / maxValue),
-                            margin: const EdgeInsets.symmetric(horizontal: 7),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(99),
                               color: values[i] > 0 ? cs.primary : cs.surfaceContainerHighest,

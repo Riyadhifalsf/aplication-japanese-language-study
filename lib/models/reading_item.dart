@@ -1,3 +1,5 @@
+import '../services/romaji.dart';
+
 class ReadingItem {
   const ReadingItem({
     required this.id,
@@ -17,6 +19,8 @@ class ReadingItem {
   final String japanese;
   final String reading;
   final String meaning;
+
+  String get romaji => level == 'N5' ? Romaji.toRomaji(reading) : '';
   final List<ReadingQuestion> questions;
 
   factory ReadingItem.fromJson(Map<String, dynamic> json) => ReadingItem(

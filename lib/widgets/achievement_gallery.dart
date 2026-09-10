@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/achievement_service.dart';
 import '../state/app_controller.dart';
+import '../screens/profile/achievements_screen.dart';
 
 class AchievementGallery extends StatelessWidget {
   const AchievementGallery({required this.app, super.key});
@@ -29,12 +30,9 @@ class AchievementGallery extends StatelessWidget {
                     style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
                   ),
                 ),
-                Text(
-                  '$unlocked/${achievements.length}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: cs.primary,
-                  ),
+                TextButton(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AchievementsScreen())),
+                  child: Text('$unlocked/${achievements.length} · Semua'),
                 ),
               ],
             ),

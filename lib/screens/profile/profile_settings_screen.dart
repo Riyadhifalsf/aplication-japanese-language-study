@@ -1,13 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../state/app_controller.dart';
-import '../../widgets/liquid_glass.dart';
 import '../auth/login_screen.dart';
-import '../kanji/kanji_review_screen.dart';
-import '../profile/bug_report_screen.dart';
 import 'change_password_screen.dart';
-import '../donation/donation_screen.dart';
+import 'faq_screen.dart';
+import 'terms_of_service_screen.dart';
+import 'voucher_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'reminder_settings_screen.dart';
 
@@ -20,9 +17,15 @@ class ProfileSettingsScreen extends StatelessWidget {
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
   }
 
-  Widget _surface(BuildContext context, AppController app, Widget child) {
-    if (!app.glassTheme) return Card(child: child);
-    return LiquidGlass(padding: EdgeInsets.zero, borderRadius: 22, child: child);
+  Future<void> _confirmReset(BuildContext context, {required String title, required String message, required Future<void> Function() action}) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(title: Text(title), content: Text(message), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Lanjutkan'))]),
+    );
+    if (ok != true || !context.mounted) return;
+    await action();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Perubahan berhasil disimpan.')));
   }
 
   @override
@@ -33,306 +36,64 @@ class ProfileSettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 10, 18, 34),
         children: [
-          const Text('Profil', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          _surface(context, app, ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Sunting profil', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Foto, nama, bio, identitas, dan tautan sosial.'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _editProfile(context, app))),
-          const SizedBox(height: 20),
-          const Text('Keamanan akun', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          _surface(context, app, ListTile(leading: const Icon(Icons.lock_reset_rounded), title: const Text('Password & verifikasi', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(app.isGoogleOnlyAccount ? 'Atur atau reset password lewat verifikasi email.' : 'Ubah password langsung atau minta link reset ke email.'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () { if (!app.isAuthenticated) { Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())); return; } Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen())); })),
-          const SizedBox(height: 20),
-          const Text('Belajar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          _surface(context, app, Column(children: [
-            ListTile(leading: const Icon(Icons.school_rounded), title: const Text('Level materi', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Materi aktif: ${app.selectedStudyLevel}'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _selectLevel(context, app)),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.notifications_active_rounded), title: const Text('Pengingat ulangan Kanji', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.reviewReminderDaysLabel} · ${app.reviewReminderTimeLabel}'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderSettingsScreen()))),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.update_rounded), title: const Text('Interval review Kanji', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.reviewIntervalDays} hari awal · otomatis diperpanjang'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _reviewInterval(context, app)),
-            const Divider(height: 1),
-            SwitchListTile(value: app.furiganaVisible, onChanged: (_) => app.toggleFurigana(), secondary: const Icon(Icons.text_fields_rounded), title: const Text('Furigana', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Tampilkan bacaan kecil pada kanji.')),
-            SwitchListTile(value: app.darkMode, onChanged: (_) => app.toggleTheme(), secondary: const Icon(Icons.dark_mode_rounded), title: const Text('Tema gelap', style: TextStyle(fontWeight: FontWeight.w900))),
-            SwitchListTile(value: app.glassTheme, onChanged: (_) => app.toggleGlassTheme(), secondary: const Icon(Icons.blur_on_rounded), title: const Text('Liquid Glass', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Efek kaca blur dipakai langsung pada panel pengaturan dan kartu beranda.')),
-            ListTile(leading: const Icon(Icons.auto_awesome_rounded), title: const Text('Kanji hari ini', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Mode ${app.todayKanjiMode} · ${app.todayKanjiCharacter}'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _todayKanjiMode(context, app)),
-          ])),
-          const SizedBox(height: 20),
-          const Text('Bahasa & suara', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          _surface(context, app, Column(children: [
-            ListTile(leading: const Icon(Icons.language_rounded), title: const Text('Bahasa aplikasi', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(app.languageLabel), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _language(context, app)),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.record_voice_over_rounded), title: const Text('Profil suara TTS', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(_voiceLabel(app.ttsGender)), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _ttsVoice(context, app)),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.volume_up_rounded), title: const Text('Tes bahasa Jepang'), trailing: const Icon(Icons.play_arrow_rounded), onTap: () => app.tts.speak('今日も日本語を勉強しましょう。')),
-          ])),
-          const SizedBox(height: 20),
-          const Text('Dukungan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          _surface(context, app, ListTile(
-            leading: const Icon(Icons.volunteer_activism_rounded),
-            title: const Text('Donasi', style: TextStyle(fontWeight: FontWeight.w900)),
-            subtitle: const Text('Lihat kanal donasi, jumlah donatur, dan peringkat dukungan.'),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DonationScreen())),
-          )),
-          const SizedBox(height: 20),
-          const Text('Ulangan & data', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 10),
-          _surface(context, app, Column(children: [
-            ListTile(leading: const Icon(Icons.event_available_rounded), title: const Text('Ulangan jatuh tempo', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.dueKanjiReviewCount} kanji perlu diulang.'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanjiReviewScreen()))),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.privacy_tip_outlined), title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w900)), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.bug_report_outlined), title: const Text('Laporkan bug', style: TextStyle(fontWeight: FontWeight.w900)), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BugReportScreen()))),
-          ])),
-          const SizedBox(height: 34),
-          Card(color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: .5), child: ListTile(leading: const Icon(Icons.logout_rounded), title: const Text('Keluar / Logout', style: TextStyle(fontWeight: FontWeight.w900)), onTap: () => _logout(context, app))),
+          _section('Profil', [
+            _item(Icons.edit_rounded, 'Sunting profil', 'Foto, nama, bio, dan tautan sosial.', () => _showProfileEditor(context, app)),
+            _item(Icons.public_rounded, 'Wilayah & negara', '${app.region} · ${app.country}', () => _regionCountry(context, app)),
+          ]),
+          _section('Belajar', [
+            _item(Icons.school_rounded, 'Level materi', 'Materi aktif: ${app.selectedStudyLevel}', () => _selectLevel(context, app)),
+            _item(Icons.event_available_rounded, 'Rencana belajar', app.studyPlan, () => _studyPlan(context, app)),
+            _item(Icons.notifications_active_rounded, 'Pengingat ulangan Kanji', '${app.reviewReminderDaysLabel} · ${app.reviewReminderTimeLabel}', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderSettingsScreen()))),
+            _item(Icons.tune_rounded, 'Interval review Kanji', '${app.reviewIntervalDays} hari awal', () => _reviewInterval(context, app)),
+            SwitchListTile(value: app.repeatWeakMaterials, onChanged: app.setRepeatWeakMaterials, secondary: const Icon(Icons.replay_rounded), title: const Text('Ulangi materi lemah', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Prioritaskan materi dengan penguasaan rendah.')),
+            SwitchListTile(value: app.furiganaVisible, onChanged: (_) => app.toggleFurigana(), secondary: const Icon(Icons.text_fields_rounded), title: const Text('Furigana', style: TextStyle(fontWeight: FontWeight.w900))),
+            _item(Icons.restart_alt_rounded, 'Setel ulang pengaturan latihan', 'Kembalikan pengaturan latihan ke nilai awal.', () => _confirmReset(context, title: 'Setel ulang latihan?', message: 'Progress tidak dihapus; hanya pengaturan latihan yang dikembalikan.', action: app.resetPracticeSettings)),
+            _item(Icons.delete_sweep_rounded, 'Bersihkan data belajar', 'Hapus progress, statistik latihan, dan jurnal belajar.', () => _confirmReset(context, title: 'Bersihkan data belajar?', message: 'Tindakan ini tidak dapat dibatalkan.', action: app.resetLearningData)),
+          ]),
+          _section('Tampilan & audio', [
+            SwitchListTile(value: app.darkMode, onChanged: (_) => app.toggleTheme(), secondary: const Icon(Icons.dark_mode_rounded), title: const Text('Mode gelap', style: TextStyle(fontWeight: FontWeight.w900))),
+            SwitchListTile(value: app.soundEffectsEnabled, onChanged: app.setSoundEffectsEnabled, secondary: const Icon(Icons.volume_up_rounded), title: const Text('Efek suara', style: TextStyle(fontWeight: FontWeight.w900))),
+            _item(Icons.record_voice_over_rounded, 'Suara TTS', app.ttsGender, () => _tts(context, app)),
+          ]),
+          _section('Notifikasi', [
+            SwitchListTile(value: app.studyNotificationsEnabled, onChanged: app.setStudyNotificationsEnabled, secondary: const Icon(Icons.school_rounded), title: const Text('Pengingat belajar', style: TextStyle(fontWeight: FontWeight.w900))),
+            SwitchListTile(value: app.streakNotificationsEnabled, onChanged: app.setStreakNotificationsEnabled, secondary: const Icon(Icons.local_fire_department_rounded), title: const Text('Notifikasi streak', style: TextStyle(fontWeight: FontWeight.w900))),
+          ]),
+          _section('Data & privasi', [
+            _item(Icons.language_rounded, 'Bahasa aplikasi', app.appLanguage == 'id' ? 'Bahasa Indonesia' : 'English', () => _language(context, app)),
+            _item(Icons.storage_rounded, 'Data aplikasi & cache', 'Kelola data lokal dan lihat perkiraan ukuran.', () => _storage(context, app)),
+            _item(Icons.policy_rounded, 'Kebijakan privasi', 'Cara data digunakan dan disimpan.', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
+            _item(Icons.description_rounded, 'Syarat & layanan', 'Ketentuan penggunaan Japanese Study.', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()))),
+            _item(Icons.redeem_rounded, 'Gunakan voucher', 'Masukkan kode voucher yang kamu miliki.', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VoucherScreen()))),
+          ]),
+          _section('Bantuan', [
+            _item(Icons.help_outline_rounded, 'Bantuan & FAQ', 'Jawaban pertanyaan yang paling sering muncul.', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FaqScreen()))),
+            _item(Icons.info_outline_rounded, 'Tentang Japanese Study', 'Versi, waktu bergabung, dan ID instalasi.', () => _about(context, app)),
+          ]),
+          _section('Akun', [
+            _item(Icons.logout_rounded, 'Keluar', 'Keluar dari akun pada perangkat ini.', () => _confirmReset(context, title: 'Keluar?', message: 'Kamu perlu login lagi untuk sinkronisasi akun.', action: () => _logout(context, app))),
+            _item(Icons.person_remove_rounded, 'Hapus akun & data lokal', 'Hapus data belajar lokal dan keluar dari akun. Penghapusan akun server memerlukan verifikasi layanan.', () => _confirmReset(context, title: 'Hapus data lokal?', message: 'Semua data lokal akan dihapus dan sesi akan keluar.', action: () async { await app.resetLearningData(); await app.logout(); })),
+          ]),
         ],
       ),
     );
   }
 
-  static String _voiceLabel(String value) => value == 'female' ? 'Suara perempuan' : value == 'male' ? 'Suara laki-laki' : 'Otomatis dari perangkat';
+  Widget _section(String title, List<Widget> children) => Padding(padding: const EdgeInsets.only(bottom: 18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)), const SizedBox(height: 8), Card(child: Column(children: children))]));
+  Widget _item(IconData icon, String title, String subtitle, VoidCallback onTap) => ListTile(leading: Icon(icon), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(subtitle), trailing: const Icon(Icons.chevron_right_rounded), onTap: onTap);
 
-  Future<void> _editProfile(BuildContext context, AppController app) async {
-    final name = TextEditingController(text: app.profileName);
-    final email = TextEditingController(text: app.profileEmail);
-    final birth = TextEditingController(text: app.profileBirthDate);
-    final phone = TextEditingController(text: app.profilePhone);
-    final handle = TextEditingController(text: app.profileHandle);
-    final bio = TextEditingController(text: app.profileBio);
-    final instagram = TextEditingController(text: app.profileInstagram);
-    final youtube = TextEditingController(text: app.profileYoutube);
-    final picker = ImagePicker();
-
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20, 12, 20, MediaQuery.viewInsetsOf(sheetContext).bottom + 24,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('Sunting profil', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 6),
-                  Text('Buat profilmu terasa lebih lengkap dan personal.', style: TextStyle(color: Theme.of(sheetContext).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 18),
-                  Center(
-                    child: CircleAvatar(
-                      radius: 46,
-                      backgroundImage: app.profilePhotoData.isNotEmpty ? MemoryImage(base64Decode(app.profilePhotoData)) : null,
-                      child: app.profilePhotoData.isEmpty ? Text(app.profileName.isEmpty ? '日' : app.profileName.substring(0, 1).toUpperCase(), style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w900)) : null,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final image = await picker.pickImage(source: ImageSource.gallery, maxWidth: 720, imageQuality: 78);
-                        if (image == null) return;
-                        app.updateProfilePhotoData(base64Encode(await image.readAsBytes()));
-                      },
-                      icon: const Icon(Icons.upload_rounded),
-                      label: const Text('Ganti foto'),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  _field(name, 'Nama tampilan', Icons.person_outline_rounded),
-                  _field(email, 'Surel', Icons.email_outlined, keyboard: TextInputType.emailAddress),
-                  _field(handle, 'Username komunitas', Icons.alternate_email_rounded),
-                  _field(
-                    bio,
-                    'Bio',
-                    Icons.notes_rounded,
-                    maxLines: 6,
-                    hint: 'Tulis target JLPT, minat, atau alasanmu belajar bahasa Jepang.',
-                  ),
-                  _field(birth, 'Tanggal lahir', Icons.cake_outlined, keyboard: TextInputType.datetime),
-                  _field(phone, 'Nomor telepon', Icons.phone_outlined, keyboard: TextInputType.phone),
-                  _field(instagram, 'Instagram', Icons.camera_alt_outlined),
-                  _field(youtube, 'YouTube', Icons.play_circle_outline_rounded),
-                  const SizedBox(height: 14),
-                  FilledButton.icon(
-                    onPressed: () {
-                      app.updateProfile(
-                        name: name.text,
-                        email: email.text,
-                        birthDate: birth.text,
-                        phone: phone.text,
-                        handle: handle.text,
-                        bio: bio.text,
-                        instagram: instagram.text,
-                        youtube: youtube.text,
-                      );
-                      Navigator.pop(sheetContext);
-                    },
-                    icon: const Icon(Icons.save_rounded),
-                    label: const Text('Simpan profil'),
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+  Future<void> _regionCountry(BuildContext context, AppController app) async {
+    final region = TextEditingController(text: app.region);
+    final country = TextEditingController(text: app.country);
+    await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Wilayah & negara'), content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: region, decoration: const InputDecoration(labelText: 'Wilayah')), TextField(controller: country, decoration: const InputDecoration(labelText: 'Negara'))]), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')), FilledButton(onPressed: () { app.setRegionCountry(region.text, country.text); Navigator.pop(context); }, child: const Text('Simpan'))]));
+    region.dispose(); country.dispose();
   }
-
-  Widget _field(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    TextInputType? keyboard,
-    int maxLines = 1,
-    String? hint,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboard,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          prefixIcon: Icon(icon),
-          alignLabelWithHint: maxLines > 1,
-        ),
-      ),
-    );
-  }
-
-  void _selectLevel(BuildContext context, AppController app) {
-    const levels = ['N5', 'N4', 'N3', 'N2', 'N1'];
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 26),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Level materi aktif', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              const Text('Learning hanya menampilkan materi level aktif. Library tetap menampilkan seluruh katalog.'),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final level in levels)
-                    ChoiceChip(
-                      label: Padding(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5), child: Text(level)),
-                      selected: app.selectedStudyLevel == level,
-                      onSelected: app.isLevelUnlocked(level)
-                          ? (_) {
-                              app.setSelectedStudyLevel(level);
-                              Navigator.pop(context);
-                            }
-                          : null,
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _language(BuildContext context, AppController app) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(value: 'id', groupValue: app.appLanguage, title: const Text('Bahasa Indonesia'), onChanged: (v) { if (v != null) app.setAppLanguage(v); Navigator.pop(context); }),
-            RadioListTile<String>(value: 'en', groupValue: app.appLanguage, title: const Text('English'), onChanged: (v) { if (v != null) app.setAppLanguage(v); Navigator.pop(context); }),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _ttsVoice(BuildContext context, AppController app) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final option in [('auto', 'Otomatis'), ('female', 'Perempuan'), ('male', 'Laki-laki')])
-              RadioListTile<String>(value: option.$1, groupValue: app.ttsGender, title: Text(option.$2), onChanged: (v) { if (v != null) app.setTtsGender(v); Navigator.pop(context); }),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _reviewInterval(BuildContext context, AppController app) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Interval review Kanji', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 5),
-                const Text('Tentukan jarak review pertama. Interval berikutnya bertambah bertahap.'),
-                Slider(
-                  min: 1,
-                  max: 30,
-                  divisions: 29,
-                  value: app.reviewIntervalDays.toDouble(),
-                  label: '${app.reviewIntervalDays} hari',
-                  onChanged: (v) {
-                    app.setReviewIntervalDays(v.round());
-                    setState(() {});
-                  },
-                ),
-                Center(child: Text('${app.reviewIntervalDays} hari', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _todayKanjiMode(BuildContext context, AppController app) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(padding: EdgeInsets.all(16), child: Align(alignment: Alignment.centerLeft, child: Text('Mode Kanji hari ini', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)))),
-            for (final item in [('adaptive', 'Adaptif'), ('favorites', 'Favorit'), ('due', 'Jatuh tempo'), ('manual', 'Kanji pilihan')])
-              RadioListTile<String>(value: item.$1, groupValue: app.todayKanjiMode, title: Text(item.$2), onChanged: (v) { if (v != null) { app.setTodayKanjiMode(v); Navigator.pop(context); } }),
-          ],
-        ),
-      ),
-    );
-  }
+  Future<void> _studyPlan(BuildContext context, AppController app) async { await showModalBottomSheet<void>(context: context, builder: (_) => SafeArea(child: ListView(shrinkWrap: true, children: [for (final value in const ['10 menit per hari','20 menit per hari','30 menit per hari','45 menit per hari']) RadioListTile<String>(value: value, groupValue: app.studyPlan, title: Text(value), onChanged: (v) { if (v != null) { app.setStudyPlan(v); Navigator.pop(context); } })]))); }
+  Future<void> _selectLevel(BuildContext context, AppController app) async { await showModalBottomSheet<void>(context: context, builder: (_) => SafeArea(child: ListView(shrinkWrap: true, children: [for (final level in const ['N5','N4','N3','N2','N1']) RadioListTile<String>(value: level, groupValue: app.selectedStudyLevel, title: Text(level), onChanged: (v) { if (v != null) { app.setSelectedStudyLevel(v); Navigator.pop(context); } })]))); }
+  Future<void> _language(BuildContext context, AppController app) async { await showModalBottomSheet<void>(context: context, builder: (_) => SafeArea(child: ListView(shrinkWrap: true, children: [RadioListTile(value: 'id', groupValue: app.appLanguage, title: const Text('Bahasa Indonesia'), onChanged: (v) { app.setAppLanguage(v!); Navigator.pop(context); }), RadioListTile(value: 'en', groupValue: app.appLanguage, title: const Text('English'), onChanged: (v) { app.setAppLanguage(v!); Navigator.pop(context); })]))); }
+  Future<void> _tts(BuildContext context, AppController app) async { await showModalBottomSheet<void>(context: context, builder: (_) => SafeArea(child: ListView(shrinkWrap: true, children: [for (final pair in const [('auto','Otomatis'),('female','Suara perempuan'),('male','Suara laki-laki')]) RadioListTile(value: pair.$1, groupValue: app.ttsGender, title: Text(pair.$2), onChanged: (v) { app.setTtsGender(v!); Navigator.pop(context); })]))); }
+  Future<void> _reviewInterval(BuildContext context, AppController app) async { await showModalBottomSheet<void>(context: context, builder: (_) => SafeArea(child: ListView(shrinkWrap: true, children: [for (final d in const [1,2,3,5,7]) RadioListTile<int>(value: d, groupValue: app.reviewIntervalDays, title: Text('$d hari'), onChanged: (v) { if (v != null) { app.setReviewIntervalDays(v); Navigator.pop(context); } })]))); }
+  Future<void> _storage(BuildContext context, AppController app) async { const note = 'Perkiraan ukuran berdasarkan data lokal yang dikelola aplikasi. Data sistem perangkat lain dapat memiliki ukuran berbeda.'; await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Data aplikasi & cache'), content: const Text(note), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')), FilledButton.tonal(onPressed: () async { await app.clearApplicationData(); if (context.mounted) Navigator.pop(context); }, child: const Text('Bersihkan data aplikasi'))])); }
+  Future<void> _about(BuildContext context, AppController app) async { await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Tentang Japanese Study'), content: SelectableText('Versi: 1.7.1+9\nBergabung: ${app.firstUsedAt?.toLocal() ?? '-'}\nID instalasi: ${app.installationId}'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))])); }
+  Future<void> _showProfileEditor(BuildContext context, AppController app) async { final name = TextEditingController(text: app.profileName); final bio = TextEditingController(text: app.profileBio); await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Sunting profil'), content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama')), TextField(controller: bio, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Bio'))]), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')), FilledButton(onPressed: () { app.profileName = name.text.trim(); app.profileBio = bio.text.trim(); app.notifyListeners(); Navigator.pop(context); }, child: const Text('Simpan'))])); name.dispose(); bio.dispose(); }
 }

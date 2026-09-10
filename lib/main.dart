@@ -193,6 +193,14 @@ class _StartupSplashState extends State<_StartupSplash> {
                 'Menyiapkan pengalaman belajarmu…',
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: 220,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: const LinearProgressIndicator(minHeight: 7),
+                ),
+              ),
             ],
           ),
         ),

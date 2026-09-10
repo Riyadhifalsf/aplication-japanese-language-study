@@ -4,23 +4,16 @@ import '../../state/app_controller.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({super.key});
-  @override
-  State<NotificationCenterScreen> createState() => _NotificationCenterScreenState();
+  @override State<NotificationCenterScreen> createState() => _NotificationCenterScreenState();
 }
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   bool loading = true;
-
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
+  void initState() { super.initState(); _load(); }
   Future<void> _load() async {
     final app = AppScope.of(context);
     app.markNotificationsRead();
-    if (!mounted) return;
     setState(() => loading = false);
   }
 
@@ -36,94 +29,74 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   }
 
   IconData _kindIcon(String kind) => switch (kind) {
-        'update' => Icons.system_update_rounded,
-        'konten' => Icons.auto_stories_rounded,
-        'pengumuman' => Icons.campaign_rounded,
-        'pengingat' => Icons.schedule_rounded,
-        'misi' => Icons.auto_awesome_rounded,
-        _ => Icons.notifications_rounded,
-      };
+    'update' => Icons.system_update_rounded,
+    'konten' => Icons.auto_stories_rounded,
+    'pengumuman' => Icons.campaign_rounded,
+    'pengingat' => Icons.schedule_rounded,
+    'misi' => Icons.auto_awesome_rounded,
+    _ => Icons.notifications_rounded,
+  };
 
   String _kindLabel(String kind) => switch (kind) {
-        'update' => 'Update aplikasi',
-        'konten' => 'Konten baru',
-        'pengumuman' => 'Pengumuman',
-        'pengingat' => 'Pengingat',
-        'misi' => 'Misi tersembunyi',
-        _ => 'Info',
-      };
+    'update' => 'Update aplikasi',
+    'konten' => 'Konten baru',
+    'pengumuman' => 'Pengumuman',
+    'pengingat' => 'Pengingat',
+    'misi' => 'Misi tersembunyi',
+    _ => 'Info',
+  };
 
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
-    final inbox = app.inbox.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifikasi')),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
-              children: [
-                if (inbox.isEmpty && app.dueKanjiReviewCount <= 0)
-                  const Card(
-                    child: ListTile(
-                      leading: Icon(Icons.notifications_none_rounded),
-                      title: Text('Belum ada notifikasi'),
-                      subtitle: Text('Update aplikasi, konten baru, dan pengingat belajar akan muncul di sini.'),
-                    ),
-                  ),
-                if (inbox.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
-                    child: Text('Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                  ),
-                  for (final n in inbox)
-                    Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        leading: CircleAvatar(child: Icon(_kindIcon(n.kind), size: 20)),
-                        title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.w900)),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 5),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (n.body.isNotEmpty) Text(n.body),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.secondaryContainer,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(_kindLabel(n.kind), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(_dateLabel(n.createdAt), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                                ],
-                              ),
-                            ],
+    final inbox = app.inbox.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return Scaffold(appBar: AppBar(title: const Text('Notifikasi')), body: loading ? const Center(child: CircularProgressIndicator()) : ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 30), children: [
+      if (inbox.isEmpty && app.dueKanjiReviewCount <= 0)
+        const Card(child: ListTile(leading: Icon(Icons.notifications_none_rounded), title: Text('Belum ada notifikasi'), subtitle: Text('Update aplikasi, konten baru, dan pengumuman akan muncul di sini.'))),
+      if (inbox.isNotEmpty) ...[
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
+          child: Text('Terbaru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+        ),
+        for (final n in inbox)
+          Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              leading: CircleAvatar(child: Icon(_kindIcon(n.kind), size: 20)),
+              title: Text(n.title, style: const TextStyle(fontWeight: FontWeight.w900)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (n.body.isNotEmpty) Text(n.body),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(20),
                           ),
+                          child: Text(_kindLabel(n.kind), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Text(_dateLabel(n.createdAt), style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      ],
                     ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(4, 12, 4, 4),
-                    child: Text('Notifikasi tersimpan otomatis selama 90 hari.', style: TextStyle(fontSize: 12)),
-                  ),
-                ],
-                if (app.dueKanjiReviewCount > 0)
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.schedule_rounded),
-                      title: const Text('Ulangan Kanji jatuh tempo', style: TextStyle(fontWeight: FontWeight.w900)),
-                      subtitle: Text('${app.dueKanjiReviewCount} kanji perlu diulang.'),
-                    ),
-                  ),
-              ],
+                  ],
+                ),
+              ),
             ),
-    );
+          ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 12, 4, 4),
+          child: Text('Notifikasi tersimpan otomatis selama ${AppNotification.retentionDays} hari.', style: TextStyle(fontSize: 12)),
+        ),
+      ],
+      if (app.dueKanjiReviewCount > 0) Card(child: ListTile(leading: const Icon(Icons.schedule_rounded), title: const Text('Ulangan Kanji jatuh tempo', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.dueKanjiReviewCount} kanji perlu diulang.'))),
+    ]));
   }
 }

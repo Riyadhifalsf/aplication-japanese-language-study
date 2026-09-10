@@ -664,7 +664,7 @@
     "pattern": "～にあたらない",
     "level": "N1",
     "title": "Tidak layak atau tidak perlu",
-    "explanation": "にあたらない digunakan dalam bahasa formal untuk menyatakan bahwa sesuatu tidak cukup penting atau tidak pantas menerima reaksi tertentu.",
+    "explanation": "にあたらない digunakan dalam bahasa resmi untuk menyatakan bahwa sesuatu tidak cukup penting atau tidak pantas mendapatkan reaksi tertentu.",
     "formation": "Kata benda / kata kerja bentuk kamus + にあたらない",
     "examples": [
       {
@@ -684,7 +684,7 @@
     "pattern": "～を皮切りに",
     "level": "N1",
     "title": "Dimulai dengan",
-    "explanation": "を皮切りに menunjukkan peristiwa pertama yang menjadi awal rangkaian peristiwa serupa. Nuansanya formal dan sering digunakan dalam berita.",
+    "explanation": "を皮切りに menunjukkan peristiwa pertama yang menjadi awal rangkaian peristiwa serupa. Nuansanya resmi dan sering digunakan dalam berita.",
     "formation": "Kata benda + を皮切りに（して）",
     "examples": [
       {
@@ -745,7 +745,7 @@
     ]
   },
   {
-    "id": "n5-to-and",
+    "id": "n5-to-connect",
     "pattern": "～と",
     "level": "N5",
     "title": "Dan / bersama",
@@ -1124,7 +1124,7 @@
     "pattern": "～上で",
     "level": "N1",
     "title": "Setelah / dalam hal",
-    "explanation": "Dipakai pada situasi formal untuk urutan atau aspek.",
+    "explanation": "Digunakan pada situasi resmi untuk menyatakan urutan tindakan atau sudut pandang.",
     "formation": "Vた/名詞 + 上で",
     "examples": [
       {
@@ -6478,8 +6478,8 @@
     "id": "auto-n4-0181",
     "pattern": "～があります",
     "level": "N4",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -6498,8 +6498,8 @@
     "id": "auto-n3-0182",
     "pattern": "～がいます",
     "level": "N3",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -6518,8 +6518,8 @@
     "id": "auto-n2-0183",
     "pattern": "～をください",
     "level": "N2",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -6538,8 +6538,8 @@
     "id": "auto-n1-0184",
     "pattern": "～てもいいです",
     "level": "N1",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -6558,8 +6558,8 @@
     "id": "auto-n5-0185",
     "pattern": "～てはいけません",
     "level": "N5",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -6578,8 +6578,8 @@
     "id": "auto-n4-0186",
     "pattern": "～たいです",
     "level": "N4",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -6598,8 +6598,8 @@
     "id": "auto-n3-0187",
     "pattern": "～たことがあります",
     "level": "N3",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -6618,8 +6618,8 @@
     "id": "auto-n2-0188",
     "pattern": "～ながら",
     "level": "N2",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -6638,8 +6638,8 @@
     "id": "auto-n1-0189",
     "pattern": "～やすい",
     "level": "N1",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -6658,8 +6658,8 @@
     "id": "auto-n5-0190",
     "pattern": "～にくい",
     "level": "N5",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -6678,8 +6678,8 @@
     "id": "auto-n4-0191",
     "pattern": "～そうです",
     "level": "N4",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -6698,8 +6698,8 @@
     "id": "auto-n3-0192",
     "pattern": "～ようにしています",
     "level": "N3",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -6718,8 +6718,8 @@
     "id": "auto-n2-0193",
     "pattern": "～ばよかった",
     "level": "N2",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -6738,8 +6738,8 @@
     "id": "auto-n1-0194",
     "pattern": "～わけではない",
     "level": "N1",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {
@@ -6758,8 +6758,8 @@
     "id": "auto-n5-0195",
     "pattern": "～に違いない",
     "level": "N5",
-    "title": "Pasti",
-    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pasti — Variasi konteks 2",
+    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + に違いない",
     "examples": [
       {
@@ -6778,8 +6778,8 @@
     "id": "auto-n4-0196",
     "pattern": "～ざるを得ない",
     "level": "N4",
-    "title": "Terpaksa harus",
-    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Terpaksa harus — Variasi konteks 2",
+    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar nai + ざるを得ない",
     "examples": [
       {
@@ -6798,8 +6798,8 @@
     "id": "auto-n3-0197",
     "pattern": "～に伴って",
     "level": "N3",
-    "title": "Seiring dengan",
-    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Seiring dengan — Variasi konteks 2",
+    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda + に伴って",
     "examples": [
       {
@@ -6818,8 +6818,8 @@
     "id": "auto-n2-0198",
     "pattern": "～は～です",
     "level": "N2",
-    "title": "Menjelaskan identitas/topik",
-    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menjelaskan identitas/topik — Variasi konteks 2",
+    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda A + は + B + です",
     "examples": [
       {
@@ -6838,8 +6838,8 @@
     "id": "auto-n1-0199",
     "pattern": "～があります",
     "level": "N1",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -6858,8 +6858,8 @@
     "id": "auto-n5-0200",
     "pattern": "～がいます",
     "level": "N5",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -6878,8 +6878,8 @@
     "id": "auto-n4-0201",
     "pattern": "～をください",
     "level": "N4",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -6898,8 +6898,8 @@
     "id": "auto-n3-0202",
     "pattern": "～てもいいです",
     "level": "N3",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -6918,8 +6918,8 @@
     "id": "auto-n2-0203",
     "pattern": "～てはいけません",
     "level": "N2",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -6938,8 +6938,8 @@
     "id": "auto-n1-0204",
     "pattern": "～たいです",
     "level": "N1",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -6958,8 +6958,8 @@
     "id": "auto-n5-0205",
     "pattern": "～たことがあります",
     "level": "N5",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -6978,8 +6978,8 @@
     "id": "auto-n4-0206",
     "pattern": "～ながら",
     "level": "N4",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -6998,8 +6998,8 @@
     "id": "auto-n3-0207",
     "pattern": "～やすい",
     "level": "N3",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -7018,8 +7018,8 @@
     "id": "auto-n2-0208",
     "pattern": "～にくい",
     "level": "N2",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -7038,8 +7038,8 @@
     "id": "auto-n1-0209",
     "pattern": "～そうです",
     "level": "N1",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -7058,8 +7058,8 @@
     "id": "auto-n5-0210",
     "pattern": "～ようにしています",
     "level": "N5",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -7078,8 +7078,8 @@
     "id": "auto-n4-0211",
     "pattern": "～ばよかった",
     "level": "N4",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -7098,8 +7098,8 @@
     "id": "auto-n3-0212",
     "pattern": "～わけではない",
     "level": "N3",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {
@@ -7118,8 +7118,8 @@
     "id": "auto-n2-0213",
     "pattern": "～に違いない",
     "level": "N2",
-    "title": "Pasti",
-    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pasti — Variasi konteks 2",
+    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + に違いない",
     "examples": [
       {
@@ -7138,8 +7138,8 @@
     "id": "auto-n1-0214",
     "pattern": "～ざるを得ない",
     "level": "N1",
-    "title": "Terpaksa harus",
-    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Terpaksa harus — Variasi konteks 2",
+    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar nai + ざるを得ない",
     "examples": [
       {
@@ -7158,8 +7158,8 @@
     "id": "auto-n5-0215",
     "pattern": "～に伴って",
     "level": "N5",
-    "title": "Seiring dengan",
-    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Seiring dengan — Variasi konteks 2",
+    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda + に伴って",
     "examples": [
       {
@@ -7178,8 +7178,8 @@
     "id": "auto-n4-0216",
     "pattern": "～は～です",
     "level": "N4",
-    "title": "Menjelaskan identitas/topik",
-    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menjelaskan identitas/topik — Variasi konteks 2",
+    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda A + は + B + です",
     "examples": [
       {
@@ -7198,8 +7198,8 @@
     "id": "auto-n3-0217",
     "pattern": "～があります",
     "level": "N3",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -7218,8 +7218,8 @@
     "id": "auto-n2-0218",
     "pattern": "～がいます",
     "level": "N2",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -7238,8 +7238,8 @@
     "id": "auto-n1-0219",
     "pattern": "～をください",
     "level": "N1",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -7258,8 +7258,8 @@
     "id": "auto-n5-0220",
     "pattern": "～てもいいです",
     "level": "N5",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -7278,8 +7278,8 @@
     "id": "auto-n4-0221",
     "pattern": "～てはいけません",
     "level": "N4",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -7298,8 +7298,8 @@
     "id": "auto-n3-0222",
     "pattern": "～たいです",
     "level": "N3",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -7318,8 +7318,8 @@
     "id": "auto-n2-0223",
     "pattern": "～たことがあります",
     "level": "N2",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -7338,8 +7338,8 @@
     "id": "auto-n1-0224",
     "pattern": "～ながら",
     "level": "N1",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -7358,8 +7358,8 @@
     "id": "auto-n5-0225",
     "pattern": "～やすい",
     "level": "N5",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -7378,8 +7378,8 @@
     "id": "auto-n4-0226",
     "pattern": "～にくい",
     "level": "N4",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -7398,8 +7398,8 @@
     "id": "auto-n3-0227",
     "pattern": "～そうです",
     "level": "N3",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -7418,8 +7418,8 @@
     "id": "auto-n2-0228",
     "pattern": "～ようにしています",
     "level": "N2",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -7438,8 +7438,8 @@
     "id": "auto-n1-0229",
     "pattern": "～ばよかった",
     "level": "N1",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -7458,8 +7458,8 @@
     "id": "auto-n5-0230",
     "pattern": "～わけではない",
     "level": "N5",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {
@@ -7478,8 +7478,8 @@
     "id": "auto-n4-0231",
     "pattern": "～に違いない",
     "level": "N4",
-    "title": "Pasti",
-    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pasti — Variasi konteks 2",
+    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + に違いない",
     "examples": [
       {
@@ -7498,8 +7498,8 @@
     "id": "auto-n3-0232",
     "pattern": "～ざるを得ない",
     "level": "N3",
-    "title": "Terpaksa harus",
-    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Terpaksa harus — Variasi konteks 2",
+    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar nai + ざるを得ない",
     "examples": [
       {
@@ -7518,8 +7518,8 @@
     "id": "auto-n2-0233",
     "pattern": "～に伴って",
     "level": "N2",
-    "title": "Seiring dengan",
-    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Seiring dengan — Variasi konteks 2",
+    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda + に伴って",
     "examples": [
       {
@@ -7538,8 +7538,8 @@
     "id": "auto-n1-0234",
     "pattern": "～は～です",
     "level": "N1",
-    "title": "Menjelaskan identitas/topik",
-    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menjelaskan identitas/topik — Variasi konteks 2",
+    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda A + は + B + です",
     "examples": [
       {
@@ -7558,8 +7558,8 @@
     "id": "auto-n5-0235",
     "pattern": "～があります",
     "level": "N5",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -7578,8 +7578,8 @@
     "id": "auto-n4-0236",
     "pattern": "～がいます",
     "level": "N4",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -7598,8 +7598,8 @@
     "id": "auto-n3-0237",
     "pattern": "～をください",
     "level": "N3",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -7618,8 +7618,8 @@
     "id": "auto-n2-0238",
     "pattern": "～てもいいです",
     "level": "N2",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -7638,8 +7638,8 @@
     "id": "auto-n1-0239",
     "pattern": "～てはいけません",
     "level": "N1",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -7658,8 +7658,8 @@
     "id": "auto-n5-0240",
     "pattern": "～たいです",
     "level": "N5",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -7678,8 +7678,8 @@
     "id": "auto-n4-0241",
     "pattern": "～たことがあります",
     "level": "N4",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -7698,8 +7698,8 @@
     "id": "auto-n3-0242",
     "pattern": "～ながら",
     "level": "N3",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -7718,8 +7718,8 @@
     "id": "auto-n2-0243",
     "pattern": "～やすい",
     "level": "N2",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -7738,8 +7738,8 @@
     "id": "auto-n1-0244",
     "pattern": "～にくい",
     "level": "N1",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -7758,8 +7758,8 @@
     "id": "auto-n5-0245",
     "pattern": "～そうです",
     "level": "N5",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -7778,8 +7778,8 @@
     "id": "auto-n4-0246",
     "pattern": "～ようにしています",
     "level": "N4",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -7798,8 +7798,8 @@
     "id": "auto-n3-0247",
     "pattern": "～ばよかった",
     "level": "N3",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -7818,8 +7818,8 @@
     "id": "auto-n2-0248",
     "pattern": "～わけではない",
     "level": "N2",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {
@@ -7838,8 +7838,8 @@
     "id": "auto-n1-0249",
     "pattern": "～に違いない",
     "level": "N1",
-    "title": "Pasti",
-    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pasti — Variasi konteks 2",
+    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + に違いない",
     "examples": [
       {
@@ -7858,8 +7858,8 @@
     "id": "auto-n5-0250",
     "pattern": "～ざるを得ない",
     "level": "N5",
-    "title": "Terpaksa harus",
-    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Terpaksa harus — Variasi konteks 2",
+    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar nai + ざるを得ない",
     "examples": [
       {
@@ -7878,8 +7878,8 @@
     "id": "auto-n4-0251",
     "pattern": "～に伴って",
     "level": "N4",
-    "title": "Seiring dengan",
-    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Seiring dengan — Variasi konteks 2",
+    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda + に伴って",
     "examples": [
       {
@@ -7898,8 +7898,8 @@
     "id": "auto-n3-0252",
     "pattern": "～は～です",
     "level": "N3",
-    "title": "Menjelaskan identitas/topik",
-    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menjelaskan identitas/topik — Variasi konteks 2",
+    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda A + は + B + です",
     "examples": [
       {
@@ -7918,8 +7918,8 @@
     "id": "auto-n2-0253",
     "pattern": "～があります",
     "level": "N2",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -7938,8 +7938,8 @@
     "id": "auto-n1-0254",
     "pattern": "～がいます",
     "level": "N1",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -7958,8 +7958,8 @@
     "id": "auto-n5-0255",
     "pattern": "～をください",
     "level": "N5",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -7978,8 +7978,8 @@
     "id": "auto-n4-0256",
     "pattern": "～てもいいです",
     "level": "N4",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -7998,8 +7998,8 @@
     "id": "auto-n3-0257",
     "pattern": "～てはいけません",
     "level": "N3",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -8018,8 +8018,8 @@
     "id": "auto-n2-0258",
     "pattern": "～たいです",
     "level": "N2",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -8038,8 +8038,8 @@
     "id": "auto-n1-0259",
     "pattern": "～たことがあります",
     "level": "N1",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -8058,8 +8058,8 @@
     "id": "auto-n5-0260",
     "pattern": "～ながら",
     "level": "N5",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -8078,8 +8078,8 @@
     "id": "auto-n4-0261",
     "pattern": "～やすい",
     "level": "N4",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -8098,8 +8098,8 @@
     "id": "auto-n3-0262",
     "pattern": "～にくい",
     "level": "N3",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -8118,8 +8118,8 @@
     "id": "auto-n2-0263",
     "pattern": "～そうです",
     "level": "N2",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -8138,8 +8138,8 @@
     "id": "auto-n1-0264",
     "pattern": "～ようにしています",
     "level": "N1",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -8158,8 +8158,8 @@
     "id": "auto-n5-0265",
     "pattern": "～ばよかった",
     "level": "N5",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -8178,8 +8178,8 @@
     "id": "auto-n4-0266",
     "pattern": "～わけではない",
     "level": "N4",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {
@@ -8198,8 +8198,8 @@
     "id": "auto-n3-0267",
     "pattern": "～に違いない",
     "level": "N3",
-    "title": "Pasti",
-    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pasti — Variasi konteks 2",
+    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + に違いない",
     "examples": [
       {
@@ -8218,8 +8218,8 @@
     "id": "auto-n2-0268",
     "pattern": "～ざるを得ない",
     "level": "N2",
-    "title": "Terpaksa harus",
-    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Terpaksa harus — Variasi konteks 2",
+    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar nai + ざるを得ない",
     "examples": [
       {
@@ -8238,8 +8238,8 @@
     "id": "auto-n1-0269",
     "pattern": "～に伴って",
     "level": "N1",
-    "title": "Seiring dengan",
-    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Seiring dengan — Variasi konteks 2",
+    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda + に伴って",
     "examples": [
       {
@@ -8258,8 +8258,8 @@
     "id": "auto-n5-0270",
     "pattern": "～は～です",
     "level": "N5",
-    "title": "Menjelaskan identitas/topik",
-    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menjelaskan identitas/topik — Variasi konteks 2",
+    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda A + は + B + です",
     "examples": [
       {
@@ -8278,8 +8278,8 @@
     "id": "auto-n4-0271",
     "pattern": "～があります",
     "level": "N4",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -8298,8 +8298,8 @@
     "id": "auto-n3-0272",
     "pattern": "～がいます",
     "level": "N3",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -8318,8 +8318,8 @@
     "id": "auto-n2-0273",
     "pattern": "～をください",
     "level": "N2",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -8338,8 +8338,8 @@
     "id": "auto-n1-0274",
     "pattern": "～てもいいです",
     "level": "N1",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -8358,8 +8358,8 @@
     "id": "auto-n5-0275",
     "pattern": "～てはいけません",
     "level": "N5",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -8378,8 +8378,8 @@
     "id": "auto-n4-0276",
     "pattern": "～たいです",
     "level": "N4",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -8398,8 +8398,8 @@
     "id": "auto-n3-0277",
     "pattern": "～たことがあります",
     "level": "N3",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -8418,8 +8418,8 @@
     "id": "auto-n2-0278",
     "pattern": "～ながら",
     "level": "N2",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -8438,8 +8438,8 @@
     "id": "auto-n1-0279",
     "pattern": "～やすい",
     "level": "N1",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -8458,8 +8458,8 @@
     "id": "auto-n5-0280",
     "pattern": "～にくい",
     "level": "N5",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -8478,8 +8478,8 @@
     "id": "auto-n4-0281",
     "pattern": "～そうです",
     "level": "N4",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -8498,8 +8498,8 @@
     "id": "auto-n3-0282",
     "pattern": "～ようにしています",
     "level": "N3",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -8518,8 +8518,8 @@
     "id": "auto-n2-0283",
     "pattern": "～ばよかった",
     "level": "N2",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -8538,8 +8538,8 @@
     "id": "auto-n1-0284",
     "pattern": "～わけではない",
     "level": "N1",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {
@@ -8558,8 +8558,8 @@
     "id": "auto-n5-0285",
     "pattern": "～に違いない",
     "level": "N5",
-    "title": "Pasti",
-    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pasti — Variasi konteks 2",
+    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + に違いない",
     "examples": [
       {
@@ -8578,8 +8578,8 @@
     "id": "auto-n4-0286",
     "pattern": "～ざるを得ない",
     "level": "N4",
-    "title": "Terpaksa harus",
-    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Terpaksa harus — Variasi konteks 2",
+    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar nai + ざるを得ない",
     "examples": [
       {
@@ -8598,8 +8598,8 @@
     "id": "auto-n3-0287",
     "pattern": "～に伴って",
     "level": "N3",
-    "title": "Seiring dengan",
-    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Seiring dengan — Variasi konteks 2",
+    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda + に伴って",
     "examples": [
       {
@@ -8618,8 +8618,8 @@
     "id": "auto-n2-0288",
     "pattern": "～は～です",
     "level": "N2",
-    "title": "Menjelaskan identitas/topik",
-    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menjelaskan identitas/topik — Variasi konteks 2",
+    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda A + は + B + です",
     "examples": [
       {
@@ -8638,8 +8638,8 @@
     "id": "auto-n1-0289",
     "pattern": "～があります",
     "level": "N1",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -8658,8 +8658,8 @@
     "id": "auto-n5-0290",
     "pattern": "～がいます",
     "level": "N5",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -8678,8 +8678,8 @@
     "id": "auto-n4-0291",
     "pattern": "～をください",
     "level": "N4",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -8698,8 +8698,8 @@
     "id": "auto-n3-0292",
     "pattern": "～てもいいです",
     "level": "N3",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -8718,8 +8718,8 @@
     "id": "auto-n2-0293",
     "pattern": "～てはいけません",
     "level": "N2",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -8738,8 +8738,8 @@
     "id": "auto-n1-0294",
     "pattern": "～たいです",
     "level": "N1",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -8758,8 +8758,8 @@
     "id": "auto-n5-0295",
     "pattern": "～たことがあります",
     "level": "N5",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -8778,8 +8778,8 @@
     "id": "auto-n4-0296",
     "pattern": "～ながら",
     "level": "N4",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -8798,8 +8798,8 @@
     "id": "auto-n3-0297",
     "pattern": "～やすい",
     "level": "N3",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -8818,8 +8818,8 @@
     "id": "auto-n2-0298",
     "pattern": "～にくい",
     "level": "N2",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -8838,8 +8838,8 @@
     "id": "auto-n1-0299",
     "pattern": "～そうです",
     "level": "N1",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -8858,8 +8858,8 @@
     "id": "auto-n5-0300",
     "pattern": "～ようにしています",
     "level": "N5",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -8878,8 +8878,8 @@
     "id": "auto-n4-0301",
     "pattern": "～ばよかった",
     "level": "N4",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -8898,8 +8898,8 @@
     "id": "auto-n3-0302",
     "pattern": "～わけではない",
     "level": "N3",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {
@@ -8918,8 +8918,8 @@
     "id": "auto-n2-0303",
     "pattern": "～に違いない",
     "level": "N2",
-    "title": "Pasti",
-    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pasti — Variasi konteks 2",
+    "explanation": "Pola ～に違いない dipakai untuk pasti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + に違いない",
     "examples": [
       {
@@ -8938,8 +8938,8 @@
     "id": "auto-n1-0304",
     "pattern": "～ざるを得ない",
     "level": "N1",
-    "title": "Terpaksa harus",
-    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Terpaksa harus — Variasi konteks 2",
+    "explanation": "Pola ～ざるを得ない dipakai untuk terpaksa harus. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar nai + ざるを得ない",
     "examples": [
       {
@@ -8958,8 +8958,8 @@
     "id": "auto-n5-0305",
     "pattern": "～に伴って",
     "level": "N5",
-    "title": "Seiring dengan",
-    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Seiring dengan — Variasi konteks 2",
+    "explanation": "Pola ～に伴って dipakai untuk seiring dengan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda + に伴って",
     "examples": [
       {
@@ -8978,8 +8978,8 @@
     "id": "auto-n4-0306",
     "pattern": "～は～です",
     "level": "N4",
-    "title": "Menjelaskan identitas/topik",
-    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menjelaskan identitas/topik — Variasi konteks 2",
+    "explanation": "Pola ～は～です dipakai untuk menjelaskan identitas/topik. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata benda A + は + B + です",
     "examples": [
       {
@@ -8998,8 +8998,8 @@
     "id": "auto-n3-0307",
     "pattern": "～があります",
     "level": "N3",
-    "title": "Menyatakan keberadaan benda",
-    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan benda — Variasi konteks 2",
+    "explanation": "Pola ～があります dipakai untuk menyatakan keberadaan benda. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + benda + があります",
     "examples": [
       {
@@ -9018,8 +9018,8 @@
     "id": "auto-n2-0308",
     "pattern": "～がいます",
     "level": "N2",
-    "title": "Menyatakan keberadaan makhluk hidup",
-    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keberadaan makhluk hidup — Variasi konteks 2",
+    "explanation": "Pola ～がいます dipakai untuk menyatakan keberadaan makhluk hidup. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Tempat + に + orang/hewan + がいます",
     "examples": [
       {
@@ -9038,8 +9038,8 @@
     "id": "auto-n1-0309",
     "pattern": "～をください",
     "level": "N1",
-    "title": "Meminta sesuatu dengan sopan",
-    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta sesuatu dengan sopan — Variasi konteks 2",
+    "explanation": "Pola ～をください dipakai untuk meminta sesuatu dengan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Benda + をください",
     "examples": [
       {
@@ -9058,8 +9058,8 @@
     "id": "auto-n5-0310",
     "pattern": "～てもいいです",
     "level": "N5",
-    "title": "Meminta izin",
-    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Meminta izin — Variasi konteks 2",
+    "explanation": "Pola ～てもいいです dipakai untuk meminta izin. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + もいいです",
     "examples": [
       {
@@ -9078,8 +9078,8 @@
     "id": "auto-n4-0311",
     "pattern": "～てはいけません",
     "level": "N4",
-    "title": "Larangan sopan",
-    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Larangan sopan — Variasi konteks 2",
+    "explanation": "Pola ～てはいけません dipakai untuk larangan sopan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk て + はいけません",
     "examples": [
       {
@@ -9098,8 +9098,8 @@
     "id": "auto-n3-0312",
     "pattern": "～たいです",
     "level": "N3",
-    "title": "Menyatakan keinginan",
-    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Menyatakan keinginan — Variasi konteks 2",
+    "explanation": "Pola ～たいです dipakai untuk menyatakan keinginan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + たいです",
     "examples": [
       {
@@ -9118,8 +9118,8 @@
     "id": "auto-n2-0313",
     "pattern": "～たことがあります",
     "level": "N2",
-    "title": "Pengalaman pernah",
-    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Pengalaman pernah — Variasi konteks 2",
+    "explanation": "Pola ～たことがあります dipakai untuk pengalaman pernah. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk た + ことがあります",
     "examples": [
       {
@@ -9138,8 +9138,8 @@
     "id": "auto-n1-0314",
     "pattern": "～ながら",
     "level": "N1",
-    "title": "Melakukan dua kegiatan bersamaan",
-    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Melakukan dua kegiatan bersamaan — Variasi konteks 2",
+    "explanation": "Pola ～ながら dipakai untuk melakukan dua kegiatan bersamaan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + ながら",
     "examples": [
       {
@@ -9158,8 +9158,8 @@
     "id": "auto-n5-0315",
     "pattern": "～やすい",
     "level": "N5",
-    "title": "Mudah dilakukan",
-    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Mudah dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～やすい dipakai untuk mudah dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + やすい",
     "examples": [
       {
@@ -9178,8 +9178,8 @@
     "id": "auto-n4-0316",
     "pattern": "～にくい",
     "level": "N4",
-    "title": "Sulit dilakukan",
-    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Sulit dilakukan — Variasi konteks 2",
+    "explanation": "Pola ～にくい dipakai untuk sulit dilakukan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Akar masu + にくい",
     "examples": [
       {
@@ -9198,8 +9198,8 @@
     "id": "auto-n3-0317",
     "pattern": "～そうです",
     "level": "N3",
-    "title": "Tampaknya",
-    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Tampaknya — Variasi konteks 2",
+    "explanation": "Pola ～そうです dipakai untuk tampaknya. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kata sifat/akar masu + そうです",
     "examples": [
       {
@@ -9218,8 +9218,8 @@
     "id": "auto-n2-0318",
     "pattern": "～ようにしています",
     "level": "N2",
-    "title": "Membiasakan diri",
-    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Membiasakan diri — Variasi konteks 2",
+    "explanation": "Pola ～ようにしています dipakai untuk membiasakan diri. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk kamus/tidak + ようにしています",
     "examples": [
       {
@@ -9238,8 +9238,8 @@
     "id": "auto-n1-0319",
     "pattern": "～ばよかった",
     "level": "N1",
-    "title": "Penyesalan",
-    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Penyesalan — Variasi konteks 2",
+    "explanation": "Pola ～ばよかった dipakai untuk penyesalan. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Bentuk ba + よかった",
     "examples": [
       {
@@ -9258,8 +9258,8 @@
     "id": "auto-n5-0320",
     "pattern": "～わけではない",
     "level": "N5",
-    "title": "Bukan berarti",
-    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan.",
+    "title": "Bukan berarti — Variasi konteks 2",
+    "explanation": "Pola ～わけではない dipakai untuk bukan berarti. Pelajari bentuknya, lalu ganti kata benda, kata sifat, atau kata kerja sesuai konteks percakapan Gunakan contoh ini untuk melatih pola pada konteks yang berbeda.",
     "formation": "Kalimat biasa + わけではない",
     "examples": [
       {

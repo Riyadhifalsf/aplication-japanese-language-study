@@ -1,4 +1,5 @@
 import '../services/meaning_localizer.dart';
+import '../services/romaji.dart';
 
 enum VocabularyGenderUse { neutral, masculine, feminine, both }
 
@@ -40,6 +41,8 @@ class Vocabulary {
     if (both.contains(word)) return VocabularyGenderUse.both;
     return VocabularyGenderUse.neutral;
   }
+
+  String get romaji => level == 'N5' ? Romaji.toRomaji(reading) : '';
 
   String get genderLabel => switch (genderUse) {
         VocabularyGenderUse.masculine => 'Maskulin · cenderung laki-laki',

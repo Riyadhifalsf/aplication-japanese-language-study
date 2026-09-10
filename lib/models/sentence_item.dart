@@ -1,3 +1,5 @@
+import '../services/romaji.dart';
+
 class SentenceItem {
   const SentenceItem({
     required this.id,
@@ -16,6 +18,8 @@ class SentenceItem {
   final String japanese;
   final String reading;
   final String meaning;
+
+  String get romaji => level == 'N5' ? Romaji.toRomaji(reading) : '';
   final String pattern;
   final String note;
 
