@@ -8,7 +8,6 @@ import '../kanji/kanji_hiragana_quiz_screen.dart';
 import '../kanji/kanji_mastery_quiz_screen.dart';
 import '../kanji/kanji_review_screen.dart';
 import '../kanji/kanji_similar_quiz_screen.dart';
-import '../review/mistake_review_screen.dart';
 import '../games/game_hub_screen.dart';
 
 class QuizCenterScreen extends StatelessWidget {
@@ -95,12 +94,6 @@ class QuizCenterScreen extends StatelessWidget {
               'Latihan menyimak untuk penguasaan JLPT',
               Icons.headphones_rounded,
               () => _open(context, const ChoukaiScreen()),
-            ),
-            _Item(
-              'Ulasan Kesalahan',
-              'Lihat dan ulangi jawaban yang salah',
-              Icons.rate_review_rounded,
-              () => _open(context, const MistakeReviewScreen()),
             ),
             _Item(
               'Games',
