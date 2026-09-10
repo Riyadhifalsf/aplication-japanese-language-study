@@ -1,0 +1,5 @@
+# Shell script harus LF agar bisa jalan di container Linux.
+*.sh text eol=lf
+# Schema + compose stabil lintas OS.
+*.sql text eol=lf
+docker-compose.yml text eol=lf

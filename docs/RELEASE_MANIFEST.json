@@ -1,0 +1,16 @@
+{
+  "version": "1.7.0+8",
+  "curriculum_chapters": {
+    "N5": 24,
+    "N4": 20,
+    "N3": 20,
+    "N2": 20,
+    "N1": 22
+  },
+  "extended_sublesson_count": 6,
+  "canonical_learning_screen": "lib/screens/curriculum/curriculum_path_screen.dart",
+  "legacy_learning_wrapper": "lib/screens/study/learning_path_screen.dart",
+  "backend_runtime": "node:24-alpine",
+  "security_rules": "firestore.rules",
+  "release_audit": "docs/RELEASE_AUDIT.md"
+}

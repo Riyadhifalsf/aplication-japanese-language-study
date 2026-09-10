@@ -1,0 +1,3877 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/admin_models.dart';
+import '../models/app_notification.dart';
+import '../services/hidden_quests.dart';
+import '../models/exam_question.dart';
+import '../features/curriculum/curriculum_catalog.dart';
+import '../features/curriculum/curriculum_engine.dart';
+import '../features/curriculum/curriculum_models.dart';
+import '../features/curriculum/curriculum_store.dart';
+import '../features/learning/data/japanese_curriculum.dart';
+import '../features/learning/domain/learning_engine.dart';
+import '../features/learning/domain/learning_models.dart';
+import '../services/api_service.dart';
+import '../services/app_changelog.dart';
+import '../services/content_repository.dart';
+import '../services/firebase_auth_service.dart';
+import '../services/firebase_bootstrap.dart';
+import '../services/google_drive_backup_service.dart';
+import '../services/notification_service.dart';
+import '../services/home_widget_service.dart';
+import '../services/feature_flags_service.dart';
+import '../services/progress_sync_service.dart';
+import '../services/tts_service.dart';
+
+/// Status auth eksplisit (bukan sekadar boolean).
+///
+/// Unauthenticated = tamu; authenticating = proses login/daftar berjalan;
+/// authenticated = sesi valid; expired = token ditolak server; error = gagal
+/// dengan pesan di [AppController.authError]. `isAuthenticated` tetap
+/// dipertahankan kompatibel untuk UI lama.
+enum AuthStatus {
+  unknown,
+  guest,
+  authenticating,
+  authenticated,
+  expired,
+  error,
+}
+
+/// Tier progresi ala game (pengganti player level berbasis XP yang dihapus).
+/// Dihitung murni dari penguasaan materi + akurasi — tanpa angka XP.
+enum MasteryTier {
+  warrior,
+  elite,
+  master,
+  grandmaster,
+  epic,
+  legend,
+  mythic;
+
+  static MasteryTier fromScore(double score) {
+    if (score >= 0.9) return MasteryTier.mythic;
+    if (score >= 0.75) return MasteryTier.legend;
+    if (score >= 0.6) return MasteryTier.epic;
+    if (score >= 0.45) return MasteryTier.grandmaster;
+    if (score >= 0.3) return MasteryTier.master;
+    if (score >= 0.15) return MasteryTier.elite;
+    return MasteryTier.warrior;
+  }
+
+  String get label => switch (this) {
+        MasteryTier.warrior => 'Warrior',
+        MasteryTier.elite => 'Elite',
+        MasteryTier.master => 'Master',
+        MasteryTier.grandmaster => 'Grandmaster',
+        MasteryTier.epic => 'Epic',
+        MasteryTier.legend => 'Legend',
+        MasteryTier.mythic => 'Mythic',
+      };
+
+  Color get color => switch (this) {
+        MasteryTier.warrior => const Color(0xFF9E9E9E),
+        MasteryTier.elite => const Color(0xFF4FC3F7),
+        MasteryTier.master => const Color(0xFFBA68C8),
+        MasteryTier.grandmaster => const Color(0xFFFFB300),
+        MasteryTier.epic => const Color(0xFFFF5722),
+        MasteryTier.legend => const Color(0xFFFFD700),
+        MasteryTier.mythic => const Color(0xFFE040FB),
+      };
+}
+
+class AppController extends ChangeNotifier {
+  AppController({
+    required this.repository,
+    required this.tts,
+    GoogleDriveBackupService? driveBackup,
+  }) : driveBackup = driveBackup ?? GoogleDriveBackupService();
+
+  final ContentRepository repository;
+  final TtsService tts;
+  final ApiService _api = ApiService();
+  final GoogleDriveBackupService driveBackup;
+  // Lazy agar konstruksi controller tidak crash saat Firebase belum
+  // dikonfigurasi (tes, mode offline). Akses pertama yang butuh Firebase
+  // tetap aman karena seluruh pemakaian dibungkus try/catch.
+  FirebaseAuthService? _firebaseAuth;
+  ProgressSyncService? _syncService;
+
+  FirebaseAuthService get firebaseAuth =>
+      _firebaseAuth ??= FirebaseAuthService();
+  set firebaseAuth(FirebaseAuthService value) => _firebaseAuth = value;
+
+  ProgressSyncService get syncService => _syncService ??= ProgressSyncService();
+  set syncService(ProgressSyncService value) => _syncService = value;
+
+  final ValueNotifier<int> bootstrapRevision = ValueNotifier(0);
+
+  /// UID cloud aktif (Firebase uid). Null = hanya lokal/offline.
+  String? cloudUid;
+
+  /// Status sinkronisasi untuk UI: idle/syncing/offline/error.
+  String syncStatus = 'idle';
+  DateTime? lastSyncAt;
+  String? lastSyncError;
+
+  /// Waktu update per field (epoch-ms) untuk merge LWW yang adil.
+  final Map<String, int> _fieldUpdatedAt = {};
+
+  SharedPreferences? _preferences;
+  Timer? _reviewSaveTimer;
+  bool ready = false;
+  bool contentReady = false;
+  bool darkMode = false;
+  bool furiganaVisible = true;
+  String profileName = 'Tamu';
+  String profileEmail = '';
+  String profilePhotoUrl = '';
+  String profilePhotoData = '';
+  String profileBirthDate = '';
+  String profilePhone = '';
+  String profileBio = '';
+  String profileHandle = '';
+  String profileInstagram = '';
+  String profileYoutube = '';
+  int profileFollowers = 0;
+  int profileFollowing = 0;
+  bool onboardingComplete = false;
+  String studyGoal = 'JLPT';
+  String selfLevel = 'Pemula';
+  int dailyStudyMinutes = 20;
+  String selectedStudyLevel = 'N5';
+  String learningMode = 'Seimbang';
+  String appLanguage = 'id';
+  String ttsGender = 'auto';
+  int reviewIntervalDays = 2;
+  bool googleLinked = false;
+  bool isAuthenticated = false;
+  bool isAdmin = false;
+  String authProvider = '';
+  AuthStatus authStatus = AuthStatus.unknown;
+  String authError = '';
+
+  void _setAuth(AuthStatus status, [String error = '']) {
+    authStatus = status;
+    if (error.isNotEmpty) authError = error;
+    if (status == AuthStatus.authenticated) authError = '';
+  }
+  final Map<String, String> _localAccounts = {};
+  final Map<String, String> _localAccountNames = {};
+  bool isPremium = false;
+  String membershipTier = 'free';
+  String membershipPlan = 'free';
+  DateTime? premiumUntil;
+  final Set<String> unlockedLevels = {'N5'};
+  final Map<String, int> placementBestScores = {};
+  String activeRoadmapStepId = 'n5';
+  bool hasUnreadNotifications = true;
+  final Set<String> unlockedQuests = {};
+  int dailyMasteredKanji = 0;
+  String dailyMasteredDate = '';
+  int dailyActiveSeconds = 0;
+  bool lastQuizPerfect = false;
+  final List<AppNotification> inbox = [];
+  final Set<String> _seenAnnouncementIds = {};
+  bool reviewReminderEnabled = true;
+  int reviewReminderHour = 20;
+  int reviewReminderMinute = 0;
+  String lastReminderDismissDate = '';
+  String lastDriveBackupLabel = 'belum ada';
+  bool driveBackupBusy = false;
+  int streak = 0;
+  int quizCorrect = 0;
+  int quizAnswered = 0;
+  int examPoints = 0;
+  final Map<String, int> examBestScores = {};
+  String lastStudyDate = '';
+  final Set<String> studyDateKeys = {};
+  final Set<int> reviewReminderWeekdays = {1, 2, 3, 4, 5, 6, 7};
+  bool calendarReminderEnabled = false;
+  bool glassTheme = true;
+  String todayKanjiMode = 'adaptive';
+  int todayKanjiPinnedId = 0;
+  DateTime? firstUsedAt;
+  DateTime? sessionStartedAt;
+  int totalActiveSeconds = 0;
+  int sessionCount = 0;
+  final List<Map<String, Object?>> activityJournal = [];
+  final Set<int> learnedKanjiIds = {};
+  final Set<int> masteredKanjiIds = {};
+  final Map<int, int> kanjiMasteryStreaks = {};
+  final Map<int, int> kanjiReviewSteps = {};
+  final Map<int, int> kanjiNextReviewDays = {};
+  final Set<int> favoriteKanjiIds = {};
+  final Set<int> masteredVocabularyIds = {};
+  final Set<String> completedGrammarIds = {};
+  final Set<String> completedLearningStepIds = {};
+  final Set<String> completedPhraseIds = {};
+  final Set<String> completedSentenceIds = {};
+  final Set<String> completedCultureIds = {};
+
+  /// Learning / Curriculum System (Level -> Unit -> Lesson -> Activity).
+  /// Offline-first: disimpan di SharedPreferences lalu di-merge ke Firestore.
+  /// Katalog (curriculum data) ada di CurriculumCatalogData — tidak di-hardcode
+  /// di UI sehingga N5..N1/JFT/SSW bisa ditambah tanpa ubah widget.
+  final Map<String, UserLessonProgress> curriculumProgressById = {};
+  final Map<String, int> curriculumFinalScores = {};
+  String? curriculumActiveLessonId;
+  String curriculumActiveLevelId = 'N5';
+
+  /// Mastery per item kurikulum ('v:313' / 'g:n5-wa' / 'k:42'): -5..+10.
+  /// +1 tiap jawaban benar, -1 tiap salah (dicatat saat latihan/tes
+  /// selesai, tanpa XP agar tidak bisa di-farm). ≥3 = ●, ≥1 = ◑.
+  final Map<String, int> lessonItemMastery = {};
+
+  /// Skor persen terbaik per lesson latihan/tes ('n5-u01-l01' -> 0..100).
+  final Map<String, int> practiceBest = {};
+
+  /// State akademik baru. Terpisah dari statistik lama agar completion,
+  /// mastery, SRS, dan error notebook tidak saling tertukar.
+  final LearningEngine learningEngine =
+      LearningEngine(catalog: JapaneseCurriculum.catalog);
+  Map<String, bool> featureFlags = {};
+
+  static const kanjiMasteryThreshold = 3;
+
+  /// Target belajar harian dalam menit (default 20). Disimpan lokal + sync.
+  /// Pengganti target XP harian yang sudah dihapus.
+  static const defaultDailyStudyMinutes = 20;
+  static const allowedDailyStudyMinutes = [10, 20, 30, 45];
+
+  /// Stopwatch umur proses untuk diagnosis cold start (log [STARTUP]).
+  static final Stopwatch bootWatch = Stopwatch()..start();
+
+  static void logStartup(String mark) {
+    assert(() {
+      debugPrint('[STARTUP] $mark ${bootWatch.elapsedMilliseconds}ms');
+      return true;
+    }());
+  }
+
+  List<int> get kanjiReviewIntervals => [
+        reviewIntervalDays,
+        reviewIntervalDays * 2,
+        reviewIntervalDays * 4,
+        reviewIntervalDays * 8,
+        reviewIntervalDays * 16,
+      ];
+
+  @override
+  void dispose() {
+    _reviewSaveTimer?.cancel();
+    driveBackup.dispose();
+    final sync = _syncService;
+    if (sync != null) unawaited(sync.dispose());
+    unawaited(tts.stop());
+    bootstrapRevision.dispose();
+    super.dispose();
+  }
+
+  Future<void> load() async {
+    try {
+      await _load();
+    } catch (_) {
+      // A corrupt local preference or an unavailable asset must not leave the
+      // user on the startup screen forever. The shell can still open and any
+      // content-dependent screen will remain unavailable until a restart.
+      ready = true;
+      bootstrapRevision.value++;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _load() async {
+    _preferences = await SharedPreferences.getInstance();
+    final prefs = _preferences!;
+    final savedAccounts = prefs.getStringList('localAccounts_v1') ?? const [];
+    _localAccounts.clear();
+    _localAccountNames.clear();
+    for (final raw in savedAccounts) {
+      final parts = raw.split('\u001f');
+      if (parts.length >= 3 && parts[0].trim().isNotEmpty) {
+        final email = parts[0].trim().toLowerCase();
+        final stored = parts[1];
+        _localAccounts[email] = RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(stored)
+            ? stored
+            : _hashPassword(stored);
+        _localAccountNames[email] =
+            parts[2].trim().isEmpty ? email.split('@').first : parts[2].trim();
+      }
+    }
+    darkMode = prefs.getBool('darkMode') ?? false;
+    furiganaVisible = prefs.getBool('furiganaVisible') ?? true;
+    profileName = prefs.getString('profileName') ?? 'Tamu';
+    profileEmail = prefs.getString('profileEmail') ?? '';
+    profilePhotoUrl = prefs.getString('profilePhotoUrl') ?? '';
+    profilePhotoData = prefs.getString('profilePhotoData') ?? '';
+    profileBirthDate = prefs.getString('profileBirthDate') ?? '';
+    profilePhone = prefs.getString('profilePhone') ?? '';
+    profileBio = prefs.getString('profileBio') ?? '';
+    profileHandle = prefs.getString('profileHandle') ?? '';
+    profileInstagram = prefs.getString('profileInstagram') ?? '';
+    profileYoutube = prefs.getString('profileYoutube') ?? '';
+    profileFollowers = prefs.getInt('profileFollowers') ?? 0;
+    profileFollowing = prefs.getInt('profileFollowing') ?? 0;
+    onboardingComplete = prefs.getBool('onboardingComplete') ?? false;
+    studyGoal = prefs.getString('studyGoal') ?? 'JLPT';
+    selfLevel = prefs.getString('selfLevel') ?? 'Pemula';
+    final loadedMinutes =
+        prefs.getInt('dailyStudyMinutes') ?? defaultDailyStudyMinutes;
+    dailyStudyMinutes = allowedDailyStudyMinutes.contains(loadedMinutes)
+        ? loadedMinutes
+        : defaultDailyStudyMinutes;
+    selectedStudyLevel = prefs.getString('selectedStudyLevel') ?? 'N5';
+    learningMode = prefs.getString('learningMode') ?? 'Seimbang';
+    appLanguage = prefs.getString('appLanguage') ?? 'id';
+    ttsGender = prefs.getString('ttsGender') ?? 'auto';
+    reviewIntervalDays =
+        ((prefs.getInt('reviewIntervalDays') ?? 2).clamp(1, 30)).toInt();
+    googleLinked = prefs.getBool('googleLinked') ?? false;
+    isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
+    isAdmin = prefs.getBool('isAdmin') ?? false;
+    authProvider = prefs.getString('authProvider') ?? '';
+    final savedUid = prefs.getString('cloudUid');
+    if (savedUid != null && savedUid.isNotEmpty) cloudUid = savedUid;
+    try {
+      final times =
+          jsonDecode(prefs.getString('progressFieldUpdatedAt') ?? '{}') as Map;
+      _fieldUpdatedAt
+        ..clear()
+        ..addAll(
+            times.map((k, v) => MapEntry('$k', (v as num?)?.toInt() ?? 0)));
+    } catch (_) {}
+    isPremium = prefs.getBool('isPremium') ?? false;
+    membershipPlan =
+        prefs.getString('membershipPlan') ?? (isPremium ? 'premium' : 'free');
+    membershipTier = membershipPlan == 'lifetime' ? 'premium' : membershipPlan;
+    premiumUntil = _readDate(prefs.getString('premiumUntil'));
+    unlockedLevels
+      ..clear()
+      ..addAll(prefs.getStringList('unlockedLevels') ?? const ['N5']);
+    if (!unlockedLevels.contains('N5')) unlockedLevels.add('N5');
+    placementBestScores
+      ..clear()
+      ..addAll(_readStringIntMap('placementBestScores'));
+    isPremium = membershipPlan != 'free' &&
+        (membershipPlan == 'lifetime' ||
+            premiumUntil == null ||
+            premiumUntil!.isAfter(DateTime.now()));
+    activeRoadmapStepId = prefs.getString('activeRoadmapStepId') ?? 'n5';
+    hasUnreadNotifications = prefs.getBool('hasUnreadNotifications') ?? true;
+    unlockedQuests
+      ..clear()
+      ..addAll(prefs.getStringList('unlockedQuests') ?? const []);
+    dailyMasteredKanji = prefs.getInt('dailyMasteredKanji') ?? 0;
+    dailyMasteredDate = prefs.getString('dailyMasteredDate') ?? '';
+    dailyActiveSeconds = prefs.getInt('dailyActiveSeconds') ?? 0;
+    downloadedPacks
+      ..clear()
+      ..addAll(prefs.getStringList('downloadedPacks') ?? const []);
+    try {
+      final raw = jsonDecode(prefs.getString('packSyncedAt') ?? '{}') as Map;
+      packSyncedAt
+        ..clear()
+        ..addAll(raw.map((k, v) => MapEntry('$k', '$v')));
+    } catch (_) {}
+    _seenAnnouncementIds
+      ..clear()
+      ..addAll(prefs.getStringList('seenAnnouncementIds') ?? const []);
+    inbox
+      ..clear()
+      ..addAll(AppNotification.pruneExpired(
+        (prefs.getStringList('inbox_v1') ?? const []).map((raw) {
+          try {
+            return AppNotification.fromJson(
+                Map<String, dynamic>.from(jsonDecode(raw) as Map));
+          } catch (_) {
+            return AppNotification(id: '', title: '', body: '');
+          }
+        }).toList(),
+      ));
+    inbox.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    reviewReminderEnabled = prefs.getBool('reviewReminderEnabled') ?? true;
+    reviewReminderHour = prefs.getInt('reviewReminderHour') ?? 20;
+    reviewReminderMinute = prefs.getInt('reviewReminderMinute') ?? 0;
+    lastReminderDismissDate = prefs.getString('lastReminderDismissDate') ?? '';
+    lastDriveBackupLabel =
+        prefs.getString('lastDriveBackupLabel') ?? 'belum ada';
+    streak = prefs.getInt('streak') ?? 0;
+    quizCorrect = prefs.getInt('quizCorrect') ?? 0;
+    quizAnswered = prefs.getInt('quizAnswered') ?? 0;
+    examPoints = prefs.getInt('examPoints') ?? 0;
+    examBestScores
+      ..clear()
+      ..addAll(_readStringIntMap('examBestScores'));
+    lessonItemMastery
+      ..clear()
+      ..addAll(_readLessonMastery());
+    practiceBest
+      ..clear()
+      ..addAll(_readStringIntMap('practiceBest'));
+    lastStudyDate = prefs.getString('lastStudyDate') ?? '';
+    studyDateKeys.addAll(prefs.getStringList('studyDateKeys') ?? const []);
+    if (lastStudyDate.isNotEmpty) studyDateKeys.add(lastStudyDate);
+    reviewReminderWeekdays
+      ..clear()
+      ..addAll(_readIntSet('reviewReminderWeekdays'));
+    if (reviewReminderWeekdays.isEmpty) {
+      reviewReminderWeekdays.addAll({1, 2, 3, 4, 5, 6, 7});
+    }
+    calendarReminderEnabled = prefs.getBool('calendarReminderEnabled') ?? false;
+    glassTheme = prefs.getBool('glassTheme') ?? true;
+    todayKanjiMode = prefs.getString('todayKanjiMode') ?? 'adaptive';
+    todayKanjiPinnedId = prefs.getInt('todayKanjiPinnedId') ?? 0;
+    featureFlags = await FeatureFlagsService.load();
+    firstUsedAt = _readDate(prefs.getString('firstUsedAt'));
+    totalActiveSeconds = prefs.getInt('totalActiveSeconds') ?? 0;
+    sessionCount = prefs.getInt('sessionCount') ?? 0;
+    _installIdentitySeed = prefs.getString('installIdentitySeed') ?? '';
+    if (_installIdentitySeed.isEmpty) {
+      _installIdentitySeed =
+          '${DateTime.now().microsecondsSinceEpoch}-${profileEmail.hashCode}';
+      await prefs.setString('installIdentitySeed', _installIdentitySeed);
+    }
+    if (firstUsedAt == null) {
+      firstUsedAt = DateTime.now();
+      await prefs.setString('firstUsedAt', firstUsedAt!.toIso8601String());
+    }
+    final rawJournal = prefs.getString('activityJournal_v1');
+    if (rawJournal != null && rawJournal.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawJournal);
+        if (decoded is List) {
+          activityJournal
+            ..clear()
+            ..addAll(decoded
+                .whereType<Map>()
+                .map((e) => Map<String, Object?>.from(e))
+                .take(2000));
+        }
+      } catch (_) {}
+    }
+    learnedKanjiIds.addAll(_readIntSet('learnedKanji'));
+    masteredKanjiIds.addAll(_readIntSet('masteredKanji'));
+    kanjiMasteryStreaks.addAll(_readIntMap('kanjiMasteryStreaks'));
+    kanjiReviewSteps.addAll(_readIntMap('kanjiReviewSteps'));
+    kanjiNextReviewDays.addAll(_readIntMap('kanjiNextReviewDays'));
+    final today = _epochDay(DateTime.now());
+    var reviewScheduleChanged = false;
+    for (final id in masteredKanjiIds) {
+      kanjiMasteryStreaks.remove(id);
+      learnedKanjiIds.add(id);
+      if (!kanjiNextReviewDays.containsKey(id)) {
+        kanjiNextReviewDays[id] = today + kanjiReviewIntervals.first;
+        reviewScheduleChanged = true;
+      }
+    }
+    kanjiReviewSteps.removeWhere((id, _) => !masteredKanjiIds.contains(id));
+    kanjiNextReviewDays.removeWhere((id, _) => !masteredKanjiIds.contains(id));
+    if (reviewScheduleChanged) {
+      _saveReviewSchedule();
+    }
+    favoriteKanjiIds.addAll(_readIntSet('favoriteKanji'));
+    masteredVocabularyIds.addAll(_readIntSet('masteredVocabulary'));
+    completedGrammarIds
+        .addAll(prefs.getStringList('completedGrammar') ?? const []);
+    if (isAuthenticated && authProvider.isEmpty) {
+      authProvider = googleLinked ? 'google' : 'email';
+    }
+    // Pulihkan sesi bila prefs bilang logout tapi Firebase masih login
+    // (mis. install ulang tanpa hapus data Auth / prefs korup).
+    // Firebase init ditunda pasca-frame, jadi restore dicoba di sini DAN
+    // susulan via restoreFirebaseSession() setelah Firebase siap.
+    await restoreFirebaseSession();
+    if (!isAuthenticated && authStatus == AuthStatus.unknown) {
+      _setAuth(AuthStatus.guest);
+    }
+    completedLearningStepIds.addAll(
+      prefs.getStringList('completedLearningSteps') ?? const [],
+    );
+    completedPhraseIds.addAll(
+      prefs.getStringList('completedPhrases') ?? const [],
+    );
+    completedSentenceIds.addAll(
+      prefs.getStringList('completedSentences') ?? const [],
+    );
+    completedCultureIds.addAll(
+      prefs.getStringList('completedCulture') ?? const [],
+    );
+    // Learning progress (offline-first).
+    try {
+      curriculumProgressById
+        ..clear()
+        ..addAll(CurriculumStore.decodeProgress(
+            prefs.getString(CurriculumStore.storageKey)));
+      curriculumFinalScores
+        ..clear()
+        ..addAll(CurriculumStore.decodeScores(
+            prefs.getString(CurriculumStore.finalScoresKey)));
+      curriculumActiveLessonId =
+          prefs.getString(CurriculumStore.activeLessonKey);
+      final savedLevel = prefs.getString(CurriculumStore.activeLevelKey);
+      if (savedLevel != null && savedLevel.isNotEmpty) {
+        curriculumActiveLevelId = savedLevel;
+      } else if ({'N5', 'N4', 'N3', 'N2', 'N1'}.contains(selectedStudyLevel)) {
+        curriculumActiveLevelId = selectedStudyLevel;
+      }
+    } catch (_) {
+      curriculumProgressById.clear();
+      curriculumFinalScores.clear();
+    }
+    try {
+      final rawLearningState = prefs.getString('learningEngineStateV1');
+      if (rawLearningState != null && rawLearningState.isNotEmpty) {
+        learningEngine
+            .restore(LearnerState.fromJson(jsonDecode(rawLearningState)));
+      }
+    } catch (_) {
+      // State learning yang korup tidak boleh menghalangi aplikasi offline.
+      learningEngine.restore(LearnerState());
+    }
+    _refreshDailyCounter();
+
+    // Tampilkan shell aplikasi segera setelah state lokal siap. Dataset besar
+    // dimuat setelah frame pertama agar cold start tidak menunggu JSON.
+    ready = true;
+    startSession();
+    bootstrapRevision.value++;
+    notifyListeners();
+    logStartup('ready-shell');
+
+    repository.onRefreshed = () {
+      bootstrapRevision.value++;
+      notifyListeners();
+    };
+    await repository.load();
+    contentReady = true;
+    bootstrapRevision.value++;
+    notifyListeners();
+    logStartup('content-ready');
+    unawaited(HomeWidgetService.instance
+        .update(streak: streak, kanji: todayKanjiCharacter));
+    unawaited(NotificationService.instance.syncReviewSchedule(
+      enabled: reviewReminderEnabled,
+      hour: reviewReminderHour,
+      minute: reviewReminderMinute,
+      weekdays: reviewReminderWeekdays,
+      dueCount: dueKanjiReviewCount,
+    ));
+    unawaited(checkAppUpdateNotes());
+  }
+
+  /// Progres target belajar harian (0..1) dari menit aktif hari ini.
+  double get dailyProgress {
+    if (dailyStudyMinutes <= 0) return 0;
+    return (dailyActiveMinutes / dailyStudyMinutes).clamp(0.0, 1.0).toDouble();
+  }
+
+  int get dailyActiveMinutes => dailyActiveSeconds ~/ 60;
+
+  /// Ganti target belajar harian (menit). Tidak mereset progres.
+  Future<void> setDailyStudyMinutes(int value) async {
+    if (!allowedDailyStudyMinutes.contains(value)) return;
+    dailyStudyMinutes = value;
+    _preferences?.setInt('dailyStudyMinutes', dailyStudyMinutes);
+    markProgressDirty(const ['dailyStudyMinutes']);
+    notifyListeners();
+  }
+
+  /// Skor mastery keseluruhan 0..1: 70% rata-rata mastery JLPT + 30% akurasi.
+  double get overallMasteryScore {
+    const levels = ['N5', 'N4', 'N3', 'N2', 'N1'];
+    var sum = 0.0;
+    for (final level in levels) {
+      sum += levelOverallMastery(level).clamp(0.0, 1.0);
+    }
+    return (sum / levels.length * 0.7 + quizAccuracy * 0.3)
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
+
+  /// Tier ala game (pengganti player level berbasis XP yang dihapus).
+  MasteryTier get masteryTier => MasteryTier.fromScore(overallMasteryScore);
+  double get quizAccuracy => quizAnswered == 0 ? 0 : quizCorrect / quizAnswered;
+
+  int get learnedVocabularyCount => masteredVocabularyIds.length;
+  int get learnedGrammarCount => completedGrammarIds.length;
+  int get learnedKanjiCount => learnedKanjiIds.length;
+  int get masteredKanjiCount => masteredKanjiIds.length;
+  String get languageLabel =>
+      appLanguage == 'en' ? 'English' : 'Bahasa Indonesia';
+  String get greeting {
+    final h = DateTime.now().hour;
+    if (h >= 5 && h < 17) return 'Konnichiwa';
+    return 'Konbanwa';
+  }
+
+  String get homeGreeting {
+    final h = DateTime.now().hour;
+    if (h >= 5 && h < 12) return 'Okaerinasai';
+    if (h >= 12 && h < 18) return 'Irasshaimase';
+    return 'Konbanwa';
+  }
+
+  /// Nama yang disapa di beranda: tamu (belum login) dipanggil Okyaku-sama.
+  String get homeDisplayName {
+    if (!isAuthenticated) return 'Okyaku-sama';
+    final name = profileName.trim();
+    return name.isEmpty ? 'Tamu' : name;
+  }
+
+  bool get hasNeverStudiedJapanese =>
+      learnedKanjiIds.isEmpty &&
+      masteredVocabularyIds.isEmpty &&
+      completedGrammarIds.isEmpty &&
+      completedLearningStepIds.isEmpty &&
+      quizAnswered == 0;
+
+  String adaptiveReading({required String reading, required String level}) {
+    if (reading.isEmpty) return '';
+    if (hasNeverStudiedJapanese) return _toRomaji(reading);
+    return level == 'N5' ? reading : '';
+  }
+
+  bool featureEnabled(String key) => featureFlags[key] ?? false;
+  bool get communityEnabled => featureEnabled(FeatureFlagsService.community);
+  bool get followersEnabled => featureEnabled(FeatureFlagsService.followers);
+  bool get commentsEnabled => featureEnabled(FeatureFlagsService.comments);
+
+  Future<void> setFeatureFlag(String key, bool enabled) async {
+    await FeatureFlagsService.set(key, enabled);
+    featureFlags[key] = enabled;
+    notifyListeners();
+  }
+
+  Future<void> reloadFeatureFlags() async {
+    featureFlags = await FeatureFlagsService.load();
+    notifyListeners();
+  }
+
+  String _toRomaji(String input) {
+    const map = {
+      'あ': 'a',
+      'い': 'i',
+      'う': 'u',
+      'え': 'e',
+      'お': 'o',
+      'か': 'ka',
+      'き': 'ki',
+      'く': 'ku',
+      'け': 'ke',
+      'こ': 'ko',
+      'さ': 'sa',
+      'し': 'shi',
+      'す': 'su',
+      'せ': 'se',
+      'そ': 'so',
+      'た': 'ta',
+      'ち': 'chi',
+      'つ': 'tsu',
+      'て': 'te',
+      'と': 'to',
+      'な': 'na',
+      'に': 'ni',
+      'ぬ': 'nu',
+      'ね': 'ne',
+      'の': 'no',
+      'は': 'ha',
+      'ひ': 'hi',
+      'ふ': 'fu',
+      'へ': 'he',
+      'ほ': 'ho',
+      'ま': 'ma',
+      'み': 'mi',
+      'む': 'mu',
+      'め': 'me',
+      'も': 'mo',
+      'や': 'ya',
+      'ゆ': 'yu',
+      'よ': 'yo',
+      'ら': 'ra',
+      'り': 'ri',
+      'る': 'ru',
+      'れ': 're',
+      'ろ': 'ro',
+      'わ': 'wa',
+      'を': 'wo',
+      'ん': 'n',
+      'が': 'ga',
+      'ぎ': 'gi',
+      'ぐ': 'gu',
+      'げ': 'ge',
+      'ご': 'go',
+      'ざ': 'za',
+      'じ': 'ji',
+      'ず': 'zu',
+      'ぜ': 'ze',
+      'ぞ': 'zo',
+      'だ': 'da',
+      'ぢ': 'ji',
+      'づ': 'zu',
+      'で': 'de',
+      'ど': 'do',
+      'ば': 'ba',
+      'び': 'bi',
+      'ぶ': 'bu',
+      'べ': 'be',
+      'ぼ': 'bo',
+      'ぱ': 'pa',
+      'ぴ': 'pi',
+      'ぷ': 'pu',
+      'ぺ': 'pe',
+      'ぽ': 'po',
+      'ゃ': 'ya',
+      'ゅ': 'yu',
+      'ょ': 'yo',
+      'っ': '',
+      'ー': '-',
+    };
+    final pairs = <String, String>{
+      'きゃ': 'kya',
+      'きゅ': 'kyu',
+      'きょ': 'kyo',
+      'しゃ': 'sha',
+      'しゅ': 'shu',
+      'しょ': 'sho',
+      'ちゃ': 'cha',
+      'ちゅ': 'chu',
+      'ちょ': 'cho',
+      'にゃ': 'nya',
+      'にゅ': 'nyu',
+      'にょ': 'nyo',
+      'ひゃ': 'hya',
+      'ひゅ': 'hyu',
+      'ひょ': 'hyo',
+      'みゃ': 'mya',
+      'みゅ': 'myu',
+      'みょ': 'myo',
+      'りゃ': 'rya',
+      'りゅ': 'ryu',
+      'りょ': 'ryo',
+      'ぎゃ': 'gya',
+      'ぎゅ': 'gyu',
+      'ぎょ': 'gyo',
+      'じゃ': 'ja',
+      'じゅ': 'ju',
+      'じょ': 'jo',
+      'びゃ': 'bya',
+      'びゅ': 'byu',
+      'びょ': 'byo',
+      'ぴゃ': 'pya',
+      'ぴゅ': 'pyu',
+      'ぴょ': 'pyo'
+    };
+    var out = '';
+    for (var i = 0; i < input.length; i++) {
+      if (i + 1 < input.length &&
+          pairs.containsKey(input.substring(i, i + 2))) {
+        out += pairs[input.substring(i, i + 2)]!;
+        i++;
+        continue;
+      }
+      final c = input[i];
+      if (c == 'っ' && i + 1 < input.length) {
+        final next = map[input[i + 1]] ?? '';
+        if (next.isNotEmpty) out += next[0];
+        continue;
+      }
+      out += map[c] ?? c;
+    }
+    return out;
+  }
+
+  int get activeDays => studyDateKeys.length;
+  int get totalActiveMinutes => totalActiveSeconds ~/ 60;
+  String _installIdentitySeed = '';
+  int get overallMasteryPoints =>
+      learnedKanjiCount +
+      learnedVocabularyCount +
+      learnedGrammarCount +
+      completedLearningStepIds.length;
+  double levelOverallMastery(String level) {
+    final order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+    final index = order.indexOf(level);
+    if (index < 0) return 0;
+    final stepPrefix = 'path-${level.toLowerCase()}-';
+    final doneSteps = completedLearningStepIds
+        .where((id) => id.startsWith(stepPrefix))
+        .length;
+    final totalSteps =
+        const {'N5': 25, 'N4': 25, 'N3': 20, 'N2': 15, 'N1': 14}[level] ?? 1;
+    final kanjiPool = repository.kanji.where((k) => k.level == level).length;
+    final vocabPool =
+        repository.vocabulary.where((v) => v.level == level).length;
+    final grammarPool = repository.grammar.length.clamp(1, 100000);
+    final kp = kanjiPool == 0
+        ? 0.0
+        : masteredKanjiIds
+                .where((id) => repository.kanjiById(id)?.level == level)
+                .length /
+            kanjiPool;
+    final vp = vocabPool == 0
+        ? 0.0
+        : masteredVocabularyIds
+                .where((id) => repository.vocabularyById(id)?.level == level)
+                .length /
+            vocabPool;
+    final gp =
+        (completedGrammarIds.length / grammarPool).clamp(0.0, 1.0).toDouble();
+    final sp = (doneSteps / totalSteps).clamp(0.0, 1.0).toDouble();
+    return (kp * .25 + vp * .25 + gp * .20 + sp * .30)
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
+
+  int? get todayKanjiId {
+    final candidates = switch (todayKanjiMode) {
+      'favorites' => favoriteKanjiIds.toList(),
+      'due' => dueKanjiReviewIds,
+      'manual' => todayKanjiPinnedId > 0 ? [todayKanjiPinnedId] : <int>[],
+      _ => learnedKanjiIds.toList(),
+    };
+    final source = candidates.isNotEmpty
+        ? candidates
+        : repository.kanji
+            .where((k) => isLevelUnlocked(k.level))
+            .map((k) => k.id)
+            .toList();
+    if (source.isEmpty) return null;
+    source.sort();
+    final daySeed = _epochDay(DateTime.now());
+    return source[daySeed % source.length];
+  }
+
+  String get todayKanjiCharacter =>
+      repository.kanjiById(todayKanjiId ?? -1)?.character ?? '日';
+
+  /// Semua fitur terbuka: tidak ada paywall, tidak ada gate.
+  /// Satu-satunya urutan yang tersisa adalah pedagogis
+  /// (ditangani CurriculumEngine, bukan di sini).
+  bool canAccessFeature(String feature) => true;
+
+  /// Akun dianggap terverifikasi bila login via Google atau emailnya
+  /// sudah diverifikasi Firebase. Tamu tidak pernah terverifikasi.
+  bool get isAccountVerified {
+    if (!isAuthenticated) return false;
+    if (authProvider == 'google' || googleLinked) return true;
+    try {
+      return firebaseAuth.currentUser?.emailVerified ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Tamu boleh melihat + mencoba fitur dalam mode pratinjau terbatas
+  /// (kuis dibatasi [guestPreviewSessionSize] soal per sesi).
+  bool get isGuestPreview => !isAuthenticated;
+  static const int guestPreviewSessionSize = 5;
+
+  /// Murni (pure) agar mudah dites.
+  static int previewSessionSize(bool isGuest, int full) =>
+      isGuest && full > guestPreviewSessionSize
+          ? guestPreviewSessionSize
+          : full;
+
+  int cappedSessionSize(int full) => previewSessionSize(isGuestPreview, full);
+
+  String get reviewReminderTimeLabel =>
+      '${reviewReminderHour.toString().padLeft(2, '0')}:'
+      '${reviewReminderMinute.toString().padLeft(2, '0')}';
+
+  String get reviewReminderDaysLabel {
+    const labels = {
+      1: 'Sen',
+      2: 'Sel',
+      3: 'Rab',
+      4: 'Kam',
+      5: 'Jum',
+      6: 'Sab',
+      7: 'Min',
+    };
+    if (reviewReminderWeekdays.length == 7) return 'Setiap hari';
+    final ordered = reviewReminderWeekdays.toList()..sort();
+    return ordered.map((day) => labels[day] ?? '$day').join(', ');
+  }
+
+  String get streakTierName {
+    if (streak >= 100) return 'Kokuen';
+    if (streak >= 50) return 'Kurohonoo';
+    if (streak >= 30) return 'Murasaki';
+    if (streak >= 20) return 'Aka';
+    if (streak >= 10) return 'Ooki Honoo';
+    if (streak >= 7) return 'Atsui';
+    if (streak >= 3) return 'Nukumori';
+    if (streak >= 1) return 'Tomoshibi';
+    return 'Hi no tane';
+  }
+
+  int get streakFlameStage {
+    if (streak >= 100) return 7;
+    if (streak >= 50) return 6;
+    if (streak >= 30) return 5;
+    if (streak >= 20) return 4;
+    if (streak >= 10) return 3;
+    if (streak >= 7) return 2;
+    if (streak >= 1) return 1;
+    return 0;
+  }
+
+  bool hasStudyOnDate(DateTime date) => studyDateKeys.contains(_dateKey(date));
+
+  bool get shouldShowInAppReviewReminder {
+    if (!reviewReminderEnabled || dueKanjiReviewCount <= 0) return false;
+    final now = DateTime.now();
+    if (!reviewReminderWeekdays.contains(now.weekday)) return false;
+    final today = _dateKey(now);
+    if (lastReminderDismissDate == today) return false;
+    final reminderMoment = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      reviewReminderHour,
+      reviewReminderMinute,
+    );
+    return !now.isBefore(reminderMoment);
+  }
+
+  void toggleGlassTheme() {
+    glassTheme = !glassTheme;
+    _preferences?.setBool('glassTheme', glassTheme);
+    notifyListeners();
+  }
+
+  void setTodayKanjiMode(String mode, {int? pinnedId}) {
+    if (!{'adaptive', 'favorites', 'due', 'manual'}.contains(mode)) return;
+    todayKanjiMode = mode;
+    if (pinnedId != null) todayKanjiPinnedId = pinnedId;
+    _preferences?.setString('todayKanjiMode', todayKanjiMode);
+    _preferences?.setInt('todayKanjiPinnedId', todayKanjiPinnedId);
+    notifyListeners();
+  }
+
+  void startSession() {
+    if (sessionStartedAt != null) return;
+    sessionStartedAt = DateTime.now();
+    sessionCount++;
+    _preferences?.setInt('sessionCount', sessionCount);
+    recordActivity('session_started', 'Sesi belajar dimulai');
+  }
+
+  void endSession() {
+    final started = sessionStartedAt;
+    if (started == null) return;
+    final seconds =
+        DateTime.now().difference(started).inSeconds.clamp(0, 86400).toInt();
+    totalActiveSeconds += seconds;
+    dailyActiveSeconds += seconds;
+    sessionStartedAt = null;
+    _preferences?.setInt('totalActiveSeconds', totalActiveSeconds);
+    _preferences?.setInt('dailyActiveSeconds', dailyActiveSeconds);
+    recordActivity(
+        'session_ended', 'Sesi belajar selesai (${seconds ~/ 60} menit)');
+  }
+
+  void recordActivity(String type, String label,
+      {Map<String, Object?> meta = const {}}) {
+    activityJournal.add({
+      'at': DateTime.now().toIso8601String(),
+      'type': type,
+      'label': label,
+      'meta': meta,
+    });
+    if (activityJournal.length > 2000) {
+      activityJournal.removeRange(0, activityJournal.length - 2000);
+    }
+    _preferences?.setString('activityJournal_v1', jsonEncode(activityJournal));
+  }
+
+  void markFeatureRelease(String title, String details) {
+    recordActivity('feature_release', title, meta: {'details': details});
+    NotificationService.instance.showFeatureRelease(title, details);
+  }
+
+  void toggleTheme() {
+    darkMode = !darkMode;
+    _preferences?.setBool('darkMode', darkMode);
+    bootstrapRevision.value++;
+    notifyListeners();
+  }
+
+  void toggleFurigana() {
+    furiganaVisible = !furiganaVisible;
+    _preferences?.setBool('furiganaVisible', furiganaVisible);
+    notifyListeners();
+  }
+
+  void updateProfileName(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return;
+    profileName = trimmed;
+    _preferences?.setString('profileName', profileName);
+    notifyListeners();
+  }
+
+  Future<void> completeOnboarding({
+    required String goal,
+    required String level,
+    required int minutes,
+    required String targetLevel,
+  }) async {
+    studyGoal = goal;
+    selfLevel = level;
+    dailyStudyMinutes = minutes;
+    selectedStudyLevel = targetLevel;
+    onboardingComplete = true;
+    await Future.wait([
+      _preferences?.setString('studyGoal', studyGoal) ?? Future.value(false),
+      _preferences?.setString('selfLevel', selfLevel) ?? Future.value(false),
+      _preferences?.setInt('dailyStudyMinutes', dailyStudyMinutes) ??
+          Future.value(false),
+      _preferences?.setString('selectedStudyLevel', selectedStudyLevel) ??
+          Future.value(false),
+      _preferences?.setBool('onboardingComplete', true) ?? Future.value(false),
+    ]);
+    notifyListeners();
+  }
+
+  void setSelectedStudyLevel(String level) {
+    const allowed = {'N5', 'N4', 'N3', 'N2', 'N1', 'JFT'};
+    if (!allowed.contains(level)) return;
+    selectedStudyLevel = level;
+    _preferences?.setString('selectedStudyLevel', level);
+    notifyListeners();
+  }
+
+  void setLearningMode(String mode) {
+    learningMode = mode;
+    _preferences?.setString('learningMode', mode);
+    notifyListeners();
+  }
+
+  void setAppLanguage(String value) {
+    if (value != 'id' && value != 'en') return;
+    appLanguage = value;
+    _preferences?.setString('appLanguage', value);
+    notifyListeners();
+  }
+
+  void setTtsGender(String value) {
+    if (!{'auto', 'female', 'male'}.contains(value)) return;
+    ttsGender = value;
+    _preferences?.setString('ttsGender', value);
+    tts.setGender(value);
+    notifyListeners();
+  }
+
+  void setReviewIntervalDays(int days) {
+    reviewIntervalDays = days.clamp(1, 30).toInt();
+    _preferences?.setInt('reviewIntervalDays', reviewIntervalDays);
+    _saveReviewSchedule();
+    notifyListeners();
+  }
+
+  void updateProfilePhotoData(String dataUrl) {
+    profilePhotoData = dataUrl;
+    profilePhotoUrl = '';
+    _preferences?.setString('profilePhotoData', profilePhotoData);
+    _preferences?.remove('profilePhotoUrl');
+    notifyListeners();
+  }
+
+  void updateProfile({
+    String? name,
+    String? email,
+    String? photoUrl,
+    String? birthDate,
+    String? phone,
+    String? bio,
+    String? handle,
+    String? instagram,
+    String? youtube,
+    int? followers,
+    int? following,
+  }) {
+    final nextName = name?.trim();
+    final nextEmail = email?.trim();
+    final nextPhoto = photoUrl?.trim();
+    if (nextName != null && nextName.isNotEmpty) {
+      profileName = nextName;
+      _preferences?.setString('profileName', profileName);
+    }
+    if (nextEmail != null) {
+      profileEmail = nextEmail;
+      _preferences?.setString('profileEmail', profileEmail);
+    }
+    if (nextPhoto != null) {
+      profilePhotoUrl = nextPhoto;
+      _preferences?.setString('profilePhotoUrl', profilePhotoUrl);
+    }
+    if (birthDate != null) {
+      profileBirthDate = birthDate.trim();
+      _preferences?.setString('profileBirthDate', profileBirthDate);
+    }
+    if (phone != null) {
+      profilePhone = phone.trim();
+      _preferences?.setString('profilePhone', profilePhone);
+    }
+    if (bio != null) {
+      profileBio = bio.trim();
+      _preferences?.setString('profileBio', profileBio);
+    }
+    if (handle != null) {
+      profileHandle = handle.trim();
+      _preferences?.setString('profileHandle', profileHandle);
+    }
+    if (instagram != null) {
+      profileInstagram = instagram.trim();
+      _preferences?.setString('profileInstagram', profileInstagram);
+    }
+    if (youtube != null) {
+      profileYoutube = youtube.trim();
+      _preferences?.setString('profileYoutube', profileYoutube);
+    }
+    if (followers != null) {
+      profileFollowers = followers.clamp(0, 1000000000);
+      _preferences?.setInt('profileFollowers', profileFollowers);
+    }
+    if (following != null) {
+      profileFollowing = following.clamp(0, 1000000000);
+      _preferences?.setInt('profileFollowing', profileFollowing);
+    }
+    notifyListeners();
+  }
+
+  /// Login Google via Firebase (benerin auth). Fallback ke profil Drive
+  /// lokal bila Firebase belum dikonfigurasi agar tetap bisa offline.
+  /// Pulihkan sesi Firebase secara eksplisit. Aman dipanggil kapan saja
+  /// (termasuk sebelum Firebase siap — gagal diam-diam, coba lagi nanti).
+  /// Mengembalikan true bila ada sesi yang dipulihkan.
+  Future<bool> restoreFirebaseSession() async {
+    if (isAuthenticated) return false;
+    try {
+      final fbUser = firebaseAuth.currentUser;
+      if (fbUser == null) return false;
+      cloudUid = fbUser.uid;
+      isAuthenticated = true;
+      if (profileEmail.isEmpty) profileEmail = fbUser.email ?? '';
+      final fbName = (fbUser.displayName ?? '').trim();
+      if (profileName.trim().isEmpty || profileName == 'Tamu') {
+        profileName = fbName.isEmpty
+            ? (profileEmail.contains('@')
+                ? profileEmail.split('@').first
+                : 'Tamu')
+            : fbName;
+      }
+      final providers = fbUser.providerData.map((p) => p.providerId).toSet();
+      googleLinked = providers.contains('google.com');
+      authProvider = googleLinked ? 'google' : 'email';
+      await _saveAuthPrefs();
+      await _persistCloudUid();
+      _setAuth(AuthStatus.authenticated);
+      notifyListeners();
+      unawaited(syncNow());
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Pesan error login Google terakhir (untuk ditampilkan di UI).
+  String? lastAuthError;
+
+  Future<bool> signInWithGoogle() async {
+    lastAuthError = null;
+    try {
+      final result = await firebaseAuth.signInWithGoogle();
+      cloudUid = result.uid;
+      googleLinked = true;
+      profileName = result.displayName.trim().isEmpty
+          ? profileName
+          : result.displayName.trim();
+      profileEmail = result.email.trim();
+      profilePhotoUrl = result.photoUrl.trim();
+      // Tukar Firebase idToken jadi JWT backend (kalau server terjangkau).
+      try {
+        if (result.idToken.isNotEmpty) {
+          await _api.loginWithGoogle(idToken: result.idToken);
+        }
+      } catch (_) {
+        // Offline / server mati: sesi Firebase lokal tetap valid.
+      }
+      await Future.wait([
+        _preferences?.setBool('googleLinked', true) ?? Future.value(false),
+        _preferences?.setString('profileName', profileName) ??
+            Future.value(false),
+        _preferences?.setString('profileEmail', profileEmail) ??
+            Future.value(false),
+        _preferences?.setString('profilePhotoUrl', profilePhotoUrl) ??
+            Future.value(false),
+        _preferences?.setString('cloudUid', cloudUid ?? '') ??
+            Future.value(false),
+      ]);
+      notifyListeners();
+      unawaited(syncNow());
+      return true;
+    } catch (e) {
+      lastAuthError = '$e'.replaceFirst('Exception: ', '').trim().isEmpty
+          ? 'Login Google gagal. Coba lagi.'
+          : '$e'.replaceFirst('Exception: ', '');
+      // Fallback lama: hanya profil Drive lokal (offline).
+      try {
+        final profile = await driveBackup.signIn();
+        if (profile == null) return false;
+        lastAuthError = null;
+        googleLinked = true;
+        profileName =
+            profile.name.trim().isEmpty ? profileName : profile.name.trim();
+        profileEmail = profile.email.trim();
+        profilePhotoUrl = profile.photoUrl.trim();
+        await Future.wait([
+          _preferences?.setBool('googleLinked', true) ?? Future.value(false),
+          _preferences?.setString('profileName', profileName) ??
+              Future.value(false),
+          _preferences?.setString('profileEmail', profileEmail) ??
+              Future.value(false),
+          _preferences?.setString('profilePhotoUrl', profilePhotoUrl) ??
+              Future.value(false),
+        ]);
+        notifyListeners();
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
+  Future<void> disconnectGoogleProfile() async {
+    try {
+      await firebaseAuth.signOut();
+    } catch (_) {}
+    await driveBackup.signOut();
+    googleLinked = false;
+    _preferences?.setBool('googleLinked', false);
+    notifyListeners();
+  }
+
+  /// Phase 1: seluruh konten gratis. Struktur membership dipertahankan
+  /// internal untuk future development, tetapi tidak memblokir konten.
+  /// Selalu true agar tidak ada paywall.
+  bool get hasFullAccess => true;
+
+  /// Level mengikuti checkpoint/placement yang tersimpan. Lesson di dalam
+  /// level aktif tetap bebas dilompati.
+  bool isLevelUnlocked(String level) => unlockedLevels.contains(level);
+
+  void unlockLevel(String level) {
+    if (['N5', 'N4', 'N3', 'N2', 'N1'].contains(level)) {
+      unlockedLevels.add(level);
+      _preferences?.setStringList('unlockedLevels', unlockedLevels.toList());
+      markProgressDirty(const ['unlockedLevels']);
+      notifyListeners();
+    }
+  }
+
+  String? requiredPreviousLevel(String level) {
+    const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+    final i = order.indexOf(level);
+    return i <= 0 ? null : order[i - 1];
+  }
+
+  bool canUnlockNextLevel(String level) {
+    const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+    final i = order.indexOf(level);
+    if (i < 0 || i == order.length - 1) return false;
+    final completed =
+        completedLearningStepIds.contains('level-${level.toLowerCase()}-final');
+    return completed || (placementBestScores[level] ?? 0) >= 80;
+  }
+
+  void recordPlacement(String level, int score) {
+    final best = placementBestScores[level] ?? 0;
+    if (score > best) placementBestScores[level] = score;
+    if (score >= 80) {
+      const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+      final i = order.indexOf(level);
+      if (i >= 0 && i < order.length - 1) unlockedLevels.add(order[i + 1]);
+    }
+    _preferences?.setStringList('unlockedLevels', unlockedLevels.toList());
+    _preferences?.setString(
+        'placementBestScores', jsonEncode(placementBestScores));
+    markProgressDirty(const ['unlockedLevels', 'placementBestScores']);
+    notifyListeners();
+  }
+
+  String _hashPassword(String password) =>
+      sha256.convert(utf8.encode(password)).toString();
+
+  Future<void> _persistLocalAccounts(SharedPreferences prefs) async {
+    final emails = _localAccounts.keys.toList()..sort();
+    final values = [
+      for (final email in emails)
+        [
+          email,
+          _localAccounts[email] ?? '',
+          _localAccountNames[email] ?? email.split('@').first
+        ].join('\u001f'),
+    ];
+    await prefs.setStringList('localAccounts_v1', values);
+  }
+
+  Future<String?> registerUser({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedName = name.trim();
+    if (normalizedName.length < 2) return 'Nama minimal 2 karakter.';
+    if (!normalizedEmail.contains('@') || !normalizedEmail.contains('.'))
+      return 'Format email tidak valid.';
+    if (password.length < 8) return 'Password minimal 8 karakter.';
+    _setAuth(AuthStatus.authenticating);
+
+    // 1. Firebase (backend utama) bila sudah dikonfigurasi.
+    if (FirebaseBootstrap.isAvailable) {
+      try {
+        final fb = await firebaseAuth.signUpWithEmail(
+          name: normalizedName,
+          email: normalizedEmail,
+          password: password,
+        );
+        cloudUid = fb.uid;
+        isAuthenticated = true;
+        isAdmin = false;
+        authProvider = 'email';
+        profileEmail = fb.email;
+        profileName = fb.displayName;
+        await _saveAuthPrefs();
+        await _persistCloudUid();
+        _setAuth(AuthStatus.authenticated);
+        notifyListeners();
+        unawaited(syncNow());
+        return null;
+      } on FirebaseAuthFailure catch (e) {
+        // Hanya vonis gagal bila kredensialnya yang salah. Gangguan
+        // jaringan / Firebase belum dikonfigurasi -> coba backend.
+        if (!e.isNetworkError && !e.isConfigError) return e.message;
+      } catch (_) {
+        // Lanjut ke fallback di bawah.
+      }
+    }
+
+    try {
+      final result = await _api.register(
+        name: normalizedName,
+        email: normalizedEmail,
+        password: password,
+      );
+      final user =
+          Map<String, dynamic>.from(result['user'] as Map? ?? const {});
+      isAuthenticated = true;
+      isAdmin = (user['role'] ?? 'user').toString() == 'admin';
+      authProvider = 'email';
+      profileEmail = (user['email'] ?? normalizedEmail).toString();
+      profileName = (user['display_name'] ?? normalizedName).toString();
+      await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
+      notifyListeners();
+      unawaited(refreshEntitlements());
+      return null;
+    } on ApiException catch (e) {
+      _setAuth(AuthStatus.error,
+          e.message.isNotEmpty ? e.message : 'Pendaftaran gagal.');
+      return e.message.isNotEmpty ? e.message : 'Pendaftaran gagal.';
+    } catch (_) {
+      // Server tidak terjangkau: daftar di penyimpanan lokal (offline).
+      if (_localAccounts.containsKey(normalizedEmail)) {
+        _setAuth(AuthStatus.error, 'Email sudah terdaftar.');
+        return 'Email sudah terdaftar.';
+      }
+      _localAccounts[normalizedEmail] = _hashPassword(password);
+      _localAccountNames[normalizedEmail] = normalizedName;
+      final prefs = _preferences ?? await SharedPreferences.getInstance();
+      _preferences ??= prefs;
+      await _persistLocalAccounts(prefs);
+      isAuthenticated = true;
+      isAdmin = false;
+      authProvider = 'email';
+      profileEmail = normalizedEmail;
+      profileName = normalizedName;
+      await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<String?> loginWithEmail(String email, String password) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty || password.isEmpty)
+      return 'Email dan password wajib diisi.';
+    _setAuth(AuthStatus.authenticating);
+
+    // 1. Firebase (backend utama) bila sudah dikonfigurasi.
+    if (FirebaseBootstrap.isAvailable) {
+      try {
+        final fb = await firebaseAuth.signInWithEmail(
+          email: normalizedEmail,
+          password: password,
+        );
+        cloudUid = fb.uid;
+        isAuthenticated = true;
+        isAdmin = false;
+        authProvider = 'email';
+        googleLinked = false;
+        profileEmail = fb.email;
+        profileName = fb.displayName;
+        await _saveAuthPrefs();
+        await _persistCloudUid();
+        _setAuth(AuthStatus.authenticated);
+        notifyListeners();
+        unawaited(syncNow());
+        return null;
+      } on FirebaseAuthFailure catch (e) {
+        // Hanya vonis gagal bila kredensialnya yang salah. Gangguan
+        // jaringan / Firebase belum dikonfigurasi -> coba backend.
+        if (!e.isNetworkError && !e.isConfigError) {
+          _setAuth(AuthStatus.error, e.message);
+          return e.message;
+        }
+      } catch (_) {
+        // Lanjut ke fallback di bawah.
+      }
+    }
+
+    try {
+      final result = await _api.login(
+        email: normalizedEmail,
+        password: password,
+      );
+      final user =
+          Map<String, dynamic>.from(result['user'] as Map? ?? const {});
+      isAuthenticated = true;
+      isAdmin = (user['role'] ?? 'user').toString() == 'admin';
+      authProvider = 'email';
+      googleLinked = false;
+      profileEmail = (user['email'] ?? normalizedEmail).toString();
+      profileName =
+          (user['display_name'] ?? user['email'] ?? normalizedEmail).toString();
+      await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
+      notifyListeners();
+      unawaited(refreshEntitlements());
+      return null;
+    } on ApiException catch (e) {
+      // Server merespons: pesan dari server bersifat otoritatif.
+      _setAuth(AuthStatus.error,
+          e.message.isNotEmpty ? e.message : 'Login gagal.');
+      return e.message.isNotEmpty ? e.message : 'Login gagal.';
+    } catch (_) {
+      // Server tidak terjangkau: verifikasi akun lokal (mode offline).
+      final registeredPassword = _localAccounts[normalizedEmail];
+      final passwordHash = _hashPassword(password);
+      if (registeredPassword == null || registeredPassword != passwordHash) {
+        _setAuth(AuthStatus.error, 'Email atau password salah.');
+        return 'Email atau password salah. (mode offline)';
+      }
+      isAuthenticated = true;
+      isAdmin = false;
+      authProvider = 'email';
+      googleLinked = false;
+      profileEmail = normalizedEmail;
+      profileName = _localAccountNames[normalizedEmail] ??
+          normalizedEmail.split('@').first;
+      await _saveAuthPrefs();
+      _setAuth(AuthStatus.authenticated);
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<void> _persistCloudUid() async {
+    final uid = cloudUid;
+    if (uid == null || uid.isEmpty) return;
+    await (_preferences?.setString('cloudUid', uid) ?? Future.value(false));
+  }
+
+  Future<void> _saveAuthPrefs() async {
+    await Future.wait([
+      _preferences?.setBool('isAuthenticated', isAuthenticated) ??
+          Future.value(false),
+      _preferences?.setBool('isAdmin', isAdmin) ?? Future.value(false),
+      _preferences?.setString('authProvider', authProvider) ??
+          Future.value(false),
+      _preferences?.setString('profileEmail', profileEmail) ??
+          Future.value(false),
+      _preferences?.setString('profileName', profileName) ??
+          Future.value(false),
+      _preferences?.setBool('googleLinked', googleLinked) ??
+          Future.value(false),
+    ]);
+  }
+
+  /// Tarik entitlement dari server; server menang bila online.
+  /// Offline/gagal: pertahankan status lokal. Tidak pernah melempar.
+  Future<void> refreshEntitlements() async {
+    try {
+      final ent = await _api.entitlements();
+      if (ent == null) return;
+      final premium = ent['isPremium'] == true;
+      final plan = (ent['plan'] ?? 'free').toString();
+      // Hanya arah naik: lifetime/Play lokal tidak pernah diturunkan server.
+      // (Downgrade eksplisit butuh endpoint cancel — belum ada.)
+      if (premium && !isPremium) {
+        isPremium = true;
+        if (membershipPlan == 'free') membershipPlan = 'premium';
+        membershipTier = membershipPlan;
+      }
+      await _preferences?.setBool('isPremium', isPremium);
+      await _preferences?.setString('membershipPlan', membershipPlan);
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<bool> loginWithGoogle() async {
+    _setAuth(AuthStatus.authenticating);
+    final ok = await signInWithGoogle();
+    if (!ok) {
+      _setAuth(AuthStatus.error, lastAuthError ?? 'Login Google gagal.');
+      return false;
+    }
+    isAuthenticated = true;
+    isAdmin = false;
+    authProvider = 'google';
+    await _saveAuthPrefs();
+    _setAuth(AuthStatus.authenticated);
+    notifyListeners();
+    // Tarik + gabung progress cloud agar HP baru langsung dapat data lama.
+    unawaited(syncNow());
+    return true;
+  }
+
+  /// Validasi aturan password baru (sama dengan backend: min 8, maks 128).
+  /// Null = valid. Dipakai layar ganti/reset sebelum panggil server.
+  static String? validateNewPassword(String password, {String? oldPassword}) {
+    if (password.length < 8) return 'Password minimal 8 karakter.';
+    if (password.length > 128) return 'Password terlalu panjang.';
+    if (oldPassword != null &&
+        oldPassword.isNotEmpty &&
+        password == oldPassword) {
+      return 'Password baru tidak boleh sama dengan yang lama.';
+    }
+    return null;
+  }
+
+  /// Akun email Firebase (bukan Google) — satu-satunya yang punya password
+  /// Firebase yang bisa diganti dari aplikasi.
+  bool get canChangeFirebasePassword {
+    if (!isAuthenticated || authProvider != 'email') return false;
+    try {
+      final user = firebaseAuth.currentUser;
+      if (user == null) return false;
+      return user.providerData
+          .any((p) => p.providerId == 'password' || (p.email?.isNotEmpty ?? false));
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Akun login Google murni tidak punya password (di Firebase maupun server).
+  bool get isGoogleOnlyAccount {
+    if (!isAuthenticated) return false;
+    if (authProvider == 'google' || googleLinked) return true;
+    try {
+      final user = firebaseAuth.currentUser;
+      if (user == null) return false;
+      final providers = user.providerData.map((p) => p.providerId).toSet();
+      return providers.contains('google.com') && !providers.contains('password');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Ganti password akun. Wajib tahu password saat ini.
+  /// Urutan: Firebase (bila sesi email aktif) → backend API (bila ada token)
+  /// → akun lokal offline (SHA-256). Null = sukses, string = pesan error ID.
+  Future<String?> changeAccountPassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (currentPassword.isEmpty) return 'Password saat ini wajib diisi.';
+    final weak = validateNewPassword(newPassword, oldPassword: currentPassword);
+    if (weak != null) return weak;
+    if (!isAuthenticated) return 'Masuk dulu untuk ganti password.';
+
+    // 1. Firebase (backend utama) bila sesi email aktif.
+    if (canChangeFirebasePassword) {
+      try {
+        await firebaseAuth.reauthenticateAndUpdatePassword(
+          email: profileEmail,
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+        recordActivity('password_change', 'Password Firebase diubah');
+        return null;
+      } on FirebaseAuthFailure catch (e) {
+        if (!e.isNetworkError && !e.isConfigError) return e.message;
+      } catch (_) {}
+    }
+    if (isGoogleOnlyAccount) {
+      return 'Akun ini login dengan Google dan tidak punya password. Kelola password via akun Google-mu.';
+    }
+
+    // 2. Backend API bila token tersimpan.
+    try {
+      final hasToken = await _api.token != null;
+      if (hasToken) {
+        await _api.changePassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+        recordActivity('password_change', 'Password server diubah');
+        return null;
+      }
+    } on ApiException catch (e) {
+      if (e.message.isNotEmpty) return e.message;
+      return 'Ganti password gagal.';
+    } catch (_) {}
+
+    // 3. Akun lokal offline (SHA-256).
+    final normalizedEmail = profileEmail.trim().toLowerCase();
+    final stored = _localAccounts[normalizedEmail];
+    if (stored != null) {
+      if (stored != _hashPassword(currentPassword)) {
+        return 'Password saat ini salah.';
+      }
+      _localAccounts[normalizedEmail] = _hashPassword(newPassword);
+      final prefs = _preferences ?? await SharedPreferences.getInstance();
+      _preferences ??= prefs;
+      await _persistLocalAccounts(prefs);
+      recordActivity('password_change', 'Password lokal diubah');
+      return null;
+    }
+    return 'Tidak ada sesi password aktif. Periksa koneksi lalu coba lagi.';
+  }
+
+  /// Minta kode reset ke Gmail. Mengembalikan metode yang dipakai:
+  /// 'code' (kode 6 digit backend) atau 'link' (link Firebase, offline fallback).
+  /// Pesan selalu generik agar tidak membocorkan akun terdaftar.
+  Future<({String method, String message})> requestAccountPasswordReset(
+    String email,
+  ) async {
+    final normalized = email.trim();
+    if (!normalized.contains('@') || !normalized.contains('.')) {
+      return (method: 'none', message: 'Format email tidak valid.');
+    }
+    // 1. Backend dulu (kode 6 digit, cocok untuk mobile).
+    try {
+      final message = await _api.requestPasswordReset(email: normalized);
+      return (method: 'code', message: message);
+    } catch (_) {
+      // Server tak terjangkau: lanjut ke fallback Firebase.
+    }
+    // 2. Fallback Firebase (link reset ke Gmail).
+    if (FirebaseBootstrap.isAvailable) {
+      try {
+        await firebaseAuth.sendPasswordResetEmail(normalized);
+        return (
+          method: 'link',
+          message: 'Link reset dikirim ke Gmail via Firebase. Buka email lalu ikuti tautannya.'
+        );
+      } on FirebaseAuthFailure catch (e) {
+        if (!e.isNetworkError && !e.isConfigError) {
+          return (method: 'none', message: e.message);
+        }
+      } catch (_) {}
+    }
+    return (
+      method: 'none',
+      message: 'Server tak terjangkau. Periksa koneksi lalu coba lagi.'
+    );
+  }
+
+  /// Tukar kode 6 digit backend menjadi password baru.
+  Future<String?> confirmAccountPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final weak = validateNewPassword(newPassword);
+    if (weak != null) return weak;
+    if (code.replaceAll(RegExp(r'\D'), '').length != 6) {
+      return 'Kode harus 6 digit angka.';
+    }
+    try {
+      await _api.confirmPasswordReset(
+        email: email.trim(),
+        code: code,
+        newPassword: newPassword,
+      );
+      recordActivity('password_reset', 'Password direset via kode email');
+      return null;
+    } on ApiException catch (e) {
+      if (e.message.isNotEmpty) return e.message;
+      return 'Reset password gagal.';
+    } catch (_) {
+      return 'Server tak terjangkau. Periksa koneksi lalu coba lagi.';
+    }
+  }
+
+  Future<void> logout() async {
+    if (googleLinked) await disconnectGoogleProfile();
+    try {
+      await firebaseAuth.signOut();
+    } catch (_) {}
+    try {
+      await syncService.dispose();
+    } catch (_) {}
+    try {
+      await _api.logout();
+    } catch (_) {}
+    cloudUid = null;
+    syncStatus = 'idle';
+    isAuthenticated = false;
+    isAdmin = false;
+    authProvider = '';
+    _setAuth(AuthStatus.guest);
+    await Future.wait([
+      _preferences?.setBool('isAuthenticated', false) ?? Future.value(false),
+      _preferences?.setBool('isAdmin', false) ?? Future.value(false),
+      _preferences?.remove('authProvider') ?? Future.value(false),
+      _preferences?.remove('cloudUid') ?? Future.value(false),
+    ]);
+    notifyListeners();
+  }
+
+  // ---------- Cloud sync offline-online (Firestore, merge per-field) ----------
+
+  /// Snapshot progress lokal dalam format sync (tanpa foto besar).
+  Map<String, dynamic> toSyncMap() {
+    final raw = jsonDecode(exportProgress()) as Map<String, dynamic>;
+    raw.remove('profilePhotoData');
+    raw.remove('format');
+    raw.remove('exportedAt');
+    raw.remove('isAuthenticated');
+    raw.remove('isAdmin');
+    return raw;
+  }
+
+  /// Terapkan hasil merge remote ke state + tulis ke SharedPreferences.
+  Future<void> applyMergedMap(Map<String, dynamic> merged) async {
+    final wrapped = Map<String, dynamic>.from(merged)
+      ..['format'] = 'japanese-study-progress-v1';
+    await importProgress(jsonEncode(wrapped));
+  }
+
+  void _touchFields(Iterable<String> keys) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final k in keys) {
+      _fieldUpdatedAt[k] = now;
+    }
+    _preferences?.setString(
+        'progressFieldUpdatedAt', jsonEncode(_fieldUpdatedAt));
+  }
+
+  /// Tandai progress kotor lalu jadwalkan push (dipanggil tiap ada perubahan).
+  void markProgressDirty([Iterable<String> keys = const ['streak']]) {
+    _touchFields(keys);
+    final uid = cloudUid ?? _currentUidOrNull();
+    if (uid == null || uid.isEmpty) {
+      syncStatus = 'offline';
+      notifyListeners();
+      return;
+    }
+    cloudUid = uid;
+    syncStatus = 'syncing';
+    notifyListeners();
+    syncService.schedulePush(() async {
+      await syncNow();
+    });
+  }
+
+  bool get _syncAvailable {
+    try {
+      return syncService.isAvailable;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? _currentUidOrNull() {
+    if (cloudUid != null && cloudUid!.isNotEmpty) return cloudUid;
+    try {
+      return firebaseAuth.currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Sinkronisasi sekarang: pull remote -> merge -> push balik.
+  /// Aman offline: gagal jaringan hanya tandai pending.
+  Future<bool> syncNow() async {
+    final uid = _currentUidOrNull();
+    if (uid == null || uid.isEmpty) {
+      syncStatus = 'offline';
+      notifyListeners();
+      return false;
+    }
+    cloudUid = uid;
+    try {
+      if (!_syncAvailable) {
+        syncStatus = 'offline';
+        lastSyncError = 'Firebase belum dikonfigurasi.';
+        notifyListeners();
+        return false;
+      }
+      syncStatus = 'syncing';
+      notifyListeners();
+      final remoteDoc = await syncService.pullRemote(uid);
+      final remoteData =
+          (remoteDoc?['data'] as Map?)?.map((k, v) => MapEntry('$k', v)) ?? {};
+      final remoteTimes = (remoteDoc?['fieldUpdatedAt'] as Map?)
+              ?.map((k, v) => MapEntry('$k', (v as num?)?.toInt() ?? 0)) ??
+          {};
+      final merged = ProgressSyncService.merge(
+        toSyncMap(),
+        Map<String, dynamic>.from(remoteData),
+        localUpdatedAt: Map<String, int>.from(_fieldUpdatedAt),
+        remoteUpdatedAt: Map<String, int>.from(remoteTimes),
+      );
+      await applyMergedMap(merged);
+      await syncService.pushLocal(uid, merged,
+          fieldUpdatedAt: Map<String, int>.from(_fieldUpdatedAt));
+      lastSyncAt = DateTime.now();
+      syncStatus = syncService.syncPending ? 'offline' : 'idle';
+      lastSyncError = syncService.lastError;
+      await _preferences?.setString(
+          'lastCloudSyncAt', lastSyncAt!.toIso8601String());
+      notifyListeners();
+      // Dengarkan perubahan dari HP lain selama sesi ini.
+      syncService.listenRemote(uid, (remote) async {
+        final fresh = ProgressSyncService.merge(
+          toSyncMap(),
+          remote,
+          localUpdatedAt: Map<String, int>.from(_fieldUpdatedAt),
+          remoteUpdatedAt: Map<String, int>.from(remoteTimes),
+        );
+        await applyMergedMap(fresh);
+      });
+      return true;
+    } catch (e) {
+      syncStatus = 'error';
+      lastSyncError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void setPremiumForTesting(bool enabled) {
+    setMembershipPlan(enabled ? 'premium' : 'free');
+  }
+
+  void setMembershipPlan(String plan, {DateTime? until}) {
+    final normalized = switch (plan) {
+      'premium' => 'premium',
+      'lifetime' => 'lifetime',
+      _ => 'free',
+    };
+    membershipPlan = normalized;
+    membershipTier = normalized == 'free' ? 'free' : 'premium';
+    premiumUntil = normalized == 'lifetime' ? null : until;
+    isPremium = normalized == 'lifetime' || normalized == 'premium';
+    _preferences?.setString('membershipPlan', membershipPlan);
+    _preferences?.setString('membershipTier', membershipTier);
+    _preferences?.setBool('isPremium', isPremium);
+    if (premiumUntil == null) {
+      _preferences?.remove('premiumUntil');
+    } else {
+      _preferences?.setString('premiumUntil', premiumUntil!.toIso8601String());
+    }
+    notifyListeners();
+  }
+
+  void setMembershipTier(String tier) {
+    setMembershipPlan(tier);
+  }
+
+  void markPremiumPurchased() {
+    setMembershipPlan('premium',
+        until: DateTime.now().add(const Duration(days: 30)));
+  }
+
+  void markLifetimePurchased() {
+    setMembershipPlan('lifetime');
+  }
+
+  void restoreFreePlanForTesting() {
+    setMembershipPlan('free');
+  }
+
+  void startRoadmapStep(String id) {
+    activeRoadmapStepId = id;
+    _preferences?.setString('activeRoadmapStepId', id);
+    notifyListeners();
+  }
+
+  void completeRoadmapStep(String id) {
+    activeRoadmapStepId = id;
+    completedLearningStepIds.add('roadmap-$id');
+    _preferences?.setString('activeRoadmapStepId', id);
+    _preferences?.setStringList(
+        'completedLearningSteps', completedLearningStepIds.toList());
+    recordStudy(notify: false);
+    notifyListeners();
+  }
+
+  void markNotificationsRead() {
+    var changed = hasUnreadNotifications;
+    hasUnreadNotifications = false;
+    _preferences?.setBool('hasUnreadNotifications', false);
+    for (final item in inbox) {
+      if (!item.read) {
+        item.read = true;
+        changed = true;
+      }
+    }
+    if (changed) {
+      unawaited(_persistInbox());
+      notifyListeners();
+    }
+  }
+
+  Future<void> _persistInbox() async {
+    final prefs = _preferences;
+    if (prefs == null) return;
+    await prefs.setStringList(
+      'inbox_v1',
+      inbox.map((e) => jsonEncode(e.toJson())).toList(),
+    );
+  }
+
+  /// Tambah notifikasi ke kotak masuk (dedupe per id, tanpa hapus manual;
+  /// kedaluwarsa otomatis 90 hari).
+  void pushInboxNotification({
+    required String id,
+    required String title,
+    required String body,
+    String kind = 'info',
+    DateTime? createdAt,
+  }) {
+    if (id.isEmpty || title.trim().isEmpty) return;
+    if (inbox.any((e) => e.id == id)) return;
+    inbox.insert(
+      0,
+      AppNotification(
+        id: id,
+        title: title.trim(),
+        body: body.trim(),
+        kind: kind,
+        createdAt: createdAt,
+      ),
+    );
+    // Batasi 200 entri agar penyimpanan lokal tetap ringan.
+    if (inbox.length > 200) inbox.removeRange(200, inbox.length);
+    hasUnreadNotifications = true;
+    _preferences?.setBool('hasUnreadNotifications', true);
+    unawaited(_persistInbox());
+    notifyListeners();
+  }
+
+  /// Sinkronkan pengumuman admin menjadi notifikasi otomatis.
+  ///
+  /// Pemakaian pertama menandai semua yang sudah ada sebagai "terlihat"
+  /// tanpa notifikasi (agar tidak banjir); pengumuman BARU setelah itu
+  /// otomatis masuk kotak masuk.
+  void syncAnnouncementInbox(List<AdminAnnouncement> announcements) {
+    final prefs = _preferences;
+    if (prefs == null) return;
+    final firstRun = !prefs.containsKey('seenAnnouncementIds');
+    var added = false;
+    for (final a in announcements) {
+      if (!a.active || a.id.isEmpty) continue;
+      if (_seenAnnouncementIds.add(a.id)) {
+        added = true;
+        if (!firstRun) {
+          pushInboxNotification(
+            id: 'ann-${a.id}',
+            title: a.title.isEmpty ? 'Pengumuman baru' : a.title,
+            body: a.body,
+            kind: 'pengumuman',
+            createdAt: a.createdAt,
+          );
+        }
+      }
+    }
+    if (added || firstRun) {
+      unawaited(prefs.setStringList(
+          'seenAnnouncementIds', _seenAnnouncementIds.toList()));
+    }
+  }
+
+  /// Cek catatan perubahan bawaan aplikasi; tiap versi/konten baru otomatis
+  /// menjadi notifikasi "update".
+  Future<void> checkAppUpdateNotes() async {
+    final prefs = _preferences;
+    if (prefs == null) return;
+    final seen = prefs.getString('lastChangelogVersion') ?? '';
+    if (seen.isEmpty) {
+      await prefs.setString('lastChangelogVersion', AppChangelog.latestVersion);
+      return;
+    }
+    final fresh = AppChangelog.newerThan(seen);
+    for (final entry in fresh) {
+      pushInboxNotification(
+        id: 'changelog-${entry.version}',
+        title: entry.title,
+        body: entry.body,
+        kind: 'update',
+      );
+    }
+    if (fresh.isNotEmpty) {
+      await prefs.setString('lastChangelogVersion', AppChangelog.latestVersion);
+    } else if (seen != AppChangelog.latestVersion) {
+      await prefs.setString('lastChangelogVersion', AppChangelog.latestVersion);
+    }
+  }
+
+  void resetNotificationsForTesting() {
+    hasUnreadNotifications = true;
+    _preferences?.setBool('hasUnreadNotifications', true);
+    notifyListeners();
+  }
+
+  Future<String> backupProgressToDrive() async {
+    if (driveBackupBusy) return 'Pencadangan sedang berjalan';
+    driveBackupBusy = true;
+    notifyListeners();
+    try {
+      final link = await driveBackup.uploadProgressJson(exportProgress());
+      lastDriveBackupLabel = DateTime.now().toIso8601String();
+      await _preferences?.setString(
+          'lastDriveBackupLabel', lastDriveBackupLabel);
+      return link;
+    } finally {
+      driveBackupBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String> restoreProgressFromDrive() async {
+    if (driveBackupBusy) return 'Sinkronisasi sedang berjalan';
+    driveBackupBusy = true;
+    notifyListeners();
+    try {
+      final jsonText = await driveBackup.downloadLatestProgressJson();
+      final ok = await importProgress(jsonText);
+      if (!ok) throw Exception('Format cadangan tidak cocok.');
+      lastDriveBackupLabel = DateTime.now().toIso8601String();
+      await _preferences?.setString(
+          'lastDriveBackupLabel', lastDriveBackupLabel);
+      return 'Kemajuan berhasil dipulihkan dari Google Drive.';
+    } finally {
+      driveBackupBusy = false;
+      notifyListeners();
+    }
+  }
+
+  void setReviewReminderEnabled(bool enabled) {
+    reviewReminderEnabled = enabled;
+    _preferences?.setBool('reviewReminderEnabled', enabled);
+    unawaited(NotificationService.instance.syncReviewSchedule(
+      enabled: reviewReminderEnabled,
+      hour: reviewReminderHour,
+      minute: reviewReminderMinute,
+      weekdays: reviewReminderWeekdays,
+      dueCount: dueKanjiReviewCount,
+    ));
+    notifyListeners();
+  }
+
+  void setReviewReminderTime(TimeOfDay time) {
+    reviewReminderHour = time.hour;
+    reviewReminderMinute = time.minute;
+    _preferences?.setInt('reviewReminderHour', reviewReminderHour);
+    _preferences?.setInt('reviewReminderMinute', reviewReminderMinute);
+    unawaited(NotificationService.instance.syncReviewSchedule(
+      enabled: reviewReminderEnabled,
+      hour: reviewReminderHour,
+      minute: reviewReminderMinute,
+      weekdays: reviewReminderWeekdays,
+      dueCount: dueKanjiReviewCount,
+    ));
+    notifyListeners();
+  }
+
+  void toggleReviewReminderWeekday(int weekday) {
+    if (reviewReminderWeekdays.contains(weekday)) {
+      if (reviewReminderWeekdays.length > 1) {
+        reviewReminderWeekdays.remove(weekday);
+      }
+    } else {
+      reviewReminderWeekdays.add(weekday);
+    }
+    _saveIntSet('reviewReminderWeekdays', reviewReminderWeekdays);
+    unawaited(NotificationService.instance.syncReviewSchedule(
+      enabled: reviewReminderEnabled,
+      hour: reviewReminderHour,
+      minute: reviewReminderMinute,
+      weekdays: reviewReminderWeekdays,
+      dueCount: dueKanjiReviewCount,
+    ));
+    notifyListeners();
+  }
+
+  void setCalendarReminderEnabled(bool enabled) {
+    calendarReminderEnabled = enabled;
+    _preferences?.setBool('calendarReminderEnabled', enabled);
+    notifyListeners();
+  }
+
+  String generateKanjiReminderIcs() {
+    final now = DateTime.now();
+    final byDay = {
+      1: 'MO',
+      2: 'TU',
+      3: 'WE',
+      4: 'TH',
+      5: 'FR',
+      6: 'SA',
+      7: 'SU',
+    };
+    final days = reviewReminderWeekdays.toList()..sort();
+    final first = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      reviewReminderHour,
+      reviewReminderMinute,
+    );
+    String stamp(DateTime date) => '${date.year.toString().padLeft(4, '0')}'
+        '${date.month.toString().padLeft(2, '0')}'
+        '${date.day.toString().padLeft(2, '0')}T'
+        '${date.hour.toString().padLeft(2, '0')}'
+        '${date.minute.toString().padLeft(2, '0')}00';
+    return [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Belajar Bahasa Jepang//Ulangan Kanji//ID',
+      'BEGIN:VEVENT',
+      'UID:ulangan-kanji-${now.millisecondsSinceEpoch}@belajar-bahasa-jepang',
+      'DTSTAMP:${stamp(now)}',
+      'DTSTART:${stamp(first)}',
+      'RRULE:FREQ=WEEKLY;BYDAY=${days.map((d) => byDay[d]).whereType<String>().join(',')}',
+      'SUMMARY:Ulangan Kanji Belajar Bahasa Jepang',
+      'DESCRIPTION:Buka aplikasi dan ulangi kanji yang sudah waktunya dipelajari kembali.',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\n');
+  }
+
+  void dismissReviewReminderForToday() {
+    lastReminderDismissDate = _dateKey(DateTime.now());
+    _preferences?.setString(
+      'lastReminderDismissDate',
+      lastReminderDismissDate,
+    );
+    notifyListeners();
+  }
+
+  void toggleFavoriteKanji(int id) {
+    if (!favoriteKanjiIds.remove(id)) favoriteKanjiIds.add(id);
+    _saveIntSet('favoriteKanji', favoriteKanjiIds);
+    notifyListeners();
+  }
+
+  void toggleLearnedKanji(int id) {
+    if (!learnedKanjiIds.remove(id)) {
+      learnedKanjiIds.add(id);
+      recordStudy(notify: false);
+    }
+    _saveIntSet('learnedKanji', learnedKanjiIds);
+    notifyListeners();
+  }
+
+  int kanjiMasteryStreak(int id) => masteredKanjiIds.contains(id)
+      ? kanjiMasteryThreshold
+      : (kanjiMasteryStreaks[id] ?? 0).clamp(0, kanjiMasteryThreshold).toInt();
+
+  bool isKanjiMastered(int id) => masteredKanjiIds.contains(id);
+
+  bool isKanjiReviewDue(int id) {
+    final reviewDay = kanjiNextReviewDays[id];
+    return masteredKanjiIds.contains(id) &&
+        reviewDay != null &&
+        reviewDay <= _epochDay(DateTime.now());
+  }
+
+  List<int> get dueKanjiReviewIds {
+    final today = _epochDay(DateTime.now());
+    final ids = kanjiNextReviewDays.entries
+        .where(
+          (entry) =>
+              masteredKanjiIds.contains(entry.key) && entry.value <= today,
+        )
+        .map((entry) => entry.key)
+        .toList();
+    ids.sort((a, b) {
+      final dateCompare =
+          (kanjiNextReviewDays[a] ?? 0).compareTo(kanjiNextReviewDays[b] ?? 0);
+      return dateCompare != 0 ? dateCompare : a.compareTo(b);
+    });
+    return ids;
+  }
+
+  int get dueKanjiReviewCount {
+    final today = _epochDay(DateTime.now());
+    var count = 0;
+    for (final entry in kanjiNextReviewDays.entries) {
+      if (masteredKanjiIds.contains(entry.key) && entry.value <= today) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  int get scheduledKanjiReviewCount => kanjiNextReviewDays.length;
+
+  DateTime? get nextKanjiReviewDate {
+    if (kanjiNextReviewDays.isEmpty) return null;
+    final day = kanjiNextReviewDays.values.reduce(
+      (current, next) => current < next ? current : next,
+    );
+    return _dateFromEpochDay(day);
+  }
+
+  KanjiMasteryResult recordKanjiMasteryAnswer({
+    required int kanjiId,
+    required bool correct,
+  }) {
+    quizAnswered++;
+    if (correct) quizCorrect++;
+    _preferences?.setInt('quizCorrect', quizCorrect);
+    _preferences?.setInt('quizAnswered', quizAnswered);
+
+    final previous = kanjiMasteryStreak(kanjiId);
+    final next =
+        correct ? (previous + 1).clamp(0, kanjiMasteryThreshold).toInt() : 0;
+    final wasMastered = masteredKanjiIds.contains(kanjiId);
+    final justMastered = !wasMastered && next >= kanjiMasteryThreshold;
+
+    if (justMastered || wasMastered) {
+      masteredKanjiIds.add(kanjiId);
+      learnedKanjiIds.add(kanjiId);
+      kanjiMasteryStreaks.remove(kanjiId);
+    } else if (next == 0) {
+      kanjiMasteryStreaks.remove(kanjiId);
+    } else {
+      kanjiMasteryStreaks[kanjiId] = next;
+    }
+
+    if (justMastered) {
+      kanjiReviewSteps.remove(kanjiId);
+      kanjiNextReviewDays[kanjiId] =
+          _epochDay(DateTime.now()) + kanjiReviewIntervals.first;
+      _saveIntSet('masteredKanji', masteredKanjiIds);
+      _saveIntSet('learnedKanji', learnedKanjiIds);
+      _scheduleReviewSave();
+      final today = _dateKey(DateTime.now());
+      if (dailyMasteredDate != today) {
+        dailyMasteredDate = today;
+        dailyMasteredKanji = 0;
+      }
+      dailyMasteredKanji++;
+      _preferences?.setInt('dailyMasteredKanji', dailyMasteredKanji);
+      _preferences?.setString('dailyMasteredDate', dailyMasteredDate);
+    }
+    _saveIntMap('kanjiMasteryStreaks', kanjiMasteryStreaks);
+    recordStudy(notify: false);
+    notifyListeners();
+    return KanjiMasteryResult(
+      correct: correct,
+      streak: kanjiMasteryStreak(kanjiId),
+      mastered: masteredKanjiIds.contains(kanjiId),
+      justMastered: justMastered,
+    );
+  }
+
+  KanjiReviewResult recordKanjiReviewAnswer({
+    required int kanjiId,
+    required bool correct,
+  }) {
+    quizAnswered++;
+    if (correct) quizCorrect++;
+    _preferences?.setInt('quizCorrect', quizCorrect);
+    _preferences?.setInt('quizAnswered', quizAnswered);
+
+    final currentStep = kanjiReviewSteps[kanjiId] ?? 0;
+    final nextStep = correct
+        ? (currentStep + 1).clamp(0, kanjiReviewIntervals.length - 1).toInt()
+        : 0;
+    final intervalDays = correct ? kanjiReviewIntervals[nextStep] : 1;
+    final nextReviewDay = _epochDay(DateTime.now()) + intervalDays;
+    if (nextStep == 0) {
+      kanjiReviewSteps.remove(kanjiId);
+    } else {
+      kanjiReviewSteps[kanjiId] = nextStep;
+    }
+    kanjiNextReviewDays[kanjiId] = nextReviewDay;
+    _scheduleReviewSave();
+    recordStudy(notify: false);
+    notifyListeners();
+    return KanjiReviewResult(
+      correct: correct,
+      intervalDays: intervalDays,
+      nextReviewDate: _dateFromEpochDay(nextReviewDay),
+    );
+  }
+
+  void toggleMasteredVocabulary(int id) {
+    if (!masteredVocabularyIds.remove(id)) {
+      masteredVocabularyIds.add(id);
+      recordStudy(notify: false);
+    }
+    _saveIntSet('masteredVocabulary', masteredVocabularyIds);
+    notifyListeners();
+  }
+
+  void toggleGrammarComplete(String id) {
+    if (!completedGrammarIds.remove(id)) {
+      completedGrammarIds.add(id);
+      recordStudy(notify: false);
+    }
+    _preferences?.setStringList(
+      'completedGrammar',
+      completedGrammarIds.toList(),
+    );
+    notifyListeners();
+  }
+
+  void completeLearningStep(String id) {
+    if (completedLearningStepIds.add(id)) {
+      _preferences?.setStringList(
+          'completedLearningSteps', completedLearningStepIds.toList());
+      final match = RegExp(r'^path-(n5|n4|n3|n2|n1)-(\d+)$').firstMatch(id);
+      if (match != null) {
+        final level = match.group(1)!.toUpperCase();
+        final chapter = int.tryParse(match.group(2)!) ?? 0;
+        final finalChapters = const {
+          'N5': 25,
+          'N4': 25,
+          'N3': 20,
+          'N2': 15,
+          'N1': 14
+        };
+        if (chapter == finalChapters[level]) {
+          completedLearningStepIds.add('level-${level.toLowerCase()}-final');
+          const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+          final index = order.indexOf(level);
+          if (index >= 0 && index < order.length - 1)
+            unlockedLevels.add(order[index + 1]);
+          _preferences?.setStringList(
+              'unlockedLevels', unlockedLevels.toList());
+          _preferences?.setStringList(
+              'completedLearningSteps', completedLearningStepIds.toList());
+        }
+      }
+      recordStudy(notify: false);
+      notifyListeners();
+    }
+  }
+
+  // ---------- Learning / Curriculum System ----------
+  //
+  // Recommended curriculum (jalur utama). Dictionary/Kanji/Vocabulary/Grammar
+  // tetap bebas dibuka di luar path — path hanya menentukan rekomendasi
+  // urutan + unlock + review adaptif.
+
+  CurriculumLevel? curriculumLevel(String levelId) =>
+      CurriculumCatalogData.levelById(levelId);
+
+  Map<String, CurriculumLessonStatus> curriculumStatuses(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return {};
+    return CurriculumEngine.statusesForLevel(
+      level: level,
+      progressById: curriculumProgressById,
+    );
+  }
+
+  CurriculumLessonStatus curriculumLessonStatus(CurriculumLesson lesson) {
+    final level = curriculumLevel(lesson.levelId);
+    if (level == null) {
+      return curriculumProgressById[lesson.id]?.status ??
+          CurriculumLessonStatus.locked;
+    }
+    final ordered = CurriculumEngine.orderedLessons(level);
+    return CurriculumEngine.lessonStatus(
+      lesson: lesson,
+      ordered: ordered,
+      progressById: curriculumProgressById,
+    );
+  }
+
+  UserLevelProgress curriculumLevelProgress(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) {
+      return UserLevelProgress(
+          levelId: levelId,
+          completedLessons: 0,
+          totalLessons: 0,
+          percent: 0,
+          unlocked: false,
+          completed: false);
+    }
+    return CurriculumEngine.levelProgress(
+      level: level,
+      progressById: curriculumProgressById,
+      unlocked: isCurriculumLevelUnlocked(levelId),
+    );
+  }
+
+  ({int done, int total, double percent}) curriculumUnitProgress(
+      CurriculumUnit unit) =>
+      CurriculumEngine.unitProgress(
+          unit: unit, progressById: curriculumProgressById);
+
+  CurriculumLesson? curriculumNextLesson(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return null;
+    return CurriculumEngine.nextLesson(
+        level: level, progressById: curriculumProgressById);
+  }
+
+  /// Untuk kartu "Continue Learning" di Home: level + unit + lesson aktif.
+  ({CurriculumLevel level, CurriculumUnit? unit, CurriculumLesson? lesson,
+      UserLevelProgress progress})?
+      curriculumContinue() {
+    final levelId = {'N5', 'N4', 'N3', 'N2', 'N1', 'JFT-A1', 'JFT-A2', 'SSW'}
+            .contains(curriculumActiveLevelId)
+        ? curriculumActiveLevelId
+        : selectedStudyLevel;
+    final level = curriculumLevel(levelId) ?? curriculumLevel('N5')!;
+    final lesson = CurriculumEngine.currentLesson(
+      level: level,
+      progressById: curriculumProgressById,
+      activeLessonId: curriculumActiveLessonId,
+    );
+    CurriculumUnit? unit;
+    if (lesson != null) {
+      for (final u in level.units) {
+        if (u.id == lesson.unitId) {
+          unit = u;
+          break;
+        }
+      }
+    }
+    final progress = curriculumLevelProgress(level.id);
+    return (level: level, unit: unit, lesson: lesson, progress: progress);
+  }
+
+  LevelUnlockState curriculumUnlockState(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) {
+      return const LevelUnlockState(
+          unlocked: false,
+          allLessonsDone: false,
+          finalPassed: false,
+          finalScore: 0,
+          requiredScore: 70,
+          reason: 'Level tidak ditemukan.');
+    }
+    return CurriculumEngine.unlockStateFor(
+      level: level,
+      progressById: curriculumProgressById,
+      finalScores: curriculumFinalScores,
+    );
+  }
+
+  /// Unlock memakai kombinasi completion + final test + mastery.
+  /// Untuk N5..N1 tetap menghormati sistem lama (unlockedLevels/placement)
+  /// agar fitur lama tidak rusak; untuk JFT/SSW memakai unlock baru.
+  bool isCurriculumLevelUnlocked(String levelId) {
+    if (levelId == 'N5' || levelId == 'JFT-A1') return true;
+    if ({'N5', 'N4', 'N3', 'N2', 'N1'}.contains(levelId)) {
+      // Jalur lama: placement ≥80 atau final lama membuka level.
+      if (isLevelUnlocked(levelId)) return true;
+      // Jalur baru: lulus final curriculum level sebelumnya.
+      final state = curriculumUnlockState(levelId);
+      return state.unlocked;
+    }
+    return curriculumUnlockState(levelId).unlocked;
+  }
+
+  void setCurriculumActiveLevel(String levelId) {
+    if (CurriculumCatalogData.levelById(levelId) == null) return;
+    curriculumActiveLevelId = levelId;
+    _preferences?.setString(CurriculumStore.activeLevelKey, levelId);
+    if ({'N5', 'N4', 'N3', 'N2', 'N1', 'JFT'}.contains(levelId)) {
+      // Sinkron ringan dengan selector lama bila relevan.
+      if ({'N5', 'N4', 'N3', 'N2', 'N1'}.contains(levelId)) {
+        selectedStudyLevel = levelId;
+        _preferences?.setString('selectedStudyLevel', levelId);
+      }
+    }
+    notifyListeners();
+  }
+
+  void setCurriculumActiveLesson(String? lessonId) {
+    curriculumActiveLessonId = lessonId;
+    if (lessonId == null) {
+      _preferences?.remove(CurriculumStore.activeLessonKey);
+    } else {
+      _preferences?.setString(CurriculumStore.activeLessonKey, lessonId);
+      final lesson = CurriculumCatalogData.lessonById(lessonId);
+      if (lesson != null) {
+        curriculumActiveLevelId = lesson.levelId;
+        _preferences?.setString(
+            CurriculumStore.activeLevelKey, lesson.levelId);
+      }
+    }
+    notifyListeners();
+  }
+
+  void _persistCurriculum() {
+    _preferences?.setString(CurriculumStore.storageKey,
+        CurriculumStore.encodeProgress(curriculumProgressById));
+    _preferences?.setString(CurriculumStore.finalScoresKey,
+        CurriculumStore.encodeScores(curriculumFinalScores));
+    markProgressDirty(const [
+      'curriculumProgress',
+      'curriculumFinalScores',
+      'streak',
+    ]);
+  }
+
+  /// Selesaikan satu aktivitas. Otomatis: streak (recordStudy),
+  /// persist offline, jadwal sync. Mengembalikan 1 bila aktivitas ini
+  /// yang menuntaskan lesson, 0 bila tidak.
+  /// Penyelesaian lesson memperbarui progres dan rekomendasi, bukan mengunci lesson berikutnya.
+  bool completeCurriculumActivity(
+    String lessonId,
+    String activityId, {
+    int score = 0,
+  }) {
+    final lesson = CurriculumCatalogData.lessonById(lessonId);
+    if (lesson == null) return false;
+    if (curriculumLessonStatus(lesson) == CurriculumLessonStatus.locked) {
+      return false;
+    }
+    final now = DateTime.now();
+    final result = CurriculumEngine.completeActivity(
+      lesson: lesson,
+      progressById: curriculumProgressById,
+      activityId: activityId,
+      score: score,
+      now: now,
+    );
+    setCurriculumActiveLesson(lessonId);
+    recordStudy(notify: false);
+    if (result.lessonJustCompleted) {
+      recordActivity('curriculum_lesson', 'Lesson selesai: ${lesson.title}',
+          meta: {'lessonId': lesson.id, 'level': lesson.levelId});
+      // Jembatani ke sistem lama agar StudyHub/Home lama ikut ter-update.
+      completedLearningStepIds.add('curriculum-${lesson.id}');
+      _preferences?.setStringList(
+          'completedLearningSteps', completedLearningStepIds.toList());
+      if (lesson.isFinalTest) {
+        final best = curriculumProgressById[lesson.id]?.bestScore ?? score;
+        curriculumFinalScores[lesson.id] = best;
+        curriculumFinalScores[lesson.levelId] = best;
+        _tryUnlockNextCurriculumLevel(lesson.levelId, best);
+      }
+      // Otomatis tandai mastered bila skor sempurna.
+      final bestScore = curriculumProgressById[lesson.id]?.bestScore ?? 0;
+      if (bestScore >= 90) {
+        CurriculumEngine.markMastered(curriculumProgressById, lesson.id,
+            now: now);
+      }
+    }
+    _persistCurriculum();
+    notifyListeners();
+    return result.lessonJustCompleted;
+  }
+
+  /// Catat skor final/mock/placement. Dipakai Final Test & JLPT Simulation.
+  /// Mengembalikan true bila lulus (≥ requiredScore).
+  bool recordCurriculumFinalTest(String lessonId, int score) {
+    final lesson = CurriculumCatalogData.lessonById(lessonId);
+    if (lesson == null) return false;
+    final clamped = score.clamp(0, 100).toInt();
+    // Best SEBELUM update (untuk gerbang XP anti-farm di bawah).
+    final prevBest = curriculumFinalScores[lessonId] ?? 0;
+    final now = DateTime.now();
+    final existing = curriculumProgressById[lessonId] ??
+        UserLessonProgress(lessonId: lessonId);
+    existing.attempts++;
+    if (clamped > existing.bestScore) existing.bestScore = clamped;
+    existing.updatedAt = now;
+    // Tandai semua aktivitas lesson ini selesai agar alur tidak macet
+    // bila user langsung mengambil final test dari JLPT area.
+    existing.completedActivityIds = {
+      ...existing.completedActivityIds,
+      ...lesson.activities.map((a) => a.id),
+    };
+    final required =
+        lesson.requiredScore == 0 ? 70 : lesson.requiredScore;
+    final passed = clamped >= required;
+    if (passed) {
+      existing.status = clamped >= 90
+          ? CurriculumLessonStatus.mastered
+          : CurriculumLessonStatus.completed;
+      existing.mastered = clamped >= 90 ? true : existing.mastered;
+    } else if (existing.status == CurriculumLessonStatus.locked ||
+        existing.status == CurriculumLessonStatus.available) {
+      existing.status = CurriculumLessonStatus.inProgress;
+    }
+    curriculumProgressById[lessonId] = existing;
+    curriculumFinalScores[lessonId] = clamped > (curriculumFinalScores[lessonId] ?? 0)
+        ? clamped
+        : (curriculumFinalScores[lessonId] ?? 0);
+    if (passed && lesson.isFinalTest) {
+      final bestForLevel = curriculumFinalScores[lesson.levelId] ?? 0;
+      if (clamped > bestForLevel) {
+        curriculumFinalScores[lesson.levelId] = clamped;
+      }
+      _tryUnlockNextCurriculumLevel(lesson.levelId, clamped);
+    }
+    // Bab selesai pertama kali: catat aktivitas tonggak (tanpa XP).
+    if (passed &&
+        clamped > prevBest &&
+        lesson.isBossTest &&
+        _unitLessonsDone(lesson)) {
+      recordActivity('chapter_complete', 'Bab selesai: ${lesson.levelId}',
+          meta: {'lessonId': lesson.id, 'level': lesson.levelId});
+    }
+    recordStudy(notify: false);
+    recordQuiz(
+      correct: (clamped / 10).round(),
+      total: 10,
+    );
+    _persistCurriculum();
+    notifyListeners();
+    return passed;
+  }
+
+  /// Catat hasil latihan/tes per item kurikulum ('v:313' / 'g:n5-wa' /
+  /// 'k:42'): +1 benar, -1 salah, clamp -5..+10. TANPA XP (XP hanya dari
+  /// penyelesaian aktivitas) sehingga tidak bisa di-farm. ≥3 = ●, ≥1 = ◑.
+  void recordLessonMastery({
+    required List<String> correctKeys,
+    required List<String> wrongKeys,
+  }) {
+    var changed = false;
+    for (final key in correctKeys) {
+      final next = ((lessonItemMastery[key] ?? 0) + 1).clamp(-5, 10);
+      if (lessonItemMastery[key] != next) {
+        lessonItemMastery[key] = next;
+        changed = true;
+      }
+    }
+    for (final key in wrongKeys) {
+      final next = ((lessonItemMastery[key] ?? 0) - 1).clamp(-5, 10);
+      if (lessonItemMastery[key] != next) {
+        lessonItemMastery[key] = next;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    _preferences?.setString(
+        'lessonItemMastery', jsonEncode(lessonItemMastery));
+    markProgressDirty(const ['lessonItemMastery']);
+    notifyListeners();
+  }
+
+  int lessonMasteryScore(String key) => lessonItemMastery[key] ?? 0;
+
+  /// Tier tampilan mastery: 2 = ●, 1 = ◑, 0 = ○.
+  static int itemMasteryTier(
+          {required int score, required bool mastered, bool learned = false}) =>
+      (mastered || score >= 3) ? 2 : (learned || score >= 1) ? 1 : 0;
+
+  /// Skor persen terbaik per lesson (0..100). Hanya naik, tak pernah turun.
+  void recordPracticeBest(String lessonId, int percent) {
+    final clamped = percent.clamp(0, 100);
+    if (clamped <= (practiceBest[lessonId] ?? 0)) return;
+    practiceBest[lessonId] = clamped;
+    _preferences?.setString('practiceBest', jsonEncode(practiceBest));
+    markProgressDirty(const ['practiceBest']);
+    notifyListeners();
+  }
+
+  /// Reset progres satu unit/bab (debug/testing + "mulai bab dari nol").
+  /// Menghapus: status lesson unit, skor final lesson, best latihan, dan
+  /// mastery item unit. Mastery toggle Library (pilihan eksplisit user)
+  /// TIDAK disentuh. Unit lain aman.
+  Future<void> resetUnitProgress(String unitId) async {
+    final unit = CurriculumCatalogData.unitById(unitId);
+    if (unit == null) return;
+    final ids = unit.lessons.map((lesson) => lesson.id).toSet();
+    for (final id in ids) {
+      curriculumProgressById.remove(id);
+      curriculumFinalScores.remove(id);
+      practiceBest.remove(id);
+    }
+    final masteryKeys = <String>{};
+    for (final lesson in unit.lessons) {
+      for (final id in lesson.vocabularyIds) {
+        masteryKeys.add('v:$id');
+      }
+      for (final id in lesson.grammarIds) {
+        masteryKeys.add('g:$id');
+      }
+      for (final id in lesson.kanjiIds) {
+        masteryKeys.add('k:$id');
+      }
+    }
+    for (final key in masteryKeys) {
+      lessonItemMastery.remove(key);
+    }
+    _persistCurriculum();
+    _preferences?.setString(
+        'lessonItemMastery', jsonEncode(lessonItemMastery));
+    _preferences?.setString('practiceBest', jsonEncode(practiceBest));
+    markProgressDirty(const [
+      'curriculumProgress',
+      'curriculumFinalScores',
+      'practiceBest',
+      'lessonItemMastery',
+    ]);
+    notifyListeners();
+  }
+
+  /// True bila seluruh lesson unit sudah completed/mastered.
+  /// Dipakai gerbang bonus Bab (bukan untuk unlock umum).
+  bool _unitLessonsDone(CurriculumLesson lesson) {
+    final unit = CurriculumCatalogData.unitById(lesson.unitId);
+    if (unit == null || unit.lessons.isEmpty) return false;
+    for (final item in unit.lessons) {
+      final status = curriculumProgressById[item.id]?.status;
+      if (status != CurriculumLessonStatus.completed &&
+          status != CurriculumLessonStatus.mastered) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _tryUnlockNextCurriculumLevel(String levelId, int score) {
+    const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+    final index = order.indexOf(levelId);
+    if (index < 0 || index >= order.length - 1) return;
+    // Syarat baru: semua lesson level ini selesai + final ≥70.
+    final level = curriculumLevel(levelId);
+    if (level == null) return;
+    final state = CurriculumEngine.unlockStateFor(
+      level: CurriculumCatalogData.levelById(order[index + 1])!,
+      progressById: curriculumProgressById,
+      finalScores: {
+        ...curriculumFinalScores,
+        levelId: score,
+        ...{
+          for (final l in level.allLessons.where((l) => l.isFinalTest))
+            l.id: score
+        },
+      },
+    );
+    if (state.unlocked) {
+      unlockLevel(order[index + 1]);
+    }
+  }
+
+  /// Placement test menentukan titik awal (Beginner / N5 Beginner /
+  /// N5 Intermediate / N4 Beginner / ...). Tetap boleh mulai dari awal.
+  /// Memakai recordPlacement lama agar tidak duplikasi logika unlock.
+  void recordCurriculumPlacement(String levelId, int score) {
+    recordPlacement(levelId, score);
+    if (score >= 80) {
+      // Tandai level placement sebagai lulus di peta baru juga.
+      curriculumFinalScores[levelId] = score;
+      const order = ['N5', 'N4', 'N3', 'N2', 'N1'];
+      final i = order.indexOf(levelId);
+      if (i >= 0 && i < order.length - 1) {
+        // Buka level berikutnya di kedua sistem.
+        unlockLevel(order[i + 1]);
+        setCurriculumActiveLevel(order[i + 1]);
+      } else if (i == order.length - 1) {
+        setCurriculumActiveLevel(levelId);
+      }
+      _persistCurriculum();
+    }
+    notifyListeners();
+  }
+
+  Map<String, int> curriculumMistakeBySkill() {
+    final out = <String, int>{};
+    for (final mistake in learningEngine.mistakes()) {
+      final key = mistake.skill.name;
+      // Petakan skill engine lama ke skillKey kurikulum baru.
+      final mapped = switch (mistake.skill) {
+        LearningSkill.vocabulary => 'vocabulary',
+        LearningSkill.grammar => 'grammar',
+        LearningSkill.kanji => 'kanji',
+        LearningSkill.listening => 'listening',
+        LearningSkill.reading => 'reading',
+        LearningSkill.speaking => 'speaking',
+        LearningSkill.writing => 'kanji',
+      };
+      out[mapped] = (out[mapped] ?? 0) + mistake.mistakeCount;
+      out[key] = (out[key] ?? 0) + 0; // pastikan key ada bila dipakai UI lama
+    }
+    return out;
+  }
+
+  Map<String, double> curriculumMasteryBySkill() {
+    final out = <String, double>{};
+    final bySkill = <String, List<double>>{};
+    for (final entry in learningEngine.state.masteryByKey.entries) {
+      final record = entry.value;
+      if (record.attemptCount == 0) continue;
+      final key = switch (record.skill) {
+        LearningSkill.vocabulary => 'vocabulary',
+        LearningSkill.grammar => 'grammar',
+        LearningSkill.kanji => 'kanji',
+        LearningSkill.listening => 'listening',
+        LearningSkill.reading => 'reading',
+        LearningSkill.speaking => 'speaking',
+        LearningSkill.writing => 'kanji',
+      };
+      (bySkill[key] ??= []).add(record.score);
+    }
+    for (final entry in bySkill.entries) {
+      final values = entry.value;
+      out[entry.key] =
+          values.reduce((a, b) => a + b) / values.length;
+    }
+    return out;
+  }
+
+  List<CurriculumLesson> curriculumReviewQueue(String levelId,
+      {int limit = 5}) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return [];
+    return CurriculumEngine.reviewQueue(
+      level: level,
+      progressById: curriculumProgressById,
+      mistakeBySkill: curriculumMistakeBySkill(),
+      limit: limit,
+    );
+  }
+
+  AdaptiveRecommendation? curriculumAdaptive(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return null;
+    return CurriculumEngine.adaptiveRecommendation(
+      level: level,
+      progressById: curriculumProgressById,
+      mistakeBySkill: curriculumMistakeBySkill(),
+      masteryBySkill: curriculumMasteryBySkill(),
+    );
+  }
+
+  bool curriculumShouldShowPersonalReview(String levelId) {
+    final level = curriculumLevel(levelId);
+    if (level == null) return false;
+    return CurriculumEngine.shouldInsertPersonalReview(
+        level: level, progressById: curriculumProgressById);
+  }
+
+  // ---------- Structured learning engine ----------
+
+  /// Rencana harian yang menjawab apa yang perlu dilakukan, alasannya, dan
+  /// urutan berikutnya. Kurikulum tetap menentukan lesson; adaptasi hanya
+  /// menentukan porsi review/remedial.
+  DailyPlan dailyLearningPlan({DateTime? now}) => learningEngine.buildDailyPlan(
+        level: selectedStudyLevel,
+        dailyMinutes: dailyStudyMinutes,
+        now: now ?? DateTime.now(),
+      );
+
+  LessonDefinition? learningLesson(String id) =>
+      learningEngine.catalog.lessonById(id);
+
+  LessonPhase advanceLearningPhase(String lessonId, {DateTime? now}) {
+    final phase = learningEngine.advancePhase(
+      lessonId: lessonId,
+      now: now ?? DateTime.now(),
+    );
+    _persistLearningEngine();
+    notifyListeners();
+    return phase;
+  }
+
+  AnswerEvaluation recordLessonAnswer({
+    required LessonQuestion question,
+    required int selectedIndex,
+    bool review = false,
+    DateTime? now,
+  }) {
+    final answeredAt = now ?? DateTime.now();
+    final result = review
+        ? learningEngine.answerReviewQuestion(
+            question: question,
+            selectedIndex: selectedIndex,
+            now: answeredAt,
+          )
+        : learningEngine.answerLessonQuestion(
+            question: question,
+            selectedIndex: selectedIndex,
+            now: answeredAt,
+          );
+    recordQuiz(correct: result.correct ? 1 : 0, total: 1);
+    _persistLearningEngine();
+    return result;
+  }
+
+  GateStatus finishLessonAssessment(
+    LessonDefinition lesson, {
+    DateTime? now,
+  }) {
+    final result = learningEngine.completeAssessment(
+      lesson: lesson,
+      now: now ?? DateTime.now(),
+    );
+    if (result.passed) {
+      recordActivity('lesson_mastery', 'Lesson dikuasai', meta: {
+        'lessonId': lesson.id,
+        'level': lesson.level,
+      });
+      recordStudy(notify: false);
+    } else {
+      recordActivity('lesson_remedial', 'Remedial dibutuhkan', meta: {
+        'lessonId': lesson.id,
+        'skills': result.unmetSkills.map((skill) => skill.name).toList(),
+      });
+    }
+    _persistLearningEngine();
+    notifyListeners();
+    return result;
+  }
+
+  List<ReviewState> dueLearningReviews({DateTime? now}) =>
+      learningEngine.dueReviews(now ?? DateTime.now());
+
+  List<LessonQuestion> dueLearningReviewQuestions({
+    DateTime? now,
+    int limit = 10,
+  }) =>
+      learningEngine.questionsForReview(now ?? DateTime.now(), limit: limit);
+
+  List<MistakeRecord> learningMistakes({LearningSkill? skill}) =>
+      learningEngine.mistakes(skill: skill);
+
+  void _persistLearningEngine() {
+    _preferences?.setString(
+      'learningEngineStateV1',
+      jsonEncode(learningEngine.state.toJson()),
+    );
+    markProgressDirty(const [
+      'learningEngineState',
+      'quizCorrect',
+      'quizAnswered',
+      'activityJournal',
+    ]);
+  }
+
+  void togglePhraseComplete(String id) {
+    if (!completedPhraseIds.remove(id)) {
+      completedPhraseIds.add(id);
+      recordStudy(notify: false);
+    }
+    _preferences?.setStringList(
+        'completedPhrases', completedPhraseIds.toList());
+    notifyListeners();
+  }
+
+  void toggleSentenceComplete(String id) {
+    if (!completedSentenceIds.remove(id)) {
+      completedSentenceIds.add(id);
+      recordStudy(notify: false);
+    }
+    _preferences?.setStringList(
+      'completedSentences',
+      completedSentenceIds.toList(),
+    );
+    notifyListeners();
+  }
+
+  void toggleCultureComplete(String id) {
+    if (!completedCultureIds.remove(id)) {
+      completedCultureIds.add(id);
+      recordStudy(notify: false);
+    }
+    _preferences?.setStringList(
+        'completedCulture', completedCultureIds.toList());
+    notifyListeners();
+  }
+
+  void recordQuiz({required int correct, required int total}) {
+    if (total <= 0) return;
+    lastQuizPerfect = correct == total && total >= 5;
+    recordActivity('quiz', 'Kuis diselesaikan',
+        meta: {'correct': correct, 'total': total});
+    quizCorrect += correct;
+    quizAnswered += total;
+    _preferences?.setInt('quizCorrect', quizCorrect);
+    _preferences?.setInt('quizAnswered', quizAnswered);
+    recordStudy();
+  }
+
+  String examKey(ExamType examType, String level, int stage) =>
+      '${examType.name}::$level::$stage';
+
+  void recordExamSimulation({
+    required ExamType examType,
+    required String level,
+    required int stage,
+    required int correct,
+    required int total,
+    required int points,
+  }) {
+    if (total <= 0) return;
+    final score = (correct / total * 100).round().clamp(0, 100).toInt();
+    final key = examKey(examType, level, stage);
+    final previousBest = examBestScores[key] ?? 0;
+    if (score > previousBest) {
+      examBestScores[key] = score;
+      _saveStringIntMap('examBestScores', examBestScores);
+    }
+    examPoints += points;
+    _preferences?.setInt('examPoints', examPoints);
+    recordQuiz(correct: correct, total: total);
+  }
+
+  /// Catat satu aktivitas belajar: streak harian, jurnal, widget, sync,
+  /// dan cek misi tersembunyi. Tanpa XP — progres diukur dari mastery.
+  void recordStudy({bool notify = true}) {
+    _refreshDailyCounter();
+    final today = _dateKey(DateTime.now());
+    if (lastStudyDate != today) {
+      final yesterday = _dateKey(
+        DateTime.now().subtract(const Duration(days: 1)),
+      );
+      streak = lastStudyDate == yesterday ? streak + 1 : 1;
+      lastStudyDate = today;
+      studyDateKeys.add(today);
+      _preferences?.setInt('streak', streak);
+      _preferences?.setString('lastStudyDate', lastStudyDate);
+      _preferences?.setStringList('studyDateKeys', studyDateKeys.toList());
+    }
+    recordActivity('study', 'Aktivitas belajar');
+    unawaited(HomeWidgetService.instance
+        .update(streak: streak, kanji: todayKanjiCharacter));
+    markProgressDirty(const [
+      'streak',
+      'lastStudyDate',
+      'studyDateKeys',
+      'activityJournal',
+    ]);
+    if (notify) notifyListeners();
+    checkHiddenQuests();
+  }
+
+  /// Bonus menit fokus (mis. dari rewarded ad). Menambah waktu aktif
+  /// harian + total, lalu mencatat aktivitas belajar biasa.
+  Future<void> recordStudySession({required int minutes}) async {
+    final seconds = (minutes * 60).clamp(0, 86400);
+    totalActiveSeconds += seconds;
+    dailyActiveSeconds += seconds;
+    _preferences?.setInt('totalActiveSeconds', totalActiveSeconds);
+    _preferences?.setInt('dailyActiveSeconds', dailyActiveSeconds);
+    recordActivity('bonus_session', 'Bonus fokus ($minutes menit)');
+    recordStudy();
+  }
+
+  String exportProgress() => const JsonEncoder.withIndent('  ').convert({
+        'format': 'japanese-study-progress-v1',
+        'exportedAt': DateTime.now().toIso8601String(),
+        'profileName': profileName,
+        'profileEmail': profileEmail,
+        'profilePhotoUrl': profilePhotoUrl,
+        'profilePhotoData': profilePhotoData,
+        'onboardingComplete': onboardingComplete,
+        'studyGoal': studyGoal,
+        'selfLevel': selfLevel,
+        'dailyStudyMinutes': dailyStudyMinutes,
+        'selectedStudyLevel': selectedStudyLevel,
+        'learningMode': learningMode,
+        'appLanguage': appLanguage,
+        'ttsGender': ttsGender,
+        'reviewIntervalDays': reviewIntervalDays,
+        'googleLinked': googleLinked,
+        'isPremium': isPremium,
+        'membershipPlan': membershipPlan,
+        'membershipTier': membershipTier,
+        'unlockedLevels': unlockedLevels.toList(),
+        'placementBestScores': placementBestScores,
+        'isAuthenticated': isAuthenticated,
+        'isAdmin': isAdmin,
+        'activeRoadmapStepId': activeRoadmapStepId,
+        'hasUnreadNotifications': hasUnreadNotifications,
+        'reviewReminderEnabled': reviewReminderEnabled,
+        'reviewReminderHour': reviewReminderHour,
+        'reviewReminderMinute': reviewReminderMinute,
+        'lastDriveBackupLabel': lastDriveBackupLabel,
+        'lessonItemMastery': lessonItemMastery,
+        'practiceBest': practiceBest,
+        'streak': streak,
+        'lastStudyDate': lastStudyDate,
+        'studyDateKeys': studyDateKeys.toList()..sort(),
+        'reviewReminderWeekdays': reviewReminderWeekdays.toList()..sort(),
+        'calendarReminderEnabled': calendarReminderEnabled,
+        'glassTheme': glassTheme,
+        'todayKanjiMode': todayKanjiMode,
+        'todayKanjiPinnedId': todayKanjiPinnedId,
+        'firstUsedAt': firstUsedAt?.toIso8601String(),
+        'totalActiveSeconds': totalActiveSeconds,
+        'sessionCount': sessionCount,
+        'activityJournal': activityJournal,
+        'quizCorrect': quizCorrect,
+        'quizAnswered': quizAnswered,
+        'examPoints': examPoints,
+        'examBestScores': examBestScores,
+        'learnedKanji': learnedKanjiIds.toList()..sort(),
+        'masteredKanji': masteredKanjiIds.toList()..sort(),
+        'kanjiMasteryStreaks': {
+          for (final entry in kanjiMasteryStreaks.entries)
+            '${entry.key}': entry.value,
+        },
+        'kanjiReviewSteps': {
+          for (final entry in kanjiReviewSteps.entries)
+            '${entry.key}': entry.value,
+        },
+        'kanjiNextReviewDays': {
+          for (final entry in kanjiNextReviewDays.entries)
+            '${entry.key}': entry.value,
+        },
+        'favoriteKanji': favoriteKanjiIds.toList()..sort(),
+        'masteredVocabulary': masteredVocabularyIds.toList()..sort(),
+        'completedGrammar': completedGrammarIds.toList()..sort(),
+        'completedLearningSteps': completedLearningStepIds.toList()..sort(),
+        'completedPhrases': completedPhraseIds.toList()..sort(),
+        'completedSentences': completedSentenceIds.toList()..sort(),
+        'completedCulture': completedCultureIds.toList()..sort(),
+        'learningEngineState': learningEngine.state.toJson(),
+        'curriculumProgress':
+            curriculumProgressById.map((k, v) => MapEntry(k, v.toJson())),
+        'curriculumFinalScores': Map<String, dynamic>.from(curriculumFinalScores),
+        'curriculumActiveLessonId': curriculumActiveLessonId,
+        'curriculumActiveLevelId': curriculumActiveLevelId,
+      });
+
+  Future<bool> importProgress(String source) async {
+    try {
+      final json = jsonDecode(source) as Map<String, dynamic>;
+      if (json['format'] != 'japanese-study-progress-v1') return false;
+      profileName = (json['profileName'] as String?)?.trim().isNotEmpty == true
+          ? (json['profileName'] as String).trim()
+          : profileName;
+      profileEmail = (json['profileEmail'] as String?)?.trim() ?? profileEmail;
+      profilePhotoUrl =
+          (json['profilePhotoUrl'] as String?)?.trim() ?? profilePhotoUrl;
+      profilePhotoData =
+          (json['profilePhotoData'] as String?) ?? profilePhotoData;
+      onboardingComplete =
+          json['onboardingComplete'] as bool? ?? onboardingComplete;
+      studyGoal = (json['studyGoal'] as String?) ?? studyGoal;
+      selfLevel = (json['selfLevel'] as String?) ?? selfLevel;
+      dailyStudyMinutes =
+          (json['dailyStudyMinutes'] as num? ?? dailyStudyMinutes)
+              .toInt()
+              .clamp(5, 180)
+              .toInt();
+      selectedStudyLevel =
+          (json['selectedStudyLevel'] as String?) ?? selectedStudyLevel;
+      learningMode = (json['learningMode'] as String?) ?? learningMode;
+      appLanguage = (json['appLanguage'] as String?) ?? appLanguage;
+      ttsGender = (json['ttsGender'] as String?) ?? ttsGender;
+      reviewIntervalDays =
+          ((json['reviewIntervalDays'] as num?) ?? reviewIntervalDays)
+              .toInt()
+              .clamp(1, 30)
+              .toInt();
+      googleLinked = json['googleLinked'] as bool? ?? googleLinked;
+      isPremium = json['isPremium'] as bool? ?? isPremium;
+      membershipPlan = (json['membershipPlan'] as String?) ??
+          (json['membershipTier'] as String?) ??
+          (isPremium ? 'premium' : 'free');
+      if (!['free', 'premium', 'lifetime'].contains(membershipPlan))
+        membershipPlan = 'free';
+      membershipTier = membershipPlan == 'free' ? 'free' : 'premium';
+      isPremium = membershipPlan != 'free';
+      unlockedLevels
+        ..clear()
+        ..addAll((json['unlockedLevels'] as List<dynamic>? ?? const [])
+            .whereType<String>());
+      if (!unlockedLevels.contains('N5')) unlockedLevels.add('N5');
+      placementBestScores
+        ..clear()
+        ..addAll((json['placementBestScores'] as Map?)
+                ?.map((k, v) => MapEntry(k.toString(), (v as num).toInt())) ??
+            {});
+      activeRoadmapStepId =
+          (json['activeRoadmapStepId'] as String?) ?? activeRoadmapStepId;
+      hasUnreadNotifications =
+          json['hasUnreadNotifications'] as bool? ?? hasUnreadNotifications;
+      reviewReminderEnabled =
+          json['reviewReminderEnabled'] as bool? ?? reviewReminderEnabled;
+      reviewReminderHour =
+          (json['reviewReminderHour'] as num? ?? reviewReminderHour)
+              .toInt()
+              .clamp(0, 23)
+              .toInt();
+      reviewReminderMinute =
+          (json['reviewReminderMinute'] as num? ?? reviewReminderMinute)
+              .toInt()
+              .clamp(0, 59)
+              .toInt();
+      lastDriveBackupLabel =
+          (json['lastDriveBackupLabel'] as String?) ?? lastDriveBackupLabel;
+      lessonItemMastery
+        ..clear()
+        ..addAll(_jsonLessonMastery(json['lessonItemMastery']));
+      practiceBest
+        ..clear()
+        ..addAll(_jsonStringIntMap(json['practiceBest']));
+      streak = (json['streak'] as num? ?? 0).toInt().clamp(0, 100000).toInt();
+      quizCorrect =
+          (json['quizCorrect'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();
+      quizAnswered =
+          (json['quizAnswered'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();
+      examPoints =
+          (json['examPoints'] as num? ?? 0).toInt().clamp(0, 1 << 31).toInt();
+      examBestScores
+        ..clear()
+        ..addAll(_jsonStringIntMap(json['examBestScores']));
+      lastStudyDate = json['lastStudyDate'] as String? ?? '';
+      studyDateKeys
+        ..clear()
+        ..addAll((json['studyDateKeys'] as List<dynamic>? ?? const [])
+            .map((value) => '$value'));
+      if (lastStudyDate.isNotEmpty) studyDateKeys.add(lastStudyDate);
+      reviewReminderWeekdays
+        ..clear()
+        ..addAll(_jsonIntSet(json['reviewReminderWeekdays'])
+            .where((day) => day >= 1 && day <= 7));
+      if (reviewReminderWeekdays.isEmpty) {
+        reviewReminderWeekdays.addAll({1, 2, 3, 4, 5, 6, 7});
+      }
+      calendarReminderEnabled =
+          json['calendarReminderEnabled'] as bool? ?? calendarReminderEnabled;
+      glassTheme = json['glassTheme'] as bool? ?? glassTheme;
+      todayKanjiMode = (json['todayKanjiMode'] as String?) ?? todayKanjiMode;
+      todayKanjiPinnedId =
+          (json['todayKanjiPinnedId'] as num? ?? todayKanjiPinnedId).toInt();
+      final importedFirstUsed = json['firstUsedAt'] as String?;
+      if (importedFirstUsed != null)
+        firstUsedAt = DateTime.tryParse(importedFirstUsed);
+      totalActiveSeconds =
+          (json['totalActiveSeconds'] as num? ?? totalActiveSeconds)
+              .toInt()
+              .clamp(0, 1 << 31)
+              .toInt();
+      sessionCount = (json['sessionCount'] as num? ?? sessionCount)
+          .toInt()
+          .clamp(0, 1000000)
+          .toInt();
+      activityJournal
+        ..clear()
+        ..addAll((json['activityJournal'] as List<dynamic>? ?? const [])
+            .whereType<Map>()
+            .map((e) => Map<String, Object?>.from(e))
+            .take(2000));
+      learnedKanjiIds
+        ..clear()
+        ..addAll(
+          _jsonIntSet(json['learnedKanji'])
+              .where((id) => repository.kanjiById(id) != null),
+        );
+      masteredKanjiIds
+        ..clear()
+        ..addAll(
+          _jsonIntSet(json['masteredKanji'])
+              .where((id) => repository.kanjiById(id) != null),
+        );
+      kanjiMasteryStreaks
+        ..clear()
+        ..addAll(
+          _jsonIntMap(json['kanjiMasteryStreaks'])
+            ..removeWhere((id, _) => repository.kanjiById(id) == null),
+        );
+      kanjiReviewSteps
+        ..clear()
+        ..addAll(
+          _jsonIntMap(json['kanjiReviewSteps'])
+            ..removeWhere((id, _) => repository.kanjiById(id) == null),
+        );
+      kanjiNextReviewDays
+        ..clear()
+        ..addAll(
+          _jsonIntMap(json['kanjiNextReviewDays'])
+            ..removeWhere((id, _) => repository.kanjiById(id) == null),
+        );
+      final today = _epochDay(DateTime.now());
+      for (final id in masteredKanjiIds) {
+        kanjiMasteryStreaks.remove(id);
+        learnedKanjiIds.add(id);
+        kanjiNextReviewDays.putIfAbsent(
+          id,
+          () => today + kanjiReviewIntervals.first,
+        );
+      }
+      kanjiReviewSteps.removeWhere((id, _) => !masteredKanjiIds.contains(id));
+      kanjiNextReviewDays
+          .removeWhere((id, _) => !masteredKanjiIds.contains(id));
+      favoriteKanjiIds
+        ..clear()
+        ..addAll(
+          _jsonIntSet(json['favoriteKanji'])
+              .where((id) => repository.kanjiById(id) != null),
+        );
+      masteredVocabularyIds
+        ..clear()
+        ..addAll(
+          _jsonIntSet(json['masteredVocabulary'])
+              .where((id) => repository.vocabularyById(id) != null),
+        );
+      final grammarIds = repository.grammar.map((item) => item.id).toSet();
+      completedGrammarIds
+        ..clear()
+        ..addAll(
+          (json['completedGrammar'] as List<dynamic>? ?? const [])
+              .map((value) => '$value')
+              .where(grammarIds.contains),
+        );
+      completedLearningStepIds
+        ..clear()
+        ..addAll(
+          (json['completedLearningSteps'] as List<dynamic>? ?? const [])
+              .map((value) => '$value'),
+        );
+      completedPhraseIds
+        ..clear()
+        ..addAll(
+          (json['completedPhrases'] as List<dynamic>? ?? const [])
+              .map((value) => '$value'),
+        );
+      completedSentenceIds
+        ..clear()
+        ..addAll(
+          (json['completedSentences'] as List<dynamic>? ?? const [])
+              .map((value) => '$value'),
+        );
+      completedCultureIds
+        ..clear()
+        ..addAll(
+          (json['completedCulture'] as List<dynamic>? ?? const [])
+              .map((value) => '$value'),
+        );
+      if (json.containsKey('learningEngineState')) {
+        learningEngine
+            .restore(LearnerState.fromJson(json['learningEngineState']));
+      }
+      if (json['curriculumProgress'] is Map) {
+        curriculumProgressById
+          ..clear()
+          ..addAll(CurriculumStore.decodeProgress(
+              jsonEncode(json['curriculumProgress'])));
+      }
+      if (json['curriculumFinalScores'] is Map) {
+        curriculumFinalScores
+          ..clear()
+          ..addAll(CurriculumStore.decodeScores(
+              jsonEncode(json['curriculumFinalScores'])));
+      }
+      final importedActiveLesson = json['curriculumActiveLessonId'] as String?;
+      if (importedActiveLesson != null) {
+        curriculumActiveLessonId =
+            importedActiveLesson.isEmpty ? null : importedActiveLesson;
+      }
+      final importedActiveLevel = json['curriculumActiveLevelId'] as String?;
+      if (importedActiveLevel != null && importedActiveLevel.isNotEmpty) {
+        curriculumActiveLevelId = importedActiveLevel;
+      }
+      final prefs = _preferences;
+      if (prefs != null) {
+        await Future.wait([
+          prefs.setString('profileName', profileName),
+          prefs.setString('profileEmail', profileEmail),
+          prefs.setString('profilePhotoUrl', profilePhotoUrl),
+          prefs.setString('profilePhotoData', profilePhotoData),
+          prefs.setBool('onboardingComplete', onboardingComplete),
+          prefs.setString('studyGoal', studyGoal),
+          prefs.setString('selfLevel', selfLevel),
+          prefs.setInt('dailyStudyMinutes', dailyStudyMinutes),
+          prefs.setString('selectedStudyLevel', selectedStudyLevel),
+          prefs.setString('learningMode', learningMode),
+          prefs.setBool('googleLinked', googleLinked),
+          prefs.setBool('isPremium', isPremium),
+          prefs.setString('membershipPlan', membershipPlan),
+          prefs.setString('membershipTier', membershipTier),
+          prefs.setString('activeRoadmapStepId', activeRoadmapStepId),
+          prefs.setBool('hasUnreadNotifications', hasUnreadNotifications),
+          prefs.setBool('reviewReminderEnabled', reviewReminderEnabled),
+          prefs.setInt('reviewReminderHour', reviewReminderHour),
+          prefs.setInt('reviewReminderMinute', reviewReminderMinute),
+          prefs.setString('lastDriveBackupLabel', lastDriveBackupLabel),
+          prefs.setInt('streak', streak),
+          prefs.setInt('quizCorrect', quizCorrect),
+          prefs.setInt('quizAnswered', quizAnswered),
+          prefs.setInt('examPoints', examPoints),
+          prefs.setString('examBestScores', jsonEncode(examBestScores)),
+          prefs.setString('lastStudyDate', lastStudyDate),
+          prefs.setStringList('studyDateKeys', studyDateKeys.toList()),
+          prefs.setStringList(
+            'reviewReminderWeekdays',
+            reviewReminderWeekdays.map((day) => '$day').toList(),
+          ),
+          prefs.setBool('calendarReminderEnabled', calendarReminderEnabled),
+          prefs.setStringList(
+            'learnedKanji',
+            learnedKanjiIds.map((id) => '$id').toList(),
+          ),
+          prefs.setStringList(
+            'masteredKanji',
+            masteredKanjiIds.map((id) => '$id').toList(),
+          ),
+          prefs.setString(
+            'kanjiMasteryStreaks',
+            jsonEncode({
+              for (final entry in kanjiMasteryStreaks.entries)
+                '${entry.key}': entry.value,
+            }),
+          ),
+          prefs.setString(
+            'kanjiReviewSteps',
+            jsonEncode({
+              for (final entry in kanjiReviewSteps.entries)
+                '${entry.key}': entry.value,
+            }),
+          ),
+          prefs.setString(
+            'kanjiNextReviewDays',
+            jsonEncode({
+              for (final entry in kanjiNextReviewDays.entries)
+                '${entry.key}': entry.value,
+            }),
+          ),
+          prefs.setStringList(
+            'favoriteKanji',
+            favoriteKanjiIds.map((id) => '$id').toList(),
+          ),
+          prefs.setStringList(
+            'masteredVocabulary',
+            masteredVocabularyIds.map((id) => '$id').toList(),
+          ),
+          prefs.setStringList(
+            'completedGrammar',
+            completedGrammarIds.toList(),
+          ),
+          prefs.setStringList(
+            'completedLearningSteps',
+            completedLearningStepIds.toList(),
+          ),
+          prefs.setStringList(
+            'completedPhrases',
+            completedPhraseIds.toList(),
+          ),
+          prefs.setStringList(
+            'completedSentences',
+            completedSentenceIds.toList(),
+          ),
+          prefs.setStringList(
+            'completedCulture',
+            completedCultureIds.toList(),
+          ),
+          prefs.setString(
+            'learningEngineStateV1',
+            jsonEncode(learningEngine.state.toJson()),
+          ),
+          prefs.setString(
+            CurriculumStore.storageKey,
+            CurriculumStore.encodeProgress(curriculumProgressById),
+          ),
+          prefs.setString(
+            CurriculumStore.finalScoresKey,
+            CurriculumStore.encodeScores(curriculumFinalScores),
+          ),
+          prefs.setString(
+            CurriculumStore.activeLevelKey,
+            curriculumActiveLevelId,
+          ),
+        ]);
+        final activeLesson = curriculumActiveLessonId;
+        if (activeLesson == null || activeLesson.isEmpty) {
+          await prefs.remove(CurriculumStore.activeLessonKey);
+        } else {
+          await prefs.setString(CurriculumStore.activeLessonKey, activeLesson);
+        }
+      }
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Mulai dari nol: bersihkan lokal DAN dokumen server.
+  ///
+  /// Hapus lokal saja tidak cukup — merge union/max akan mengisi ulang
+  /// lokal dari data lama di server saat sync berikutnya. Mengembalikan
+  /// true bila lokal bersih (server ikut terhapus bila sedang login).
+  Future<bool> resetProgress() async {
+    _reviewSaveTimer?.cancel();
+    streak = 0;
+    quizCorrect = 0;
+    quizAnswered = 0;
+    examPoints = 0;
+    examBestScores.clear();
+    lastStudyDate = '';
+    studyDateKeys.clear();
+    learnedKanjiIds.clear();
+    masteredKanjiIds.clear();
+    kanjiMasteryStreaks.clear();
+    kanjiReviewSteps.clear();
+    kanjiNextReviewDays.clear();
+    favoriteKanjiIds.clear();
+    masteredVocabularyIds.clear();
+    completedGrammarIds.clear();
+    completedLearningStepIds.clear();
+    completedPhraseIds.clear();
+    completedSentenceIds.clear();
+    completedCultureIds.clear();
+    curriculumProgressById.clear();
+    curriculumFinalScores.clear();
+    curriculumActiveLessonId = null;
+    curriculumActiveLevelId = 'N5';
+    learningEngine.restore(LearnerState());
+    final prefs = _preferences;
+    if (prefs != null) {
+      for (final key in [
+        'streak',
+        'quizCorrect',
+        'quizAnswered',
+        'examPoints',
+        'examBestScores',
+        'lastStudyDate',
+        'studyDateKeys',
+        'learnedKanji',
+        'masteredKanji',
+        'kanjiMasteryStreaks',
+        'kanjiReviewSteps',
+        'kanjiNextReviewDays',
+        'favoriteKanji',
+        'masteredVocabulary',
+        'completedGrammar',
+        'completedLearningSteps',
+        'completedPhrases',
+        'completedSentences',
+        'completedCulture',
+        'learningEngineStateV1',
+        'curriculumProgressV1',
+        'curriculumFinalScoresV1',
+        'curriculumActiveLessonId',
+        'curriculumActiveLevelId',
+        'progressFieldUpdatedAt',
+        'lastCloudSyncAt',
+      ]) {
+        await prefs.remove(key);
+      }
+    }
+    _fieldUpdatedAt.clear();
+    // Hapus juga salinan server supaya sync berikutnya tidak mengisi ulang
+    // lokal dari data lama.
+    final uid = _currentUidOrNull();
+    if (uid != null && uid.isNotEmpty && _syncAvailable) {
+      final ok = await syncService.deleteRemote(uid);
+      if (!ok) {
+        syncStatus = 'error';
+        lastSyncError = syncService.lastError;
+        notifyListeners();
+        return false;
+      }
+      syncStatus = 'idle';
+    }
+    notifyListeners();
+    return true;
+  }
+
+  Map<String, int> _readStringIntMap(String key) {
+    final value = _preferences?.getString(key);
+    if (value == null || value.isEmpty) return {};
+    try {
+      return _jsonStringIntMap(jsonDecode(value));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Map<String, int> _jsonLessonMastery(dynamic value) {
+    if (value is! Map) return {};
+    final output = <String, int>{};
+    for (final entry in value.entries) {
+      final score = entry.value is num
+          ? (entry.value as num).toInt()
+          : int.tryParse('${entry.value}');
+      if (score != null) {
+        output['${entry.key}'] = score.clamp(-5, 10);
+      }
+    }
+    return output;
+  }
+
+  /// Mastery per item kurikulum (-5..+10). Format sama, clamp berbeda.
+  Map<String, int> _readLessonMastery() {
+    final value = _preferences?.getString('lessonItemMastery');
+    if (value == null || value.isEmpty) return {};
+    try {
+      final raw = jsonDecode(value);
+      if (raw is! Map) return {};
+      final output = <String, int>{};
+      for (final entry in raw.entries) {
+        final score = entry.value is num
+            ? (entry.value as num).toInt()
+            : int.tryParse('${entry.value}');
+        if (score != null) {
+          output['${entry.key}'] = score.clamp(-5, 10);
+        }
+      }
+      return output;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Map<String, int> _jsonStringIntMap(dynamic value) {
+    if (value is! Map) return {};
+    final output = <String, int>{};
+    for (final entry in value.entries) {
+      final score = entry.value is num
+          ? (entry.value as num).toInt()
+          : int.tryParse('${entry.value}');
+      if (score != null) {
+        output['${entry.key}'] = score.clamp(0, 100).toInt();
+      }
+    }
+    return output;
+  }
+
+  void _saveStringIntMap(String key, Map<String, int> values) {
+    _preferences?.setString(key, jsonEncode(values));
+    markProgressDirty([key]);
+  }
+
+  Set<int> _readIntSet(String key) =>
+      (_preferences?.getStringList(key) ?? const [])
+          .map(int.tryParse)
+          .whereType<int>()
+          .toSet();
+
+  Set<int> _jsonIntSet(dynamic value) => (value as List<dynamic>? ?? const [])
+      .map((item) => item is num ? item.toInt() : int.tryParse('$item'))
+      .whereType<int>()
+      .toSet();
+
+  Map<int, int> _readIntMap(String key) {
+    final value = _preferences?.getString(key);
+    if (value == null || value.isEmpty) return {};
+    try {
+      return _jsonIntMap(jsonDecode(value));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Map<int, int> _jsonIntMap(dynamic value) {
+    if (value is! Map) return {};
+    final output = <int, int>{};
+    for (final entry in value.entries) {
+      final id = int.tryParse('${entry.key}');
+      final streak = entry.value is num
+          ? (entry.value as num).toInt()
+          : int.tryParse('${entry.value}');
+      if (id != null && streak != null && streak > 0) {
+        output[id] = streak;
+      }
+    }
+    return output;
+  }
+
+  void _saveIntSet(String key, Set<int> values) {
+    _preferences?.setStringList(
+      key,
+      values.map((e) => '$e').toList(growable: false),
+    );
+    markProgressDirty([key]);
+  }
+
+  void _saveIntMap(String key, Map<int, int> values) {
+    _preferences?.setString(
+      key,
+      jsonEncode({
+        for (final entry in values.entries) '${entry.key}': entry.value,
+      }),
+    );
+    markProgressDirty([key]);
+  }
+
+  void _scheduleReviewSave() {
+    _reviewSaveTimer?.cancel();
+    _reviewSaveTimer = Timer(
+      const Duration(milliseconds: 850),
+      _saveReviewSchedule,
+    );
+  }
+
+  void flushPendingPersistence() {
+    if (_reviewSaveTimer?.isActive != true) return;
+    _reviewSaveTimer?.cancel();
+    _saveReviewSchedule();
+  }
+
+  void _saveReviewSchedule() {
+    _reviewSaveTimer?.cancel();
+    _saveIntMap('kanjiReviewSteps', kanjiReviewSteps);
+    _saveIntMap('kanjiNextReviewDays', kanjiNextReviewDays);
+    markProgressDirty(const [
+      'kanjiMasteryStreaks',
+      'kanjiReviewSteps',
+      'kanjiNextReviewDays',
+      'learnedKanji',
+      'masteredKanji',
+    ]);
+  }
+
+  void _refreshDailyCounter() {
+    final today = _dateKey(DateTime.now());
+    if (lastStudyDate.isNotEmpty && lastStudyDate != today) {
+      dailyMasteredKanji = 0;
+      dailyActiveSeconds = 0;
+      _preferences?.setInt('dailyMasteredKanji', 0);
+      _preferences?.setInt('dailyActiveSeconds', 0);
+    }
+    if (dailyMasteredDate.isNotEmpty && dailyMasteredDate != today) {
+      dailyMasteredKanji = 0;
+      dailyMasteredDate = today;
+      _preferences?.setInt('dailyMasteredKanji', 0);
+      _preferences?.setString('dailyMasteredDate', today);
+    }
+  }
+
+  /// Cek misi tersembunyi setelah tiap aktivitas: lencana + notifikasi
+  /// saat misi baru terbuka (tanpa XP, tanpa rekursi).
+  final Set<String> downloadedPacks = {};
+  final Map<String, String> packSyncedAt = {};
+
+  /// Unduh paket offline: pastikan bundel + coba sinkron server + tandai.
+  /// Selalu true secara offline (bundel menjamin); [refreshed] lapor
+  /// apakah server memberi data segar.
+  Future<bool> downloadOfflinePack(String id) async {
+    await repository.load();
+    final refreshed = await repository.refreshFromServer();
+    downloadedPacks.add(id);
+    packSyncedAt[id] =
+        DateTime.now().toIso8601String().substring(0, 16).replaceAll('T', ' ');
+    final prefs = _preferences;
+    if (prefs != null) {
+      await prefs.setStringList('downloadedPacks', downloadedPacks.toList());
+      await prefs.setString('packSyncedAt', jsonEncode(packSyncedAt));
+    }
+    notifyListeners();
+    return refreshed;
+  }
+
+  void checkHiddenQuests() {
+    final now = DateTime.now();
+    final stats = QuestStats(
+      hour: now.hour,
+      streak: streak,
+      dailyMasteredKanji: dailyMasteredKanji,
+      dailyActiveSeconds: dailyActiveSeconds,
+      perfectQuiz: lastQuizPerfect,
+      quizAnswered: quizAnswered,
+    );
+    final fresh = HiddenQuests.checkUnlocked(stats, unlockedQuests);
+    if (fresh.isEmpty) return;
+    for (final q in fresh) {
+      unlockedQuests.add(q.id);
+      pushInboxNotification(
+        id: 'quest-${q.id}',
+        title: 'Misi tersembunyi: ${q.title}',
+        body: 'Misi terbuka. ${unlockedQuests.length}/'
+            '${HiddenQuests.defs.length} misi terbuka.',
+        kind: 'misi',
+      );
+      recordActivity('hidden_quest', 'Misi tersembunyi: ${q.title}',
+          meta: {'id': q.id});
+    }
+    _preferences?.setStringList('unlockedQuests', unlockedQuests.toList());
+    notifyListeners();
+  }
+
+  DateTime? _readDate(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
+
+  String _dateKey(DateTime date) => '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
+  int _epochDay(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
+
+  DateTime _dateFromEpochDay(int day) {
+    final utc = DateTime.fromMillisecondsSinceEpoch(
+      day * Duration.millisecondsPerDay,
+      isUtc: true,
+    );
+    return DateTime(utc.year, utc.month, utc.day);
+  }
+}
+
+class KanjiMasteryResult {
+  const KanjiMasteryResult({
+    required this.correct,
+    required this.streak,
+    required this.mastered,
+    required this.justMastered,
+  });
+
+  final bool correct;
+  final int streak;
+  final bool mastered;
+  final bool justMastered;
+}
+
+class KanjiReviewResult {
+  const KanjiReviewResult({
+    required this.correct,
+    required this.intervalDays,
+    required this.nextReviewDate,
+  });
+
+  final bool correct;
+  final int intervalDays;
+  final DateTime nextReviewDate;
+}
+
+class AppScope extends InheritedNotifier<AppController> {
+  const AppScope({
+    required AppController controller,
+    required super.child,
+    super.key,
+  }) : super(notifier: controller);
+
+  static AppController of(BuildContext context) {
+    final result = context.dependOnInheritedWidgetOfExactType<AppScope>();
+    assert(result != null, 'AppScope tidak ditemukan.');
+    return result!.notifier!;
+  }
+}

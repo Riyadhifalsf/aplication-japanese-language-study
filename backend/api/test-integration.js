@@ -1,0 +1,373 @@
+// Integration test backend Japanese Study — tanpa dep baru.
+// Jalankan: BASE_URL=https://192.168.100.230 ADMIN_TOKEN=xxx node --test test-integration.js
+// (node >= 18; self-signed LAN: NODE_TLS_REJECT_UNAUTHORIZED=0)
+'use strict';
+const { test, before } = require('node:test');
+const assert = require('node:assert/strict');
+
+const BASE = (process.env.BASE_URL || 'https://192.168.100.230').replace(/\/+$/, '');
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+const stamp = Date.now().toString(36);
+const EMAIL = `itest-${stamp}@example.com`;
+const PASS = 'password123';
+let token = '';
+
+async function api(method, path, { body, token: t } = {}) {
+  const r = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(t ? { Authorization: `Bearer ${t}` } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({}));
+  return { status: r.status, data };
+}
+
+test('health ok + database', async () => {
+  const { status, data } = await api('GET', '/api/health');
+  assert.equal(status, 200);
+  assert.equal(data.ok, true);
+  assert.equal(data.database, true);
+});
+
+test('v1 alias konsisten', async () => {
+  const { status, data } = await api('GET', '/api/v1/health');
+  assert.equal(status, 200);
+  assert.equal(data.ok, true);
+});
+
+test('register valid -> 201 + token + user (tanpa password)', async () => {
+  const { status, data } = await api('POST', '/api/auth/register', {
+    body: { name: 'ITest', email: EMAIL, password: PASS },
+  });
+  assert.equal(status, 201);
+  assert.ok(data.token);
+  assert.equal(data.user.email, EMAIL);
+  assert.equal(data.user.role, 'user');
+  assert.ok(!('password_hash' in data.user));
+  token = data.token;
+});
+
+test('register duplikat -> 409 AUTH_EMAIL_TAKEN', async () => {
+  const { status, data } = await api('POST', '/api/auth/register', {
+    body: { name: 'ITest', email: EMAIL, password: PASS },
+  });
+  assert.equal(status, 409);
+  assert.equal(data.error.code, 'AUTH_EMAIL_TAKEN');
+  assert.ok(data.message);
+});
+
+test('register invalid -> 400 berkode', async () => {
+  const bad1 = await api('POST', '/api/auth/register', {
+    body: { name: 'X', email: 'bukan-email', password: '123' },
+  });
+  assert.equal(bad1.status, 400);
+  assert.ok(bad1.data.error.code);
+});
+
+test('login valid -> 200 + JWT', async () => {
+  const { status, data } = await api('POST', '/api/auth/login', {
+    body: { email: EMAIL, password: PASS },
+  });
+  assert.equal(status, 200);
+  assert.ok(data.token);
+  token = data.token;
+});
+
+test('login salah -> 401 AUTH_BAD_CREDENTIALS (tanpa bocor info)', async () => {
+  const a = await api('POST', '/api/auth/login', {
+    body: { email: EMAIL, password: 'salah1234' },
+  });
+  assert.equal(a.status, 401);
+  assert.equal(a.data.error.code, 'AUTH_BAD_CREDENTIALS');
+  const b = await api('POST', '/api/auth/login', {
+    body: { email: 'tak-ada@example.com', password: 'salah1234' },
+  });
+  assert.equal(b.status, 401);
+  assert.equal(b.data.error.code, 'AUTH_BAD_CREDENTIALS');
+});
+
+test('me tanpa token -> 401; dengan token -> profil', async () => {
+  const anon = await api('GET', '/api/me');
+  assert.equal(anon.status, 401);
+  assert.equal(anon.data.error.code, 'AUTH_MISSING_TOKEN');
+  const me = await api('GET', '/api/me', { token });
+  assert.equal(me.status, 200);
+  assert.equal(me.data.user.email, EMAIL);
+});
+
+test('progress PUT lalu GET konsisten', async () => {
+  const put = await api('PUT', '/api/me/progress', {
+    token,
+    body: { xp: 123, learnedKanji: [1, 2, 3] },
+  });
+  assert.equal(put.status, 200);
+  assert.equal(put.data.ok, true);
+  const me = await api('GET', '/api/me', { token });
+  assert.equal(me.data.progress.xp, 123);
+});
+
+test('google tanpa idToken -> 400', async () => {
+  const { status, data } = await api('POST', '/api/auth/google', { body: {} });
+  assert.equal(status, 400);
+  assert.equal(data.error.code, 'AUTH_GOOGLE_NO_TOKEN');
+});
+
+test('ai/chat DIHAPUS -> 404 ROUTE_NOT_FOUND (alias v1 sama)', async () => {
+  const a = await api('POST', '/api/ai/chat', { body: { message: 'Apa itu partikel は?' } });
+  assert.equal(a.status, 404);
+  assert.equal(a.data.error.code, 'ROUTE_NOT_FOUND');
+  const b = await api('POST', '/api/v1/ai/chat', { body: { message: 'Apa itu partikel は?' }, token });
+  assert.equal(b.status, 404);
+  assert.equal(b.data.error.code, 'ROUTE_NOT_FOUND');
+});
+
+test('admin guard: tanpa token 401, user biasa 403', async () => {
+  const anon = await api('GET', '/api/admin/users');
+  assert.equal(anon.status, 401);
+  const user = await api('GET', '/api/admin/users', { token });
+  assert.equal(user.status, 403);
+  assert.equal(user.data.error.code, 'AUTH_FORBIDDEN');
+  if (ADMIN_TOKEN) {
+    const adm = await api('GET', '/api/admin/users', { token: ADMIN_TOKEN });
+    assert.equal(adm.status, 200);
+    assert.ok(Array.isArray(adm.data.users));
+  }
+});
+
+test('konten publik + tipe tak dikenal 404 berkode', async () => {
+  const { status, data } = await api('GET', '/api/content/kanji?limit=2');
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(data.data));
+  const bad = await api('GET', '/api/content/ngawur');
+  assert.equal(bad.status, 404);
+  assert.equal(bad.data.error.code, 'CONTENT_UNKNOWN');
+});
+
+const ATTEMPT_ID = `att-${stamp}`;
+let firstXp = 0;
+
+test('attempt benar -> XP + mastery + hasil tersimpan', async () => {
+  const { status, data } = await api('POST', '/api/attempts', {
+    token,
+    body: {
+      exerciseId: 'ex-1', questionId: 'q-1', clientAttemptId: ATTEMPT_ID,
+      answer: 'に', isCorrect: true, score: 100, durationMs: 4200,
+      itemId: 'pelajaran-partikel-ni', skill: 'grammar', kind: 'exercise',
+      level: 'N5', title: 'Partikel ni',
+    },
+  });
+  assert.equal(status, 201);
+  assert.equal(data.duplicate, false);
+  assert.equal(data.xpAwarded, 20);
+  assert.ok(data.xpTotal >= 20);
+  assert.ok(data.mastery >= 0 && data.mastery <= 100);
+  firstXp = data.xpTotal;
+});
+
+test('attempt SAMA dikirim ulang -> duplicate, XP tidak ganda', async () => {
+  const { status, data } = await api('POST', '/api/attempts', {
+    token,
+    body: {
+      exerciseId: 'ex-1', questionId: 'q-1', clientAttemptId: ATTEMPT_ID,
+      answer: 'に', isCorrect: true, score: 100, durationMs: 4200,
+      itemId: 'pelajaran-partikel-ni', skill: 'grammar',
+    },
+  });
+  assert.equal(status, 200);
+  assert.equal(data.duplicate, true);
+  assert.equal(data.xpTotal, firstXp);
+});
+
+test('attempt salah -> mistake tercatat, XP 0', async () => {
+  const { status, data } = await api('POST', '/api/attempts', {
+    token,
+    body: {
+      exerciseId: 'ex-2', questionId: 'q-2', clientAttemptId: `att2-${stamp}`,
+      answer: 'を', isCorrect: false, score: 0, durationMs: 3000,
+      itemId: 'pelajaran-partikel-ni', skill: 'grammar',
+    },
+  });
+  assert.equal(status, 201);
+  assert.equal(data.xpAwarded, 0);
+  assert.equal(data.xpTotal, firstXp);
+});
+
+test('learning/next memberi aksi jelas', async () => {
+  const { status, data } = await api('GET', '/api/learning/next', { token });
+  assert.equal(status, 200);
+  assert.ok(['review', 'remedial', 'continue'].includes(data.action));
+  assert.ok(typeof data.reason === 'string' && data.reason.length > 0);
+});
+
+test('learning/mastery + entitlements konsisten', async () => {
+  const m = await api('GET', '/api/learning/mastery', { token });
+  assert.equal(m.status, 200);
+  assert.ok(Array.isArray(m.data.skills));
+  assert.equal(m.data.xpTotal, firstXp);
+  const e = await api('GET', '/api/me/entitlements', { token });
+  assert.equal(e.status, 200);
+  assert.equal(e.data.plan, 'free');
+  assert.equal(e.data.isPremium, false);
+  assert.equal(e.data.xpTotal, firstXp);
+});
+
+test('sessions idempoten + sync dedupe', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const s1 = await api('POST', '/api/sessions', {
+    token, body: { date: today, seconds: 600 },
+  });
+  assert.equal(s1.status, 200);
+  assert.ok(s1.data.streak >= 1);
+  const s2 = await api('POST', '/api/sessions', {
+    token, body: { date: today, seconds: 100 },
+  });
+  assert.equal(s2.status, 200);
+  assert.equal(s2.data.streak, s1.data.streak);
+  const o1 = await api('POST', '/api/sync/operations', {
+    token, body: { operationId: `op-${stamp}`, entity: 'progress', operation: 'upsert' },
+  });
+  assert.equal(o1.status, 201);
+  assert.equal(o1.data.applied, true);
+  const o2 = await api('POST', '/api/sync/operations', {
+    token, body: { operationId: `op-${stamp}`, entity: 'progress', operation: 'upsert' },
+  });
+  assert.equal(o2.status, 200);
+  assert.equal(o2.data.applied, false);
+});
+
+test('attempt tanpa auth -> 401; tanpa clientAttemptId -> 400', async () => {
+  const anon = await api('POST', '/api/attempts', { body: {} });
+  assert.equal(anon.status, 401);
+  const bad = await api('POST', '/api/attempts', {
+    token, body: { answer: 'x', isCorrect: true },
+  });
+  assert.equal(bad.status, 400);
+});
+
+test('technical: JWT dioprek -> 401; SQLi -> 401/400 tanpa 500', async () => {
+  const bad = token.slice(0, -2) + (token.slice(-2) === 'ab' ? 'cd' : 'ab');
+  const t = await api('GET', '/api/me', { token: bad });
+  assert.equal(t.status, 401);
+  assert.equal(t.data.error.code, 'AUTH_BAD_TOKEN');
+  for (const payload of [`' OR '1'='1`, `admin@admin'--`, `'; DROP TABLE app_users;--`]) {
+    const r = await api('POST', '/api/auth/login', {
+      body: { email: payload, password: 'x'.repeat(10) },
+    });
+    assert.ok([400, 401].includes(r.status), `SQLi ${payload} -> ${r.status}`);
+    assert.notEqual(r.status, 500);
+  }
+  const users = await api('GET', '/api/admin/users', { token: ADMIN_TOKEN });
+  assert.equal(users.status, 200);
+});
+
+test('technical: mass-assignment role ditolak', async () => {
+  const p = await api('PUT', '/api/me/profile', {
+    token,
+    body: { display_name: 'ITest', role: 'admin', isPremium: true },
+  });
+  assert.equal(p.status, 200);
+  assert.equal(p.data.user.role, 'user');
+  const me = await api('GET', '/api/me', { token });
+  assert.equal(me.data.user.role, 'user');
+});
+
+const NEWPASS = 'baru-password456';
+
+test('ganti password: validasi berlapis', async () => {
+  const noCurrent = await api('POST', '/api/me/password', {
+    token, body: { newPassword: NEWPASS },
+  });
+  assert.equal(noCurrent.status, 400);
+  const wrong = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: 'salah1234', newPassword: NEWPASS },
+  });
+  assert.equal(wrong.status, 401);
+  assert.equal(wrong.data.error.code, 'AUTH_WRONG_PASSWORD');
+  const weak = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: PASS, newPassword: 'pendek' },
+  });
+  assert.equal(weak.status, 400);
+  assert.equal(weak.data.error.code, 'AUTH_WEAK_PASSWORD');
+  const same = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: PASS, newPassword: PASS },
+  });
+  assert.equal(same.status, 400);
+  assert.equal(same.data.error.code, 'AUTH_SAME_PASSWORD');
+});
+
+test('ganti password sukses -> token lama mati, login baru jalan', async () => {
+  const ok = await api('POST', '/api/me/password', {
+    token, body: { currentPassword: PASS, newPassword: NEWPASS },
+  });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.ok, true);
+  const stale = await api('GET', '/api/me', { token });
+  assert.equal(stale.status, 401);
+  assert.equal(stale.data.error.code, 'AUTH_PASSWORD_CHANGED');
+  const oldLogin = await api('POST', '/api/auth/login', {
+    body: { email: EMAIL, password: PASS },
+  });
+  assert.equal(oldLogin.status, 401);
+  const fresh = await api('POST', '/api/auth/login', {
+    body: { email: EMAIL, password: NEWPASS },
+  });
+  assert.equal(fresh.status, 200);
+  assert.ok(fresh.data.token);
+  token = fresh.data.token;
+});
+
+test('lupa password: selalu 200 generik (anti-enumeration)', async () => {
+  const unknown = await api('POST', '/api/auth/forgot', {
+    body: { email: `tak-ada-${stamp}@example.com` },
+  });
+  assert.equal(unknown.status, 200);
+  assert.equal(unknown.data.ok, true);
+  const known = await api('POST', '/api/auth/forgot', {
+    body: { email: EMAIL },
+  });
+  assert.equal(known.status, 200);
+  assert.equal(known.data.ok, true);
+  assert.equal(known.data.message, unknown.data.message);
+});
+
+test('reset password: kode salah -> 400 tanpa bocor info', async () => {
+  const bad = await api('POST', '/api/auth/reset', {
+    body: { email: EMAIL, code: '000000', newPassword: 'reset-baru789' },
+  });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.data.error.code, 'RESET_INVALID');
+  const weak = await api('POST', '/api/auth/reset', {
+    body: { email: EMAIL, code: '000000', newPassword: 'x' },
+  });
+  assert.equal(weak.status, 400);
+  assert.equal(weak.data.error.code, 'AUTH_WEAK_PASSWORD');
+});
+
+test('hapus akun sendiri (bersih-bersih) -> ok; token jadi yatim 404', async () => {
+  const del = await api('DELETE', '/api/me', { token });
+  assert.equal(del.status, 200);
+  const me = await api('GET', '/api/me', { token });
+  assert.equal(me.status, 404);
+  assert.equal(me.data.error.code, 'USER_NOT_FOUND');
+});
+
+test('BRUTEFORCE: 25x login salah cepat -> 429 RATE_LIMITED (terakhir)', async () => {
+  let limited = 0;
+  for (let i = 0; i < 25; i++) {
+    const r = await api('POST', '/api/auth/login', {
+      body: { email: `brute-${stamp}@example.com`, password: 'salah1234' },
+    });
+    if (r.status === 429) {
+      limited++;
+      assert.equal(r.data.error.code, 'RATE_LIMITED');
+    } else {
+      assert.equal(r.status, 401);
+    }
+  }
+  assert.ok(limited > 0, 'limiter wajib men-trip');
+});

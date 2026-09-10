@@ -1,0 +1,105 @@
+# Flutter / Dart
+.dart_tool/
+build/
+.pub/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# Android
+.gradle/
+.gradle-user-home/
+local.properties
+android/.gradle/
+android/.kotlin/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/key.properties
+**/key.properties
+*.jks
+*.keystore
+
+# iOS / macOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Pods/
+macos/Flutter/ephemeral/
+macos/Flutter/Generated.xcconfig
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / temp
+*.log
+__pycache__/
+tool/flutter_build_web.err.log
+tool/flutter_build_web.log
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+service-account*.json
+google-services-secret*.json
+credential*.json
+
+# Generated
+coverage/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local setup notes
+setup_flutter.sh
+setup_flutter.bat
+
+# Internal notes
+API_MIGRATION.md
+firebase-setup.md
+
+# Payment backend secrets
+payment_api/.env
+
+# Local-only checklist (never push)
+checklist-konfigurasi.txt
+
+# Firebase configs berisi API key — jangan push (ambil dari Console)
+android/app/google-services.json
+**/google-services.json
+**/GoogleService-Info.plist
+
+# APK/AAB rilis didistribusikan via GitHub Releases (bukan blob di repo)
+release/*.apk
+release/*.aab
+*.apk
+*.aab
+
+# Skrip ops ad-hoc lokal (Proxmox/SSH), bukan bagian app
+remote-check*.sh
+
+# Skrip pribadi lokal, bukan tool repo
+tool/auto_tidy_system.ps1
+tool/organize_folder.ps1

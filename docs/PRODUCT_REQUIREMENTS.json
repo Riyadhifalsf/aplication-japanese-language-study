@@ -1,0 +1,62 @@
+{
+  "project": "japanese_study",
+  "targets": [
+    "Android",
+    "Web"
+  ],
+  "levels": [
+    "N5",
+    "N4",
+    "N3",
+    "N2",
+    "N1"
+  ],
+  "features": {
+    "adaptive_learning": true,
+    "offline_first": true,
+    "rpg_path": true,
+    "ai_sensei": true,
+    "speaking": true,
+    "shadowing": true,
+    "jlpt_simulator": true,
+    "jft_practice": true,
+    "ssw_manufacturing": true,
+    "kanji_today": true,
+    "streak": true,
+    "minna_no_nihongo_1_2_mapping": true,
+    "premium": true
+  },
+  "kanji_targets": {
+    "N5": 200,
+    "N4": 350,
+    "N3": 600,
+    "N2": 350,
+    "N1": 2000
+  },
+  "vocabulary_targets": {
+    "N5": 800,
+    "N4_cumulative": 1500,
+    "N3_cumulative": 2250,
+    "N2": 6000
+  },
+  "furigana_policy": {
+    "N5": "default_on",
+    "N4_plus": "default_off"
+  },
+  "payments": [
+    "Google Play",
+    "QRIS",
+    "GoPay",
+    "DANA",
+    "Mastercard",
+    "bank",
+    "Bitcoin"
+  ],
+  "architecture": {
+    "client": "Flutter",
+    "api": "Node.js/Express",
+    "database": "PostgreSQL",
+    "identity": "Firebase Auth",
+    "sync": "Firestore + local state"
+  }
+}

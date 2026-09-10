@@ -1,0 +1,49 @@
+name: japanese_study
+description: A production-oriented Japanese language learning app covering Kana, JLPT N5-N1, JFT, SSW, adaptive review, and offline-first study.
+publish_to: "none"
+version: 1.7.0+8
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_sign_in: ^6.2.2
+  http: ^1.4.0
+  flutter_secure_storage: ^9.2.4
+  firebase_core: ^3.15.2
+  firebase_auth: ^5.5.3
+  cloud_firestore: ^5.6.12
+  image_picker: ^1.1.2
+  path_drawing: ^1.0.1
+  shared_preferences: ^2.5.3
+  crypto: ^3.0.7
+  flutter_local_notifications: ^19.4.2
+  timezone: ^0.10.1
+  url_launcher: ^6.3.2
+  google_mobile_ads: ^9.1.0
+  fl_chart: ^0.70.2
+  flutter_native_splash: ^2.4.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter_native_splash:
+  color: "#F7F9FC"
+  image: assets/branding/japanese_study_logo.png
+  android: true
+  ios: true
+  web: true
+  android_12:
+    color: "#F7F9FC"
+    image: assets/branding/japanese_study_logo.png
+    icon_background_color: "#F7F9FC"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/
+    - assets/branding/
