@@ -41,46 +41,75 @@ class WeeklyLearningPulse extends StatelessWidget {
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
                   ),
                 ),
-                Text('$activeDays/7 hari aktif', style: TextStyle(color: cs.primary, fontWeight: FontWeight.w800)),
+                Flexible(
+                  child: Text(
+                    '$activeDays/7 hari aktif',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(color: cs.primary, fontWeight: FontWeight.w800),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
             Text('Konsistensi minggu ini, bukan cuma jumlah XP.', style: TextStyle(color: cs.onSurfaceVariant)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             SizedBox(
-              height: 132,
+              height: 118,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  for (var i = 0; i < values.length; i++) ...[
+                  for (var i = 0; i < values.length; i++)
                     Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text('${values[i]}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 6),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            height: maxValue == 0 ? 8 : 12 + (92 * values[i] / maxValue),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(99),
-                              color: values[i] > 0 ? cs.primary : cs.surfaceContainerHighest,
+                      child: Padding(
+                        padding: EdgeInsets.only(right: i == values.length - 1 ? 0 : 2),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            SizedBox(
+                              height: 14,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('${values[i]}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 7),
-                          Text(
-                            ['S', 'S', 'R', 'K', 'J', 'S', 'M'][i],
-                            style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant, fontWeight: FontWeight.w700),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Flexible(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  width: double.infinity,
+                                  constraints: const BoxConstraints(maxWidth: 22, minHeight: 8),
+                                  height: maxValue == 0 ? 8 : 10 + (78 * values[i] / maxValue),
+                                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(99),
+                                    color: values[i] > 0 ? cs.primary : cs.surfaceContainerHighest,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            SizedBox(
+                              height: 14,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  ['S', 'S', 'R', 'K', 'J', 'S', 'M'][i],
+                                  style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text('$total event belajar tercatat minggu ini.', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
           ],
         ),
