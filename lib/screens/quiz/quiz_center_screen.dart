@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../state/app_controller.dart';
 import '../../widgets/entrance.dart';
-import '../exams/exam_hub_screen.dart';
+import '../choukai/choukai_screen.dart';
 import '../kana/kana_screen.dart';
 import '../kanji/kanji_hiragana_quiz_screen.dart';
 import '../kanji/kanji_mastery_quiz_screen.dart';
@@ -91,6 +91,12 @@ class QuizCenterScreen extends StatelessWidget {
               () => _open(context, const KanaScreen()),
             ),
             _Item(
+              'Choukai',
+              'Latihan menyimak untuk penguasaan JLPT',
+              Icons.headphones_rounded,
+              () => _open(context, const ChoukaiScreen()),
+            ),
+            _Item(
               'Ulasan Kesalahan',
               'Lihat dan ulangi jawaban yang salah',
               Icons.rate_review_rounded,
@@ -101,29 +107,6 @@ class QuizCenterScreen extends StatelessWidget {
               'Typing Kana, Kotoba, dan Kanji',
               Icons.sports_esports_rounded,
               () => _open(context, const GameHubScreen()),
-            ),
-          ],
-          enabled: true,
-        ),
-        const SizedBox(height: 22),
-        _Section(
-          title: 'Ujian & simulasi',
-          subtitle: 'Simulasi ujian berada di sini, bukan di Library latihan.',
-        ),
-        const SizedBox(height: 10),
-        _Grid(
-          items: [
-            _Item(
-              'Simulasi JLPT',
-              'N5 sampai N1',
-              Icons.school_rounded,
-              () => _open(context, const ExamHubScreen()),
-            ),
-            _Item(
-              'Simulasi JFT-Basic',
-              'Paket latihan A2',
-              Icons.badge_rounded,
-              () => _open(context, const ExamHubScreen(initialType: ExamType.jft)),
             ),
           ],
           enabled: true,
