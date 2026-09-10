@@ -4,12 +4,16 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../features/curriculum/curriculum_catalog.dart';
 import '../../features/curriculum/curriculum_models.dart';
 import '../../features/curriculum/n5_n4_course_content.dart';
+import '../../features/curriculum/n5_n4_vocabulary_expansion.dart';
 import '../../state/app_controller.dart';
 import 'curriculum_lesson_detail_screen.dart';
 
-/// Rich chapter flow for N5/N4. The screen keeps learning inside one flow:
-/// chapter -> subchapter -> next subchapter -> next chapter.
-/// N5/N4 content intentionally shows romaji for beginners.
+/// Rich chapter flow for N5/N4.
+///
+/// The visible learning journey is intentionally kept inside this screen:
+/// chapter -> subchapter -> next subchapter -> next chapter. N5/N4 expose
+/// romaji because they are the beginner path. Introduction nodes from the
+/// legacy curriculum are never rendered here.
 class EnrichedCurriculumChapterScreen extends StatefulWidget {
   const EnrichedCurriculumChapterScreen({
     required this.level,
@@ -63,9 +67,7 @@ class _EnrichedCurriculumChapterScreenState
   }
 
   void _watchForChapterEnd(ScrollNotification notification) {
-    if (_autoMoved || _nextUnit == null || notification.metrics.axis != Axis.vertical) {
-      return;
-    }
+    if (_autoMoved || _nextUnit == null || notification.metrics.axis != Axis.vertical) return;
     if (notification is ScrollEndNotification &&
         notification.metrics.pixels >= notification.metrics.maxScrollExtent - 8) {
       _autoMoved = true;
@@ -76,9 +78,10 @@ class _EnrichedCurriculumChapterScreenState
   }
 
   Future<void> _openSubchapter(CurriculumLesson lesson) async {
-    final status = AppScope.of(context).curriculumLessonStatus(lesson);
+    final app = AppScope.of(context);
+    final status = app.curriculumLessonStatus(lesson);
     if (status == CurriculumLessonStatus.locked) return;
-    AppScope.of(context).setCurriculumActiveLesson(lesson.id);
+    app.setCurriculumActiveLesson(lesson.id);
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -105,15 +108,16 @@ class _EnrichedCurriculumChapterScreenState
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
     final data = N5N4CourseContent.forUnit(widget.level.id, widget.unit);
-    if (data == null) {
-      return _legacyScreen(context);
-    }
+    if (data == null) return _legacyScreen(context);
 
-    final lessons = widget.unit.lessons
-        .where((lesson) => lesson.sequence > 0)
-        .toList()
+    final lessons = widget.unit.lessons.where((lesson) => lesson.sequence > 0).toList()
       ..sort((a, b) => a.sequence.compareTo(b.sequence));
     final statuses = app.curriculumStatuses(widget.level.id);
+    final expandedTerms = <CourseTerm>[
+      ...data.terms,
+      if (widget.level.id == 'N5')
+        ...N5VocabularyExpansion.forChapter(widget.unit.sequence),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -148,36 +152,34 @@ class _EnrichedCurriculumChapterScreenState
             const SizedBox(height: 14),
             _referenceCard(context, data),
             const SizedBox(height: 18),
-            _sectionTitle('Kosakata penting', 'Target kata dipakai berulang di contoh dan latihan.'),
+            _sectionTitle('Kosakata lengkap bab ini',
+                '${expandedTerms.length} kata target · tulisan Jepang + romaji + arti.'),
             const SizedBox(height: 8),
-            _vocabularyGrid(context, data.terms),
+            _vocabularyGrid(context, expandedTerms),
             const SizedBox(height: 20),
-            _sectionTitle('Pola grammar', 'Pelajari bentuk, fungsi, lalu lihat contoh penggunaan.'),
+            _sectionTitle('Pola grammar',
+                'Pelajari bentuk, fungsi, lalu lihat contoh penggunaan.'),
             const SizedBox(height: 8),
-            for (final grammar in data.grammar)
+            for (var i = 0; i < data.grammar.length; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Card(
                   child: ListTile(
-                    leading: CircleAvatar(child: Text('${data.grammar.indexOf(grammar) + 1}')),
-                    title: Text(grammar, style: const TextStyle(fontWeight: FontWeight.w900)),
-                    subtitle: Text(_grammarHint(grammar)),
+                    leading: CircleAvatar(child: Text('${i + 1}')),
+                    title: Text(data.grammar[i], style: const TextStyle(fontWeight: FontWeight.w900)),
+                    subtitle: Text(_grammarHint(data.grammar[i])),
                   ),
                 ),
               ),
             const SizedBox(height: 16),
-            _sectionTitle('Sub-bab', 'Setiap sub-bab mempunyai contoh penggunaan sendiri.'),
+            _sectionTitle('Sub-bab',
+                'Setiap sub-bab memiliki contoh penggunaan dan tombol Lanjut.'),
             const SizedBox(height: 8),
             for (var i = 0; i < data.subchapters.length; i++)
-              _subchapterCard(
-                context,
-                data.subchapters[i],
-                i,
-                lessons,
-                statuses,
-              ),
+              _subchapterCard(context, data.subchapters[i], i, lessons, statuses),
             const SizedBox(height: 16),
-            _sectionTitle('Contoh penggunaan bab', 'Jangan hanya hafal kata: baca dalam kalimat.'),
+            _sectionTitle('Contoh penggunaan bab',
+                'Gunakan pola di bawah dalam konteks, bukan hafalan kata terpisah.'),
             const SizedBox(height: 8),
             for (final example in data.examples)
               Padding(
@@ -234,6 +236,8 @@ class _EnrichedCurriculumChapterScreenState
                 const Text('Referensi gambar', style: TextStyle(fontWeight: FontWeight.w900)),
                 const SizedBox(height: 3),
                 Text(data.imageLabel, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 3),
+                const Text('Buka sumber visual tanpa menjadikan jaringan sebagai syarat belajar offline.', style: TextStyle(fontSize: 11)),
               ])),
               const Icon(Icons.open_in_new_rounded, size: 18),
             ]),
@@ -249,7 +253,7 @@ class _EnrichedCurriculumChapterScreenState
           crossAxisCount: MediaQuery.sizeOf(context).width >= 800 ? 3 : 2,
           crossAxisSpacing: 8,
           mainAxisSpacing: 8,
-          childAspectRatio: 1.45,
+          childAspectRatio: 1.42,
         ),
         itemBuilder: (_, index) {
           final term = terms[index];
@@ -257,11 +261,12 @@ class _EnrichedCurriculumChapterScreenState
             child: Padding(
               padding: const EdgeInsets.all(10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(term.word, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+                Text(term.word, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 2),
                 Text(term.romaji, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 const Spacer(),
-                Text(term.meaning, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                Text(term.meaning, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ]),
             ),
           );
@@ -280,6 +285,8 @@ class _EnrichedCurriculumChapterScreenState
         ? CurriculumLessonStatus.available
         : statuses[lesson.id] ?? CurriculumLessonStatus.locked;
     final locked = lessonStatus == CurriculumLessonStatus.locked;
+    final isCompleted = lessonStatus == CurriculumLessonStatus.completed ||
+        lessonStatus == CurriculumLessonStatus.mastered;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -289,8 +296,7 @@ class _EnrichedCurriculumChapterScreenState
             CircleAvatar(radius: 19, child: Text(sub.number, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900))),
             const SizedBox(width: 10),
             Expanded(child: Text(sub.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
-            if (lessonStatus == CurriculumLessonStatus.completed || lessonStatus == CurriculumLessonStatus.mastered)
-              const Icon(Icons.check_circle_rounded),
+            if (isCompleted) const Icon(Icons.check_circle_rounded),
           ]),
           const SizedBox(height: 8),
           Text(sub.body, style: const TextStyle(height: 1.4)),
@@ -300,13 +306,14 @@ class _EnrichedCurriculumChapterScreenState
               padding: const EdgeInsets.only(bottom: 8),
               child: _compactExample(context, example),
             ),
-          const SizedBox(height: 2),
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
-              onPressed: lesson == null || locked ? null : () => _openSubchapter(lesson),
+              onPressed: lesson == null || locked
+                  ? null
+                  : () => _openSubchapter(lesson),
               icon: Icon(locked ? Icons.lock_rounded : Icons.arrow_forward_rounded, size: 17),
-              label: Text(lessonStatus == CurriculumLessonStatus.completed ? 'Ulang' : 'Lanjut'),
+              label: Text(isCompleted ? 'Ulang' : 'Lanjut'),
             ),
           ),
         ]),
@@ -346,9 +353,9 @@ class _EnrichedCurriculumChapterScreenState
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('N5/N4 checkpoint', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const Text('Checkpoint level', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
             const SizedBox(height: 5),
-            const Text('Kamu sudah sampai akhir jalur level ini. Gunakan review dan latihan sebelum pindah level.'),
+            const Text('Ini adalah bab terakhir pada jalur level yang tersedia. Selesaikan review dan pertahankan materi melalui latihan.'),
           ]),
         ),
       );
@@ -367,9 +374,9 @@ class _EnrichedCurriculumChapterScreenState
               const Text('Lanjut ke bab berikutnya', style: TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 3),
               Text(nextData?.title ?? next.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              Text('Geser sampai bawah untuk berpindah otomatis.', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text('Geser sampai paling bawah untuk berpindah otomatis.', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ])),
-            const Icon(Icons.arrow_downward_rounded),
+            const Icon(Icons.arrow_forward_rounded),
           ]),
         ),
       ),
@@ -378,7 +385,11 @@ class _EnrichedCurriculumChapterScreenState
 
   Widget _sectionTitle(String title, String subtitle) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(fontSize: 12, height: 1.4))],
+        children: [
+          Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text(subtitle, style: const TextStyle(fontSize: 12, height: 1.4)),
+        ],
       );
 
   String _grammarHint(String grammar) {
