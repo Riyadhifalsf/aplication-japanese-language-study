@@ -131,35 +131,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Penguasaan JLPT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                        const SizedBox(height: 4),
-                        Text(app.masteryTier.label, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: cs.primary)),
-                        Text('${(app.overallMasteryScore * 100).round()}% penguasaan keseluruhan', style: TextStyle(color: cs.onSurfaceVariant)),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    width: 82,
-                    height: 82,
-                    child: Stack(fit: StackFit.expand, children: [
-                      CircularProgressIndicator(value: app.overallMasteryScore, strokeWidth: 8),
-                      Center(child: Text(app.masteryTier.name.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900))),
-                    ]),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
           WeeklyLearningPulse(app: app),
           const SizedBox(height: 14),
           AchievementGallery(app: app),
