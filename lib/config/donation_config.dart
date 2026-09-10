@@ -37,9 +37,21 @@ class DonationConfig {
     ),
   ];
 
-  /// Feed leaderboard. Untuk data dinamis, isi dari backend/database yang
-  /// menerima data donasi Saweria. Jangan menyimpan data pembayaran sensitif di aplikasi.
-  static const donors = <DonationRecord>[];
+  /// Data contoh untuk preview UI leaderboard.
+  /// Ganti dengan data dari backend/database saat leaderboard sudah dinamis.
+  /// Nama dan nominal di bawah ini bukan donasi nyata.
+  static const donors = <DonationRecord>[
+    DonationRecord(displayName: 'Sakura', amount: 250000),
+    DonationRecord(displayName: 'Ryu', amount: 150000),
+    DonationRecord(displayName: 'Aki', amount: 100000),
+    DonationRecord(displayName: 'Hana', amount: 75000),
+    DonationRecord(displayName: 'Kenji', amount: 50000),
+    DonationRecord(displayName: 'Mika', amount: 50000),
+    DonationRecord(displayName: 'Yuki', amount: 25000),
+    DonationRecord(displayName: 'Ren', amount: 20000),
+    DonationRecord(displayName: 'Nana', amount: 10000),
+    DonationRecord(displayName: 'Taro', amount: 5000),
+  ];
 
   static int get donorCount => donors.length;
   static int get totalAmount => donors.fold(0, (sum, donor) => sum + donor.amount);
