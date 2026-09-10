@@ -1,3 +1,4 @@
+import '../services/meaning_localizer.dart';
 import '../services/romaji.dart';
 
 class PhraseItem {
@@ -28,11 +29,11 @@ class PhraseItem {
         category: json['category'] as String? ?? 'Umum',
         japanese: json['japanese'] as String? ?? '',
         reading: json['reading'] as String? ?? '',
-        meaning: json['meaning'] as String? ?? '',
-        politeness: json['politeness'] as String? ?? 'Sopan',
-        note: json['note'] as String? ?? '',
+        meaning: MeaningLocalizer.cleanId(json['meaning'] as String? ?? ''),
+        politeness: MeaningLocalizer.cleanId(json['politeness'] as String? ?? 'Sopan'),
+        note: MeaningLocalizer.cleanId(json['note'] as String? ?? ''),
         tags: (json['tags'] as List<dynamic>? ?? const [])
-            .map((item) => '$item')
+            .map((item) => MeaningLocalizer.cleanId('$item'))
             .toList(growable: false),
       );
 }
