@@ -8,6 +8,7 @@ import '../kanji/kanji_hiragana_quiz_screen.dart';
 import '../kanji/kanji_mastery_quiz_screen.dart';
 import '../kanji/kanji_review_screen.dart';
 import '../kanji/kanji_similar_quiz_screen.dart';
+import '../vocab/vocabulary_quiz_screen.dart';
 import '../games/game_hub_screen.dart';
 
 class QuizCenterScreen extends StatelessWidget {
