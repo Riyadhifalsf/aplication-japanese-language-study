@@ -6,9 +6,177 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
+  repair_compile:
+    name: Repair Flutter source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Repair known compile regressions
+        if: github.event_name == 'push'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, text):
+              Path(path).write_text(text, encoding='utf-8')
+
+          # MasteryTier.color used by HomeScreen.
+          p = 'lib/state/app_controller.dart'
+          s = read(p)
+          needle = "  String get label => 'JLPT ${name.toUpperCase()}';\n"
+          addition = needle + "\n  Color get color {\n    switch (this) {\n      case MasteryTier.n5:\n        return Colors.blueGrey;\n      case MasteryTier.n4:\n        return Colors.teal;\n      case MasteryTier.n3:\n        return Colors.indigo;\n      case MasteryTier.n2:\n        return Colors.deepPurple;\n      case MasteryTier.n1:\n        return Colors.amber.shade800;\n    }\n  }\n"
+          if 'Color get color {' not in s:
+              if needle not in s:
+                  raise SystemExit('MasteryTier label getter not found')
+              s = s.replace(needle, addition, 1)
+              write(p, s)
+
+          # Restore the missing weekly streak day widget.
+          p = 'lib/screens/home/home_screen.dart'
+          s = read(p)
+          marker = 'class _TodayKanjiCarousel extends StatelessWidget {'
+          widget = """class _KanjiStreak extends StatelessWidget {
+  const _KanjiStreak({
+    required this.item,
+    required this.active,
+    required this.selected,
+  });
+
+  final String item;
+  final bool active;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 3),
+      decoration: BoxDecoration(
+        color: active ? cs.primary : cs.surface.withValues(alpha: .48),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected ? cs.onPrimaryContainer : cs.outlineVariant,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              item,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: active ? cs.onPrimary : cs.onSurface,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Icon(
+            active ? Icons.check_circle_rounded : Icons.remove_rounded,
+            size: 15,
+            color: active ? cs.onPrimary : cs.onSurfaceVariant,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+"""
+          if 'class _KanjiStreak extends StatelessWidget {' not in s:
+              if marker not in s:
+                  raise SystemExit('Home streak insertion marker not found')
+              s = s.replace(marker, widget + marker, 1)
+              write(p, s)
+
+          # Fix current lesson navigation call.
+          p = 'lib/screens/curriculum/curriculum_path_screen.dart'
+          s = read(p)
+          old = '_openChapter(context, app, currentUnit)'
+          new = '_openChapter(context, app, level, currentUnit)'
+          if old in s:
+              s = s.replace(old, new, 1)
+              write(p, s)
+
+          # Remove navigation code accidentally inserted into _askComplete and
+          # restore unitLessons on the guided-practice state.
+          p = 'lib/screens/curriculum/curriculum_lesson_detail_screen.dart'
+          s = read(p)
+          bad = """            if (!isTest && done && nextLesson != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _continueToNextLesson(context, nextLesson),
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  label: Text('Lanjut ke ${CurriculumCatalogData.unitById(widget.lesson.unitId)?.sequence ?? ''}.${unitLessons.indexWhere((lesson) => lesson.id == nextLesson.id) + 1}'),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+"""
+          if bad in s:
+              s = s.replace(bad, '', 1)
+          needle = '  CurriculumLesson? _nextLessonInChapter() {'
+          helper = """  List<CurriculumLesson> get unitLessons {
+    final unit = CurriculumCatalogData.unitById(widget.lesson.unitId);
+    final lessons = unit?.lessons
+            .where((lesson) => lesson.sequence > 0)
+            .toList() ??
+        <CurriculumLesson>[];
+    lessons.sort((a, b) => a.sequence.compareTo(b.sequence));
+    return lessons;
+  }
+
+"""
+          if 'List<CurriculumLesson> get unitLessons {' not in s:
+              if needle not in s:
+                  raise SystemExit('guided practice insertion marker not found')
+              s = s.replace(needle, helper + needle, 1)
+          write(p, s)
+
+          # Fail immediately if unresolved merge markers are still present.
+          for path in [
+              'lib/screens/curriculum/curriculum_path_screen.dart',
+              'lib/screens/curriculum/curriculum_lesson_detail_screen.dart',
+          ]:
+              text = read(path)
+              if any(marker in text for marker in ('<<<<<<<', '=======', '>>>>>>>')):
+                  raise SystemExit(f'Git conflict marker remains in {path}')
+          PY
+
+      - name: Commit source repairs
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/one-shot-flutter-repair.yml .repair-trigger 2>/dev/null || true
+          git add lib/state/app_controller.dart \
+                  lib/screens/home/home_screen.dart \
+                  lib/screens/curriculum/curriculum_path_screen.dart \
+                  lib/screens/curriculum/curriculum_lesson_detail_screen.dart
+          if git diff --cached --quiet; then
+            echo "No source repair changes needed."
+            exit 0
+          fi
+          git commit -m "fix: repair flutter compile errors"
+          git push origin main
+
   analyze:
     name: Analyze & Test
+    needs: repair_compile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
