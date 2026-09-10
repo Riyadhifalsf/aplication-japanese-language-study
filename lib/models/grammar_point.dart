@@ -1,3 +1,5 @@
+import '../services/meaning_localizer.dart';
+
 class GrammarPoint {
   const GrammarPoint({
     required this.id,
@@ -21,9 +23,9 @@ class GrammarPoint {
         id: json['id'] as String? ?? '',
         pattern: json['pattern'] as String? ?? '',
         level: json['level'] as String? ?? 'N5',
-        title: json['title'] as String? ?? '',
-        explanation: json['explanation'] as String? ?? '',
-        formation: json['formation'] as String? ?? '',
+        title: MeaningLocalizer.cleanId(json['title'] as String? ?? ''),
+        explanation: MeaningLocalizer.cleanId(json['explanation'] as String? ?? ''),
+        formation: MeaningLocalizer.cleanId(json['formation'] as String? ?? ''),
         examples: (json['examples'] as List<dynamic>? ?? const [])
             .map((e) => GrammarExample.fromJson(e as Map<String, dynamic>))
             .toList(growable: false),
@@ -44,6 +46,6 @@ class GrammarExample {
   factory GrammarExample.fromJson(Map<String, dynamic> json) => GrammarExample(
         japanese: json['japanese'] as String? ?? '',
         reading: json['reading'] as String? ?? '',
-        meaning: json['meaning'] as String? ?? '',
+        meaning: MeaningLocalizer.cleanId(json['meaning'] as String? ?? ''),
       );
 }
