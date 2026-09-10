@@ -36,7 +36,11 @@ class PracticeQuestion {
   final String explanation;
   final String reading;
   final String meaning;
+
+  /// Bila diisi: soal listening (putar via TTS, teks disembunyikan).
   final String audio;
+
+  /// Bila diisi: soal susun-kalimat dalam URUTAN BENAR.
   final List<String> tokens;
   final String masteryKey;
 
@@ -44,8 +48,10 @@ class PracticeQuestion {
   bool get isListening => audio.isNotEmpty;
 }
 
+/// Gerbang skor latihan: quiz activity hanya selesai bila skor ≥70%.
 bool meetsScoreGate(int percent) => percent >= 70;
 
+/// Nilai huruf tes bab: 90+ Excellent, 80+ Great, 70+ Passed.
 String gradeFor(int percent) => percent >= 90
     ? 'Excellent'
     : percent >= 80
@@ -54,6 +60,7 @@ String gradeFor(int percent) => percent >= 90
             ? 'Passed'
             : 'Review required';
 
+/// Bangun soal dari konten lesson yang sudah di-resolve.
 List<PracticeQuestion> buildLessonQuestions({
   required List<PhraseItem> phrases,
   required List<Vocabulary> vocabs,
@@ -63,6 +70,7 @@ List<PracticeQuestion> buildLessonQuestions({
   List<AuthoredQuestion> authored = const [],
 }) {
   final qs = <PracticeQuestion>[];
+  // 1-2. Salam: arti + situasi (butuh ≥3).
   if (phrases.length >= 3) {
     qs.add(PracticeQuestion(
       prompt: '「${phrases[0].japanese}」 artinya?',
@@ -74,16 +82,25 @@ List<PracticeQuestion> buildLessonQuestions({
     ));
     qs.add(PracticeQuestion(
       prompt: 'Bertemu guru di pagi hari, salam yang tepat?',
-      options: [phrases[0].japanese, phrases[1].japanese, phrases[2].japanese],
+      options: [
+        phrases[0].japanese,
+        phrases[1].japanese,
+        phrases[2].japanese
+      ],
       correctIndex: 0,
       explanation: phrases[0].note,
       reading: phrases[0].reading,
       meaning: phrases[0].meaning,
     ));
+    // 3. Kesopanan (butuh varian Sopan).
     if (phrases.length >= 6) {
       qs.add(PracticeQuestion(
         prompt: 'Menyapa teman dekat dengan santai, pilih yang tepat?',
-        options: [phrases[3].japanese, phrases[0].japanese, phrases[1].japanese],
+        options: [
+          phrases[3].japanese,
+          phrases[0].japanese,
+          phrases[1].japanese
+        ],
         correctIndex: 0,
         explanation: phrases[3].note,
         reading: phrases[3].reading,
@@ -91,6 +108,7 @@ List<PracticeQuestion> buildLessonQuestions({
       ));
     }
   }
+  // 4-5. Kotoba (butuh ≥3).
   if (vocabs.length >= 3) {
     qs.add(PracticeQuestion(
       prompt: '「${vocabs[0].word}」 dibaca?',
@@ -111,6 +129,7 @@ List<PracticeQuestion> buildLessonQuestions({
       masteryKey: 'v:${vocabs[1].id}',
     ));
   }
+  // 6-10. Grammar Bab 1 terverifikasi (n5-wa / n5-no / n5-ka).
   final byId = <String, GrammarPoint>{for (final g in grammars) g.id: g};
   final wa = byId['n5-wa'];
   if (wa != null) {
@@ -123,7 +142,11 @@ List<PracticeQuestion> buildLessonQuestions({
     ));
     qs.add(PracticeQuestion(
       prompt: 'Pilih kalimat yang benar.',
-      options: const ['わたしは がくせいです', 'わたしのがくせいです', 'わたしがくせいです'],
+      options: const [
+        'わたしは がくせいです',
+        'わたしのがくせいです',
+        'わたしがくせいです'
+      ],
       correctIndex: 0,
       explanation: 'Pola ${wa.pattern}: topik + は.',
       masteryKey: 'g:n5-wa',
@@ -148,7 +171,11 @@ List<PracticeQuestion> buildLessonQuestions({
     }
     qs.add(PracticeQuestion(
       prompt: '～の～ dipakai untuk?',
-      options: const ['Menghubungkan kata benda', 'Menandai topik', 'Membuat pertanyaan'],
+      options: const [
+        'Menghubungkan kata benda',
+        'Menandai topik',
+        'Membuat pertanyaan'
+      ],
       correctIndex: 0,
       explanation: 'Fungsi dari pola ${no.pattern}.',
       masteryKey: 'g:n5-no',
@@ -159,7 +186,8 @@ List<PracticeQuestion> buildLessonQuestions({
     final ex = ka.examples.first;
     final others = [
       for (final g in grammars)
-        if (g.id != 'n5-ka' && g.examples.isNotEmpty) g.examples.first.meaning,
+        if (g.id != 'n5-ka' && g.examples.isNotEmpty)
+          g.examples.first.meaning,
     ];
     if (others.length >= 2) {
       qs.add(PracticeQuestion(
@@ -173,6 +201,7 @@ List<PracticeQuestion> buildLessonQuestions({
       ));
     }
   }
+  // Kanji penyusun kata bab (butuh ≥3).
   if (kanjis.length >= 3) {
     qs.add(PracticeQuestion(
       prompt: 'Kanji「${kanjis[2].character}」 artinya?',
@@ -182,6 +211,7 @@ List<PracticeQuestion> buildLessonQuestions({
       masteryKey: 'k:${kanjis[2].id}',
     ));
   }
+  // Listening: dengar via TTS, pilih arti.
   if (listening && phrases.length >= 3) {
     qs.add(PracticeQuestion(
       prompt: 'Dengarkan, lalu pilih artinya.',
@@ -193,9 +223,13 @@ List<PracticeQuestion> buildLessonQuestions({
       audio: phrases[1].japanese,
     ));
   }
+  // Soal authored kurikulum (lesson tanpa ID dataset). Soal tokens
+  // (susun-kalimat) boleh punya <2 opsi karena jawabannya dari keping.
   for (final a in authored) {
     final isOrdering = a.tokens.isNotEmpty;
-    if ((isOrdering || a.options.length >= 2) && a.correctIndex >= 0 && a.correctIndex < a.options.length) {
+    if ((isOrdering || a.options.length >= 2) &&
+        a.correctIndex >= 0 &&
+        a.correctIndex < a.options.length) {
       qs.add(PracticeQuestion(
         prompt: a.prompt,
         options: a.options,
@@ -212,16 +246,32 @@ List<PracticeQuestion> buildLessonQuestions({
   return qs;
 }
 
+/// Hasil resolusi referensi satu lesson: model asli dari repository
+/// (tanpa duplikasi objek). ID tak dikenal di-skip diam-diam.
 class ResolvedLesson {
-  const ResolvedLesson({required this.phrases, required this.vocabs, required this.grammars, required this.kanjis});
+  const ResolvedLesson({
+    required this.phrases,
+    required this.vocabs,
+    required this.grammars,
+    required this.kanjis,
+  });
+
   final List<PhraseItem> phrases;
   final List<Vocabulary> vocabs;
   final List<GrammarPoint> grammars;
   final List<Kanji> kanjis;
-  bool get isEmpty => phrases.isEmpty && vocabs.isEmpty && grammars.isEmpty && kanjis.isEmpty;
+
+  bool get isEmpty =>
+      phrases.isEmpty &&
+      vocabs.isEmpty &&
+      grammars.isEmpty &&
+      kanjis.isEmpty;
 }
 
-ResolvedLesson resolveLessonContent(ContentRepository repo, CurriculumLesson lesson) {
+/// Resolve vocabularyIds/grammarIds/kanjiIds/phraseIds lesson via
+/// repository. Urutan = urutan ID di katalog (deterministik).
+ResolvedLesson resolveLessonContent(
+    ContentRepository repo, CurriculumLesson lesson) {
   int? intId(String raw) => int.tryParse(raw);
   final phrases = <PhraseItem>[];
   for (final id in lesson.phraseIds) {
@@ -245,6 +295,10 @@ ResolvedLesson resolveLessonContent(ContentRepository repo, CurriculumLesson les
     final item = parsed == null ? null : repo.kanjiById(parsed);
     if (item != null) kanjis.add(item);
   }
+
+  // Depth chapters intentionally carry a human-readable contentRef instead
+  // of hard-coded IDs. Resolve those references against the bundled dataset
+  // so generated chapters still use the uploaded/reference content.
   if (phrases.isEmpty && vocabs.isEmpty && grammars.isEmpty && kanjis.isEmpty) {
     final refs = lesson.activities.map((a) => a.contentRef).where((v) => v.isNotEmpty);
     final theme = refs.map(_contentTheme).firstWhere((v) => v.isNotEmpty, orElse: () => '');
@@ -252,17 +306,28 @@ ResolvedLesson resolveLessonContent(ContentRepository repo, CurriculumLesson les
       ...theme.split(RegExp(r'[^a-z0-9]+')).where((v) => v.length >= 3),
       ...lesson.title.toLowerCase().split(RegExp(r'[^a-z0-9]+')).where((v) => v.length >= 4),
     };
-    bool matchesText(String text) => terms.any((term) => text.toLowerCase().contains(term));
+    bool matchesText(String text) {
+      final normalized = text.toLowerCase();
+      return terms.any((term) => normalized.contains(term));
+    }
     final level = lesson.levelId.toUpperCase();
-    vocabs.addAll(repo.vocabulary.where((v) => v.level == level && matchesText('${v.word} ${v.reading} ${v.meaning}')).take(12));
-    if (vocabs.isEmpty) vocabs.addAll(repo.vocabulary.where((v) => v.level == level).skip((lesson.sequence * 7) % 120).take(8));
+    final vocabCandidates = repo.vocabulary.where((v) => v.level == level && matchesText('${v.word} ${v.reading} ${v.meaning}')).take(12);
+    vocabs.addAll(vocabCandidates);
+    if (vocabs.isEmpty) {
+      vocabs.addAll(repo.vocabulary.where((v) => v.level == level).skip((lesson.sequence * 7) % 120).take(8));
+    }
     grammars.addAll(repo.grammar.where((g) => matchesText('${g.pattern} ${g.title} ${g.explanation}')).take(4));
     if (grammars.isEmpty) grammars.addAll(repo.grammar.where((g) => g.id.toLowerCase().startsWith(level.toLowerCase())).take(3));
-    kanjis.addAll(repo.kanji.where((k) => k.level == level && matchesText('${k.character} ${k.meaning} ${k.onyomi} ${k.kunyomi}')).take(8));
+    kanjis.addAll(repo.kanji.where((k) => k.level == level && matchesText('${k.character} ${k.meaning} ${k.onReading} ${k.kunReading}')).take(8));
     if (kanjis.isEmpty) kanjis.addAll(repo.kanji.where((k) => k.level == level).skip((lesson.sequence * 5) % 100).take(6));
     phrases.addAll(repo.phrases.where((p) => matchesText('${p.category} ${p.japanese} ${p.meaning}')).take(4));
   }
-  return ResolvedLesson(phrases: phrases, vocabs: vocabs, grammars: grammars, kanjis: kanjis);
+
+  return ResolvedLesson(
+      phrases: phrases,
+      vocabs: vocabs,
+      grammars: grammars,
+      kanjis: kanjis);
 }
 
 String _contentTheme(String ref) {
@@ -273,7 +338,10 @@ String _contentTheme(String ref) {
   return '';
 }
 
-List<PracticeQuestion> buildUnitQuestions(ContentRepository repo, List<CurriculumLesson> lessons) {
+/// Soal Tes Bab: dari pool unit (deterministik: ID ter-mapping + soal
+/// authored tiap lesson). >=6 soal = tes nyata layak.
+List<PracticeQuestion> buildUnitQuestions(
+    ContentRepository repo, List<CurriculumLesson> lessons) {
   final phrases = <String, PhraseItem>{};
   final vocabs = <int, Vocabulary>{};
   final grammars = <String, GrammarPoint>{};
@@ -281,10 +349,18 @@ List<PracticeQuestion> buildUnitQuestions(ContentRepository repo, List<Curriculu
   final authored = <AuthoredQuestion>[];
   for (final lesson in lessons) {
     final resolved = resolveLessonContent(repo, lesson);
-    for (final item in resolved.phrases) phrases.putIfAbsent(item.id, () => item);
-    for (final item in resolved.vocabs) vocabs.putIfAbsent(item.id, () => item);
-    for (final item in resolved.grammars) grammars.putIfAbsent(item.id, () => item);
-    for (final item in resolved.kanjis) kanjis.putIfAbsent(item.id, () => item);
+    for (final item in resolved.phrases) {
+      phrases.putIfAbsent(item.id, () => item);
+    }
+    for (final item in resolved.vocabs) {
+      vocabs.putIfAbsent(item.id, () => item);
+    }
+    for (final item in resolved.grammars) {
+      grammars.putIfAbsent(item.id, () => item);
+    }
+    for (final item in resolved.kanjis) {
+      kanjis.putIfAbsent(item.id, () => item);
+    }
     authored.addAll(lesson.authoredQuestions);
   }
   return buildLessonQuestions(

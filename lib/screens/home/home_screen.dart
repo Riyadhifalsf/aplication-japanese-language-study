@@ -7,7 +7,6 @@ import '../../state/app_controller.dart';
 import '../../widgets/continue_learning_card.dart';
 import '../../widgets/entrance.dart';
 import '../../widgets/learning_components.dart';
-import '../../widgets/liquid_glass.dart';
 import '../../widgets/weekly_learning_pulse.dart';
 import '../kanji/kanji_detail_screen.dart';
 import '../kanji/kanji_study_screen.dart';
@@ -159,9 +158,6 @@ class HomeScreen extends StatelessWidget {
           child: ContinueLearningCard(),
         ),
         const SizedBox(height: 16),
-        // DAILY GOAL (jawab: pencapaian hari ini).
-        _DailyGoalCard(app: app),
-        const SizedBox(height: 16),
         Entrance(
           keyName: 'home-streak',
           delay: const Duration(milliseconds: 35),
@@ -174,17 +170,18 @@ class HomeScreen extends StatelessWidget {
           child: _TodayKanjiCarousel(app: app),
         ),
         const SizedBox(height: 16),
-        const Text('Akses cepat', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        // Today Goal tetap terlihat, tetapi menit target diatur dari Pengaturan.
+        _DailyGoalCard(app: app),
+        const SizedBox(height: 16),
+        const Text('Akses utama', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
         const SizedBox(height: 8),
-        _ShortcutSlider(
-          items: [
-            _HomeShortcut('Pusat Quiz', Icons.quiz_rounded, onOpenQuiz),
-            _HomeShortcut('Misi hari ini', Icons.flag_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TodayLearningScreen()))),
-            _HomeShortcut('Kana', Icons.translate_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanaScreen()))),
-            _HomeShortcut('Kanji', Icons.wb_sunny_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanjiStudyScreen()))),
-            _HomeShortcut('Grammar', Icons.rule_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GrammarScreen()))),
-            _HomeShortcut('Kotoba', Icons.text_fields_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VocabularyScreen()))),
-            _HomeShortcut('Reading', Icons.chrome_reader_mode_rounded, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReadingScreen()))),
+        Row(
+          children: [
+            Expanded(child: _HomeShortcutCard(label: 'Kanji Today', icon: Icons.wb_sunny_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KanjiStudyScreen())))),
+            const SizedBox(width: 10),
+            Expanded(child: _HomeShortcutCard(label: 'Vocab Review', icon: Icons.menu_book_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VocabularyScreen())))),
+            const SizedBox(width: 10),
+            Expanded(child: _HomeShortcutCard(label: 'Streak · ${app.masteryTier.label.replaceFirst('JLPT ', '')}', icon: Icons.local_fire_department_rounded, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StreakScreen())))),
           ],
         ),
         const SizedBox(height: 16),
@@ -200,6 +197,32 @@ class HomeScreen extends StatelessWidget {
     if (now.hour < 18) return 'Lanjutkan latihanmu saat ritmenya masih hangat.';
     return 'Tutup hari dengan sedikit review.';
   }
+}
+
+class _HomeShortcutCard extends StatelessWidget {
+  const _HomeShortcutCard({required this.label, required this.icon, required this.onTap});
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 6),
+                Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 class _HomeFooter extends StatelessWidget {
@@ -307,86 +330,51 @@ class _StreakCard extends StatelessWidget {
     final today = DateTime.now();
     final monday = today.subtract(Duration(days: today.weekday - 1));
 
-    // Ketuk untuk membuka kalender streak (Rentetan Belajar).
     return InkWell(
       borderRadius: BorderRadius.circular(26),
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const StreakScreen()),
       ),
-      child: LiquidGlass(
-        padding: const EdgeInsets.all(18),
-        tint: cs.primaryContainer,
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${app.streak} hari rentetan',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-          ),
-          Text(
-            'Kanji hari ini aktif setelah kamu belajar.',
-            style: TextStyle(color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 14),
-          Row(
+      child: Card(
+        color: cs.primaryContainer,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var i = 0; i < 7; i++)
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: i == 6 ? 0 : 6),
-                    child: _KanjiStreak(
-                      item: _kanji[i],
-                      active: app.hasStudyOnDate(monday.add(Duration(days: i))),
-                      selected: i == today.weekday - 1,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${app.streak} hari rentetan', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                        Text('Konsistensi belajar minggu ini.', style: TextStyle(color: cs.onSurfaceVariant)),
+                      ],
                     ),
                   ),
-                ),
+                  Text(app.masteryTier.label.replaceFirst('JLPT ', ''), style: TextStyle(fontWeight: FontWeight.w900, color: cs.primary)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  for (var i = 0; i < 7; i++)
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: i == 6 ? 0 : 6),
+                        child: _KanjiStreak(
+                          item: _kanji[i],
+                          active: app.hasStudyOnDate(monday.add(Duration(days: i))),
+                          selected: i == today.weekday - 1,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
-        ],
-        ),
-      ),
-    );
-  }
-}
-
-class _KanjiStreak extends StatelessWidget {
-  const _KanjiStreak({
-    required this.item,
-    required this.active,
-    required this.selected,
-  });
-
-  final String item;
-  final bool active;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      height: 54,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(17),
-        color: active
-            ? scheme.primaryContainer
-            : scheme.surfaceContainerHighest.withValues(alpha: .55),
-        border: Border.all(
-          color: selected
-              ? scheme.primary
-              : (active ? scheme.primaryContainer : scheme.outlineVariant),
-          width: selected ? 1.8 : 1,
-        ),
-      ),
-      child: Text(
-        item,
-        style: TextStyle(
-          fontSize: 26,
-          fontWeight: FontWeight.w900,
-          color: active ? scheme.primary : scheme.onSurfaceVariant,
         ),
       ),
     );
