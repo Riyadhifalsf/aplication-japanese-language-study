@@ -7,7 +7,6 @@ import '../../widgets/brand_icons.dart';
 import '../auth/login_screen.dart';
 import 'profile_settings_screen.dart';
 import 'study_stats_screen.dart';
-import '../../widgets/profile_insights.dart';
 import '../../widgets/achievement_gallery.dart';
 import '../../widgets/weekly_learning_pulse.dart';
 
@@ -45,9 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     CircleAvatar(
                       radius: 42,
                       backgroundColor: cs.primary.withValues(alpha: .14),
-                      backgroundImage: app.profilePhotoData.isNotEmpty
-                          ? MemoryImage(base64Decode(app.profilePhotoData))
-                          : null,
+                      backgroundImage: app.profilePhotoData.isNotEmpty ? MemoryImage(base64Decode(app.profilePhotoData)) : null,
                       child: app.profilePhotoData.isEmpty
                           ? Text(
                               app.profileName.isEmpty ? '日' : app.profileName.substring(0, 1).toUpperCase(),
@@ -82,12 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               IconButton(
                                 tooltip: 'Pengaturan profil',
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => const ProfileSettingsScreen()),
-                                  );
-                                },
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileSettingsScreen())),
                                 icon: const Icon(Icons.settings_rounded),
                               ),
                             ],
@@ -107,15 +99,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 16),
                 InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const StudyStatsScreen()));
-                  },
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudyStatsScreen())),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: cs.surface.withValues(alpha: .6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                    decoration: BoxDecoration(color: cs.surface.withValues(alpha: .6), borderRadius: BorderRadius.circular(20)),
                     child: Row(
                       children: [
                         _CompactMetric('Mastery', '${(app.overallMasteryScore * 100).round()}%'),
@@ -130,17 +117,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Ringkasan kemajuan · ketuk untuk statistik lengkap',
-                    style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
-                  ),
+                  child: Text('Ringkasan kemajuan · ketuk untuk statistik lengkap', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
                 ),
                 if (!app.isAuthenticated) ...[
                   const SizedBox(height: 10),
                   FilledButton.icon(
-                    onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-                    },
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
                     icon: const Icon(Icons.login_rounded),
                     label: const Text('Login untuk sinkronisasi'),
                   ),
@@ -154,14 +136,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Penguasaan JLPT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Text(app.masteryTier.label, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: cs.primary)), Text('${(app.overallMasteryScore * 100).round()}% penguasaan keseluruhan', style: TextStyle(color: cs.onSurfaceVariant))])),
-                  SizedBox(width: 82, height: 82, child: Stack(fit: StackFit.expand, children: [CircularProgressIndicator(value: app.overallMasteryScore, strokeWidth: 8), Center(child: Text(app.masteryTier.name.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900)))])),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Penguasaan JLPT', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 4),
+                        Text(app.masteryTier.label, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: cs.primary)),
+                        Text('${(app.overallMasteryScore * 100).round()}% penguasaan keseluruhan', style: TextStyle(color: cs.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 82,
+                    height: 82,
+                    child: Stack(fit: StackFit.expand, children: [
+                      CircularProgressIndicator(value: app.overallMasteryScore, strokeWidth: 8),
+                      Center(child: Text(app.masteryTier.name.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900))),
+                    ]),
+                  ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          ProfileInsights(app: app),
           const SizedBox(height: 14),
           WeeklyLearningPulse(app: app),
           const SizedBox(height: 14),
@@ -182,11 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     children: [
                       const Expanded(child: Text('Aktivitas terakhir', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900))),
-                      _ActivityYearDropdown(
-                        year: _selectedActivityYear,
-                        years: _activityYears(app.activityJournal),
-                        onChanged: (value) => setState(() => _selectedActivityYear = value),
-                      ),
+                      _ActivityYearDropdown(year: _selectedActivityYear, years: _activityYears(app.activityJournal), onChanged: (value) => setState(() => _selectedActivityYear = value)),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -239,22 +232,20 @@ class _ActivityYearDropdown extends StatelessWidget {
   final ValueChanged<int?> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<int?>(
-        value: year,
-        borderRadius: BorderRadius.circular(16),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded),
-        isDense: true,
-        hint: const Text('Semua tahun'),
-        items: [
-          const DropdownMenuItem<int?>(value: null, child: Text('Semua tahun')),
-          ...years.map((y) => DropdownMenuItem<int?>(value: y, child: Text('$y'))),
-        ],
-        onChanged: onChanged,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => DropdownButtonHideUnderline(
+        child: DropdownButton<int?>(
+          value: year,
+          borderRadius: BorderRadius.circular(16),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          isDense: true,
+          hint: const Text('Semua tahun'),
+          items: [
+            const DropdownMenuItem<int?>(value: null, child: Text('Semua tahun')),
+            ...years.map((y) => DropdownMenuItem<int?>(value: y, child: Text('$y'))),
+          ],
+          onChanged: onChanged,
+        ),
+      );
 }
 
 class _CompactMetric extends StatelessWidget {
@@ -263,18 +254,16 @@ class _CompactMetric extends StatelessWidget {
   final String value;
 
   @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
 }
 
 class _LevelProgress extends StatelessWidget {
@@ -290,18 +279,9 @@ class _LevelProgress extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(level, style: const TextStyle(fontWeight: FontWeight.w900)),
-              const Spacer(),
-              Text('${(progress * 100).round()}%'),
-            ],
-          ),
+          Row(children: [Text(level, style: const TextStyle(fontWeight: FontWeight.w900)), const Spacer(), Text('${(progress * 100).round()}%')]),
           const SizedBox(height: 5),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(value: progress, minHeight: 8),
-          ),
+          ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: progress, minHeight: 8)),
         ],
       ),
     );
