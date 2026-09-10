@@ -1,3 +1,4 @@
+import '../services/meaning_localizer.dart';
 import '../services/romaji.dart';
 
 class ReadingItem {
@@ -27,10 +28,10 @@ class ReadingItem {
         id: json['id'] as String? ?? '',
         level: json['level'] as String? ?? 'N5',
         category: json['category'] as String? ?? 'Umum',
-        title: json['title'] as String? ?? '',
+        title: MeaningLocalizer.cleanId(json['title'] as String? ?? ''),
         japanese: json['japanese'] as String? ?? '',
         reading: json['reading'] as String? ?? '',
-        meaning: json['meaning'] as String? ?? '',
+        meaning: MeaningLocalizer.cleanId(json['meaning'] as String? ?? ''),
         questions: (json['questions'] as List<dynamic>? ?? const [])
             .map((item) => ReadingQuestion.fromJson(item as Map<String, dynamic>))
             .toList(growable: false),
@@ -44,7 +45,7 @@ class ReadingQuestion {
   final String answer;
 
   factory ReadingQuestion.fromJson(Map<String, dynamic> json) => ReadingQuestion(
-        question: json['question'] as String? ?? '',
-        answer: json['answer'] as String? ?? '',
+        question: MeaningLocalizer.cleanId(json['question'] as String? ?? ''),
+        answer: MeaningLocalizer.cleanId(json['answer'] as String? ?? ''),
       );
 }
