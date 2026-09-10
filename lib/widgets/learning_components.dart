@@ -356,13 +356,12 @@ class AnswerFeedback extends StatelessWidget {
 }
 
 extension MasteryTierColorExtension on MasteryTier {
-  Color get color => switch (this) {
-        MasteryTier.warrior => const Color(0xFF9E9E9E),
-        MasteryTier.elite => const Color(0xFF4FC3F7),
-        MasteryTier.master => const Color(0xFFBA68C8),
-        MasteryTier.grandmaster => const Color(0xFFFFB300),
-        MasteryTier.epic => const Color(0xFFFF5722),
-        MasteryTier.legend => const Color(0xFFFFD700),
-        MasteryTier.mythic => const Color(0xFFE040FB),
+  Color get color => switch (name) {
+        'n5' => const Color(0xFF9E9E9E),
+        'n4' => const Color(0xFF4FC3F7),
+        'n3' => const Color(0xFFBA68C8),
+        'n2' => const Color(0xFFFFB300),
+        'n1' => const Color(0xFFFFD700),
+        _ => const Color(0xFF9E9E9E),
       };
 }
