@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:aplication_japanese_language_study/features/curriculum/n5_research_curriculum.dart';
+import 'package:japanese_study/features/curriculum/n5_research_curriculum.dart';
 
 void main() {
   test('N5 has 31 ordered chapters', () {
