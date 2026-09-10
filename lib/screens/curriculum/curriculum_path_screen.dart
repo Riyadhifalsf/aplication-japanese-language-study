@@ -4,6 +4,7 @@ import '../../features/curriculum/curriculum_catalog.dart';
 import '../../features/curriculum/curriculum_models.dart';
 import '../../state/app_controller.dart';
 import '../kana/kana_screen.dart';
+import '../profile/profile_screen.dart';
 import 'curriculum_lesson_detail_screen.dart';
 
 class CurriculumPathScreen extends StatefulWidget {
@@ -29,6 +30,41 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
     return ids.contains(value) ? value : 'N5';
   }
 
+  CurriculumLesson? _currentLesson(
+    CurriculumLevel level,
+    Map<String, CurriculumLessonStatus> statuses,
+  ) {
+    for (final unit in level.units) {
+      for (final lesson in unit.lessons) {
+        final status = statuses[lesson.id] ?? CurriculumLessonStatus.locked;
+        if (status == CurriculumLessonStatus.inProgress ||
+            status == CurriculumLessonStatus.available) {
+          return lesson;
+        }
+      }
+    }
+    return null;
+  }
+
+  CurriculumUnit? _unitOfLesson(CurriculumLevel level, String lessonId) {
+    for (final unit in level.units) {
+      if (unit.lessons.any((lesson) => lesson.id == lessonId)) return unit;
+    }
+    return null;
+  }
+
+  void _openLesson(BuildContext context, AppController app, CurriculumLesson lesson) {
+    app.setCurriculumActiveLesson(lesson.id);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CurriculumLessonDetailScreen(lessonId: lesson.id),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
@@ -39,19 +75,20 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
     final units = [...level.units]
       ..sort((a, b) => a.sequence.compareTo(b.sequence));
     final progress = app.curriculumLevelProgress(level.id);
+    final statuses = app.curriculumStatuses(level.id);
+    final currentLesson = _currentLesson(level, statuses);
+    final currentUnit = currentLesson == null
+        ? null
+        : _unitOfLesson(level, currentLesson.id);
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        titleSpacing: 18,
         title: Row(
           children: [
-            IconButton(
-              tooltip: 'Ringkasan progres ${level.id}',
-              onPressed: () => _showProgressSheet(context, app, level),
-              icon: const Icon(Icons.menu_book_rounded),
-            ),
             PopupMenuButton<String>(
-              tooltip: 'Ganti level',
+              tooltip: 'Pilih level Learning',
               onSelected: (id) {
                 setState(() => _levelId = id);
                 app.setCurriculumActiveLevel(id);
@@ -62,14 +99,13 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
                     value: id,
                     child: Row(
                       children: [
-                        SizedBox(
-                          width: 44,
-                          child: Text(id,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w900)),
+                        Expanded(
+                          child: Text(
+                            id,
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
                         ),
-                        if (id == level.id)
-                          const Icon(Icons.check_rounded, size: 18),
+                        if (id == level.id) const Icon(Icons.check_rounded, size: 18),
                       ],
                     ),
                   ),
@@ -77,12 +113,34 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(level.id,
-                      style: const TextStyle(
-                          fontSize: 25, fontWeight: FontWeight.w900)),
+                  Text(
+                    level.id,
+                    style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w900),
+                  ),
                   const Icon(Icons.keyboard_arrow_down_rounded),
                 ],
               ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                level.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            IconButton.filledTonal(
+              tooltip: 'Profil',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              ),
+              icon: const Icon(Icons.person_rounded),
             ),
           ],
         ),
@@ -91,29 +149,36 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 34),
         children: [
           _LearningHero(level: level, progress: progress),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+          if (currentLesson != null && currentUnit != null)
+            _CurrentLessonCard(
+              level: level,
+              unit: currentUnit,
+              lesson: currentLesson,
+              status: statuses[currentLesson.id] ?? CurriculumLessonStatus.available,
+              onContinue: () => _openLesson(context, app, currentLesson),
+            ),
+          if (currentLesson != null && currentUnit != null) const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: _KanaCard(
-                    label: 'Hiragana', symbol: 'あ', onTap: _openKana),
+                child: _KanaCard(label: 'Hiragana', symbol: 'あ', onTap: _openKana),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _KanaCard(
-                    label: 'Katakana', symbol: 'ア', onTap: _openKana),
+                child: _KanaCard(label: 'Katakana', symbol: 'ア', onTap: _openKana),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          Text('Semua bab ${level.id}',
-              style:
-                  const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          Text(
+            'Semua bab ${level.id}',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 4),
           Text(
-            'Pilih bab langsung. Setiap bab berisi sub-bab berurutan: 1.1 → 1.2 → 1.3 dan seterusnya.',
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            'Setiap bab memiliki sub-bab berurutan. Gunakan tombol Lanjut untuk meneruskan progres tanpa kembali ke menu lain.',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
           if (units.isEmpty)
@@ -126,20 +191,34 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
                     : constraints.maxWidth >= 620
                         ? 2
                         : 1;
-                final width =
-                    (constraints.maxWidth - ((cols - 1) * 12)) / cols;
+                final width = (constraints.maxWidth - ((cols - 1) * 12)) / cols;
                 return Wrap(
                   spacing: 12,
                   runSpacing: 12,
                   children: [
-                    for (var i = 0; i < units.length; i++)
+                    for (final unit in units)
                       SizedBox(
                         width: width,
                         child: _ChapterCard(
-                          unit: units[i],
-                          status: app.curriculumStatuses(level.id),
-                          onTap: () => _showChapterSheet(
-                              context, app, level, units[i]),
+                          unit: unit,
+                          status: statuses,
+                          onTap: () => _showChapterSheet(context, app, level, unit),
+                          onContinue: () {
+                            final next = unit.lessons.firstWhere(
+                              (lesson) {
+                                final status = statuses[lesson.id] ?? CurriculumLessonStatus.locked;
+                                return status == CurriculumLessonStatus.inProgress ||
+                                    status == CurriculumLessonStatus.available;
+                              },
+                              orElse: () => unit.lessons.first,
+                            );
+                            final nextStatus = statuses[next.id] ?? CurriculumLessonStatus.locked;
+                            if (nextStatus == CurriculumLessonStatus.locked) {
+                              _showChapterSheet(context, app, level, unit);
+                              return;
+                            }
+                            _openLesson(context, app, next);
+                          },
                         ),
                       ),
                   ],
@@ -158,8 +237,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
     );
   }
 
-  void _showProgressSheet(
-      BuildContext context, AppController app, CurriculumLevel level) {
+  void _showProgressSheet(BuildContext context, AppController app, CurriculumLevel level) {
     final progress = app.curriculumLevelProgress(level.id);
     final value = progress.percent.clamp(0.0, 1.0).toDouble();
     showModalBottomSheet<void>(
@@ -184,14 +262,12 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
                       child: CircularProgressIndicator(
                         value: value,
                         strokeWidth: 12,
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surfaceContainerHighest,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                       ),
                     ),
                     CircleAvatar(
                       radius: 57,
-                      child: Icon(Icons.menu_book_rounded,
-                          size: 52, color: Theme.of(context).colorScheme.primary),
+                      child: Icon(Icons.menu_book_rounded, size: 52, color: Theme.of(context).colorScheme.primary),
                     ),
                     Positioned(
                       bottom: 0,
@@ -200,20 +276,19 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
                           color: Theme.of(context).colorScheme.primary,
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: .12),
-                              blurRadius: 12,
-                            ),
+                            BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 12),
                           ],
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          child: Text('${(value * 100).round()}%',
-                              style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 18)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: Text(
+                            '${(value * 100).round()}%',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -221,14 +296,11 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text('Progress ${level.id}',
-                  style: const TextStyle(
-                      fontSize: 23, fontWeight: FontWeight.w900)),
+              Text('Progress ${level.id}', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
               Text(
                 '${progress.completedLessons} dari ${progress.totalLessons} sub-bab selesai.',
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -237,8 +309,7 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
     );
   }
 
-  void _showChapterSheet(BuildContext context, AppController app,
-      CurriculumLevel level, CurriculumUnit unit) {
+  void _showChapterSheet(BuildContext context, AppController app, CurriculumLevel level, CurriculumUnit unit) {
     final statuses = app.curriculumStatuses(level.id);
     showModalBottomSheet<void>(
       context: context,
@@ -254,14 +325,12 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
             controller: controller,
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
             children: [
-              Text('Bab ${unit.sequence}',
-                  style: const TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.w900)),
+              Text('Bab ${unit.sequence}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
               const SizedBox(height: 3),
-              Text(unit.title,
-                  style: TextStyle(
-                      fontSize: 17,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text(
+                unit.title,
+                style: TextStyle(fontSize: 17, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
               const SizedBox(height: 14),
               for (var i = 0; i < unit.lessons.length; i++)
                 Padding(
@@ -269,18 +338,13 @@ class _CurriculumPathScreenState extends State<CurriculumPathScreen> {
                   child: _SubchapterCard(
                     number: '${unit.sequence}.${i + 1}',
                     lesson: unit.lessons[i],
-                    status: statuses[unit.lessons[i].id] ??
-                        CurriculumLessonStatus.locked,
+                    status: statuses[unit.lessons[i].id] ?? CurriculumLessonStatus.locked,
                     onTap: () {
-                      app.setCurriculumActiveLesson(unit.lessons[i].id);
+                      final lesson = unit.lessons[i];
+                      final status = statuses[lesson.id] ?? CurriculumLessonStatus.locked;
+                      if (status == CurriculumLessonStatus.locked) return;
                       Navigator.pop(sheetContext);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CurriculumLessonDetailScreen(
-                              lessonId: unit.lessons[i].id),
-                        ),
-                      );
+                      _openLesson(context, app, lesson);
                     },
                   ),
                 ),
@@ -310,27 +374,92 @@ class _LearningHero extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(level.title,
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.w900)),
+                  Text(level.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 3),
-                  Text(level.subtitle,
-                      style: TextStyle(color: cs.onSurfaceVariant)),
+                  Text(level.subtitle, style: TextStyle(color: cs.onSurfaceVariant)),
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(99),
-                    child: LinearProgressIndicator(
-                      value: value,
-                      minHeight: 10,
-                    ),
+                    child: LinearProgressIndicator(value: value, minHeight: 10),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 18),
-            Text('${(value * 100).round()}%',
-                style:
-                    TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: cs.primary)),
+            Text('${(value * 100).round()}%', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: cs.primary)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CurrentLessonCard extends StatelessWidget {
+  const _CurrentLessonCard({
+    required this.level,
+    required this.unit,
+    required this.lesson,
+    required this.status,
+    required this.onContinue,
+  });
+
+  final CurriculumLevel level;
+  final CurriculumUnit unit;
+  final CurriculumLesson lesson;
+  final CurriculumLessonStatus status;
+  final VoidCallback onContinue;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isInProgress = status == CurriculumLessonStatus.inProgress;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.play_lesson_rounded, color: cs.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Sedang berada di Bab ${unit.sequence}',
+                  style: TextStyle(color: cs.primary, fontWeight: FontWeight.w900),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              lesson.title,
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+            ),
+            if (lesson.subtitle.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(
+                lesson.subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${level.id} · Sub-bab ${lesson.sequence} · ${isInProgress ? 'Sedang dipelajari' : 'Siap dilanjutkan'}',
+                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: onContinue,
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: const Text('Lanjut'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -353,14 +482,9 @@ class _KanaCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
             child: Row(
               children: [
-                Text(symbol,
-                    style: const TextStyle(
-                        fontSize: 28, fontWeight: FontWeight.w900)),
+                Text(symbol, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
                 const SizedBox(width: 10),
-                Expanded(
-                    child: Text(label,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w800))),
+                Expanded(child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
                 const Icon(Icons.chevron_right_rounded),
               ],
             ),
@@ -370,17 +494,22 @@ class _KanaCard extends StatelessWidget {
 }
 
 class _ChapterCard extends StatelessWidget {
-  const _ChapterCard({required this.unit, required this.status, required this.onTap});
+  const _ChapterCard({
+    required this.unit,
+    required this.status,
+    required this.onTap,
+    required this.onContinue,
+  });
   final CurriculumUnit unit;
   final Map<String, CurriculumLessonStatus> status;
   final VoidCallback onTap;
+  final VoidCallback onContinue;
 
   @override
   Widget build(BuildContext context) {
     final done = unit.lessons.where((lesson) {
       final s = status[lesson.id];
-      return s == CurriculumLessonStatus.completed ||
-          s == CurriculumLessonStatus.mastered;
+      return s == CurriculumLessonStatus.completed || s == CurriculumLessonStatus.mastered;
     }).length;
     final percent = unit.lessons.isEmpty ? 0.0 : done / unit.lessons.length;
     return Card(
@@ -392,38 +521,37 @@ class _ChapterCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [
-                CircleAvatar(
-                    child: Text('${unit.sequence}',
-                        style: const TextStyle(fontWeight: FontWeight.w900))),
-                const Spacer(),
-                Text('${(percent * 100).round()}%',
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w900)),
-              ]),
+              Row(
+                children: [
+                  CircleAvatar(child: Text('${unit.sequence}', style: const TextStyle(fontWeight: FontWeight.w900))),
+                  const Spacer(),
+                  Text('${(percent * 100).round()}%', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w900)),
+                ],
+              ),
               const SizedBox(height: 12),
-              Text(unit.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w900)),
+              Text(unit.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
               if (unit.subtitle.isNotEmpty) ...[
                 const SizedBox(height: 3),
-                Text(unit.subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                Text(unit.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
               const SizedBox(height: 12),
               LinearProgressIndicator(value: percent),
               const SizedBox(height: 8),
-              Text('${unit.lessons.length} sub-bab',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700)),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${unit.lessons.length} sub-bab',
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: unit.lessons.isEmpty ? null : onContinue,
+                    icon: const Icon(Icons.play_arrow_rounded, size: 17),
+                    label: const Text('Lanjut'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -433,7 +561,12 @@ class _ChapterCard extends StatelessWidget {
 }
 
 class _SubchapterCard extends StatelessWidget {
-  const _SubchapterCard({required this.number, required this.lesson, required this.status, required this.onTap});
+  const _SubchapterCard({
+    required this.number,
+    required this.lesson,
+    required this.status,
+    required this.onTap,
+  });
   final String number;
   final CurriculumLesson lesson;
   final CurriculumLessonStatus status;
@@ -441,27 +574,43 @@ class _SubchapterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = status == CurriculumLessonStatus.completed ||
-        status == CurriculumLessonStatus.mastered;
+    final done = status == CurriculumLessonStatus.completed || status == CurriculumLessonStatus.mastered;
     final locked = status == CurriculumLessonStatus.locked;
     return Card(
-      child: ListTile(
-        onTap: locked ? null : onTap,
-        leading: CircleAvatar(
-          backgroundColor: done
-              ? Theme.of(context).colorScheme.primaryContainer
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: Text(number,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: done
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Text(number, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(lesson.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  if (lesson.subtitle.isNotEmpty)
+                    Text(
+                      lesson.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonalIcon(
+              onPressed: locked ? null : onTap,
+              icon: Icon(done ? Icons.replay_rounded : Icons.arrow_forward_rounded, size: 16),
+              label: Text(done ? 'Ulang' : 'Lanjut'),
+            ),
+          ],
         ),
-        title: Text(lesson.title,
-            style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(lesson.subtitle),
-        trailing: Icon(done
-            ? Icons.check_circle_rounded
-            : locked
-                ? Icons.lock_rounded
-                : Icons.arrow_forward_ios_rounded),
       ),
     );
   }
