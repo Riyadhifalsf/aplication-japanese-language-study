@@ -6,47 +6,12 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
-  repair_compile:
-    name: Repair Flutter source
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Apply deterministic source repair
-        run: python3 tool/repair_flutter_compile.py
-      - name: Commit source repair
-        if: github.event_name == 'push'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm -f .github/workflows/one-shot-flutter-repair.yml .repair-trigger 2>/dev/null || true
-          git add lib/state/app_controller.dart \
-                  lib/screens/home/home_screen.dart \
-                  lib/screens/curriculum/curriculum_path_screen.dart \
-                  lib/screens/curriculum/curriculum_lesson_detail_screen.dart \
-                  lib/features/curriculum/lesson_questions.dart \
-                  test/gamification_progression_test.dart
-          if git diff --cached --quiet; then
-            echo "No source repair changes needed."
-            exit 0
-          fi
-          git commit -m "fix: repair flutter compile errors"
-          git push origin main
-
   analyze:
     name: Analyze & Test
-    needs: repair_compile
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Refresh repaired main
-        if: github.event_name == 'push'
-        run: |
-          git fetch origin main
-          git reset --hard origin/main
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
