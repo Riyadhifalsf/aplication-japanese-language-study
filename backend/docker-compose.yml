@@ -28,10 +28,8 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_NAME: ${ADMIN_NAME:-Administrator}
-      # Kosong = CORS ditolak semua (default aman; lihat backend/.env.example).
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       CONFIG_KEK: ${CONFIG_KEK:-}
-      # Email reset password (Gmail SMTP App Password; kosong = log-only).
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
@@ -60,7 +58,7 @@ services:
       - "443:443"
       - "80:80"
     environment:
-      DOMAIN: ${TLS_IP:-192.168.100.11}
+      DOMAIN: ${TLS_IP:-192.168.100.230}
     volumes:
       - nginx_certs:/etc/nginx/certs
     depends_on:

@@ -32,8 +32,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   /// sebagai migrasi untuk data versi lama yang sudah menyimpan level tetapi
   /// belum memiliki flag onboarding yang konsisten.
   Future<void> _restorePreviousSetup() async {
-    final prefs = await SharedPreferences.getInstance();
     final controller = AppScope.of(context);
+    final prefs = await SharedPreferences.getInstance();
     final alreadyConfigured =
         controller.onboardingComplete ||
         prefs.getBool('studyLevelSelectionComplete') == true ||
