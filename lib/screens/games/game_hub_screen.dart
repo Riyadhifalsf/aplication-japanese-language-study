@@ -16,8 +16,8 @@ class _GameHubScreenState extends State<GameHubScreen> {
   int selectedGame = 0;
 
   static const games = [
-    ('Hiragana', 'あ', 'Latih hiragana lewat stage cepat.'),
-    ('Katakana', 'ア', 'Kuasai katakana satu stage demi satu.'),
+    ('Hiragana', 'あ', 'Latih hiragana lewat tahap cepat.'),
+    ('Katakana', 'ア', 'Kuasai katakana satu tahap demi satu.'),
     ('Kanji', '漢', 'Kenali kanji, arti, dan bacaannya.'),
   ];
 
@@ -39,7 +39,7 @@ class _GameHubScreenState extends State<GameHubScreen> {
     final game = games[selectedGame];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Games'),
+        title: const Text('Permainan'),
         centerTitle: true,
       ),
       body: ListView(
@@ -62,13 +62,13 @@ class _GameHubScreenState extends State<GameHubScreen> {
                 children: [
                   Text('Latihan Jepang sambil bermain', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
                   const SizedBox(height: 6),
-                  Text('Pilih kategori, buka stage, kumpulkan bintang, lalu tingkatkan skor kamu.'),
+                  Text('Pilih kategori, buka tahap, kumpulkan bintang, lalu tingkatkan skor kamu.'),
                   const SizedBox(height: 18),
                   Row(
                     children: [
                       const Icon(Icons.emoji_events_rounded),
                       const SizedBox(width: 8),
-                      Text('100+ stage siap dimainkan', style: TextStyle(fontWeight: FontWeight.w900, color: cs.primary)),
+                      Text('100+ tahap siap dimainkan', style: TextStyle(fontWeight: FontWeight.w900, color: cs.primary)),
                     ],
                   ),
                 ],
@@ -115,7 +115,7 @@ class _GameHubScreenState extends State<GameHubScreen> {
           Row(
             children: [
               Expanded(child: Text(game.$1, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900))),
-              Text('0 / 27 stage', style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
+              Text('0 / 27 tahap', style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w700)),
             ],
           ),
           const SizedBox(height: 4),
@@ -276,7 +276,7 @@ class _StageGameScreenState extends State<StageGameScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: const Text('Stage selesai!'),
+        title: const Text('Tahap selesai!'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -284,7 +284,7 @@ class _StageGameScreenState extends State<StageGameScreen> {
             const SizedBox(height: 14),
             Text('Skor $score/10', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
             const SizedBox(height: 5),
-            Text(stars == 3 ? 'Mantap! Stage dikuasai.' : 'Coba lagi untuk mendapatkan lebih banyak bintang.'),
+            Text(stars == 3 ? 'Mantap! Tahap dikuasai.' : 'Coba lagi untuk mendapatkan lebih banyak bintang.'),
           ],
         ),
         actions: [
@@ -300,7 +300,7 @@ class _StageGameScreenState extends State<StageGameScreen> {
     final cs = Theme.of(context).colorScheme;
     final options = [...question.$2.sublist(0, 5)]..shuffle(random);
     return Scaffold(
-      appBar: AppBar(title: Text('Stage ${widget.stage}')),
+      appBar: AppBar(title: Text('Tahap ${widget.stage}')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 10, 18, 30),
         children: [
@@ -313,7 +313,7 @@ class _StageGameScreenState extends State<StageGameScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 38, horizontal: 20),
-              child: Column(children: [Text(widget.gameType == 2 ? question.$1 : question.$1, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: cs.primary)), const SizedBox(height: 14), Text(widget.gameType == 2 ? 'Pilih kanji yang benar' : 'Pilih karakter yang sesuai', style: TextStyle(color: cs.onSurfaceVariant))]),
+              child: Column(children: [Text(question.$1, style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: cs.primary)), const SizedBox(height: 14), Text(widget.gameType == 2 ? 'Pilih kanji yang benar' : 'Pilih karakter yang sesuai', style: TextStyle(color: cs.onSurfaceVariant))]),
             ),
           ),
           const SizedBox(height: 16),
