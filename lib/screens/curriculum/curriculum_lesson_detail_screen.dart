@@ -8,7 +8,6 @@ import '../../models/kanji.dart';
 import '../../models/phrase_item.dart';
 import '../../models/vocabulary.dart';
 import '../../services/content_repository.dart';
-import '../../services/romaji.dart';
 import '../../state/app_controller.dart';
 import '../../widgets/learning_components.dart';
 import '../exams/exam_hub_screen.dart';
@@ -284,17 +283,6 @@ class _CurriculumLessonDetailScreenState
               style: const TextStyle(height: 1.4),
             ),
             const SizedBox(height: 16),
-            if (!isTest && done && nextLesson != null) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => _continueToNextLesson(context, nextLesson),
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: Text('Lanjut ke ${CurriculumCatalogData.unitById(widget.lesson.unitId)?.sequence ?? ''}.${unitLessons.indexWhere((lesson) => lesson.id == nextLesson.id) + 1}'),
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
             Row(
               children: [
                 Expanded(
@@ -435,8 +423,6 @@ class _LessonInlineContent extends StatelessWidget {
     final app = AppScope.of(context);
     final cs = Theme.of(context).colorScheme;
     final repo = app.repository;
-    final showIndonesian = lesson.levelId == 'N5' || lesson.levelId == 'N4';
-    final showRomaji = lesson.levelId == 'N5';
     // Resolusi referensi kurikulum (skip ID yang tidak ada — tanpa crash).
     final resolved = resolveLessonContent(repo, lesson);
     final phrases = resolved.phrases;
@@ -508,7 +494,7 @@ class _LessonInlineContent extends StatelessWidget {
         const Text('Tujuan belajar',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
         const SizedBox(height: 6),
-        if (showIndonesian && lesson.objectives.isNotEmpty)
+        if (lesson.objectives.isNotEmpty)
           for (final objective in lesson.objectives)
             Padding(
               padding: const EdgeInsets.only(bottom: 3),
@@ -516,21 +502,26 @@ class _LessonInlineContent extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('•  '),
-                  Expanded(child: Text(objective, style: const TextStyle(height: 1.4))),
+                  Expanded(
+                      child: Text(objective,
+                          style: const TextStyle(height: 1.4))),
                 ],
               ),
             )
         else
           Text(
-            showIndonesian
-                ? (lesson.subtitle.isNotEmpty ? lesson.subtitle : unitDescription)
-                : '日本語の文法・語彙・読解・聴解を練習します。',
+            lesson.subtitle.isNotEmpty
+                ? lesson.subtitle
+                : (unitDescription.isNotEmpty
+                    ? unitDescription
+                    : 'Selesaikan semua aktivitas untuk menandai sub-bab ini selesai dan memperbarui progres.'),
             style: TextStyle(height: 1.45, color: cs.onSurfaceVariant),
           ),
         if (unitTitle.isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(showIndonesian ? 'Konteks: $unitTitle · JLPT ${lesson.levelId}' : 'JLPT ${lesson.levelId}',
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text('Konteks: $unitTitle · JLPT ${lesson.levelId}',
+              style:
+                  TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ],
         // Catatan kurikulum (materi standar spesifikasi bab).
         if (lesson.notes.isNotEmpty) ...[
@@ -544,18 +535,12 @@ class _LessonInlineContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                          showIndonesian ? note.title : switch (note.title) {
-                            'Inti materi' => '学習のポイント',
-                            'Pola utama' => '基本パターン',
-                            'Checkpoint' => 'チェックポイント',
-                            _ => '学習内容',
-                          },
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                      if (showIndonesian) ...[
-                        const SizedBox(height: 4),
-                        Text(note.body, style: const TextStyle(height: 1.45)),
-                      ],
+                      Text(note.title,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text(note.body,
+                          style: const TextStyle(height: 1.45)),
                       for (final line in note.lines) ...[
                         const SizedBox(height: 8),
                         Row(
@@ -570,10 +555,10 @@ class _LessonInlineContent extends StatelessWidget {
                                           fontWeight: FontWeight.w900,
                                           height: 1.35)),
                                   Text(
-                                      showRomaji
-                                          ? '${line.reading} · ${Romaji.toRomaji(line.reading)}${showIndonesian ? ' — ${line.meaning}' : ''}'
-                                          : '${line.reading}${showIndonesian ? ' — ${line.meaning}' : ''}',
-                                      style: TextStyle(color: cs.onSurfaceVariant, height: 1.35)),
+                                      '${line.reading} — ${line.meaning}',
+                                      style: TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                          height: 1.35)),
                                 ],
                               ),
                             ),
@@ -639,14 +624,14 @@ class _LessonInlineContent extends StatelessWidget {
                       Text(phrase.reading,
                           style: TextStyle(
                               color: cs.onSurfaceVariant, height: 1.35)),
-                      if (lesson.levelId == 'N5')
-                        Padding(padding: const EdgeInsets.only(top: 3), child: Text(phrase.romaji, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600))),
                       const SizedBox(height: 4),
-                      if (showIndonesian) ...[
-                        Text('Arti: ${phrase.meaning}', style: const TextStyle(fontWeight: FontWeight.w700, height: 1.4)),
-                        const SizedBox(height: 4),
-                        Text('Penggunaan (${phrase.politeness}): ${phrase.note}', style: const TextStyle(height: 1.4)),
-                      ],
+                      Text('Arti: ${phrase.meaning}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, height: 1.4)),
+                      const SizedBox(height: 4),
+                      Text(
+                          'Penggunaan (${phrase.politeness}): ${phrase.note}',
+                          style: const TextStyle(height: 1.4)),
                     ],
                   ),
                 ),
@@ -677,7 +662,7 @@ class _LessonInlineContent extends StatelessWidget {
                       // Mastery jujur dari data user: toggle Library +
                       // skor latihan (±, tanpa XP). ●/◑/○, tanpa palsu.
                       child: Text(
-                          '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('v:${v.id}'), mastered: app.masteredVocabularyIds.contains(v.id)))} ${v.word} (${v.reading})${showRomaji ? ' · ${v.romaji}' : ''}${showIndonesian ? ' — ${v.meaning}' : ''}',
+                          '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('v:${v.id}'), mastered: app.masteredVocabularyIds.contains(v.id)))} ${v.word} (${v.reading}) — ${v.meaning}',
                           style: const TextStyle(height: 1.35)),
                     ),
                 ],
@@ -704,19 +689,24 @@ class _LessonInlineContent extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                          '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('g:${grammar.id}'), mastered: app.completedGrammarIds.contains(grammar.id)))} ${showIndonesian ? 'Grammar: ' : '文法: '}${grammar.pattern}',
-                          style: const TextStyle(fontWeight: FontWeight.w900)),
-                      if (showIndonesian) ...[
-                        Text(grammar.title, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-                        const SizedBox(height: 4),
-                        Text('Bentuk: ${grammar.formation}', style: const TextStyle(height: 1.4)),
-                        const SizedBox(height: 4),
-                        Text(grammar.explanation, maxLines: 5, overflow: TextOverflow.ellipsis, style: const TextStyle(height: 1.4)),
-                      ],
+                          '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('g:${grammar.id}'), mastered: app.completedGrammarIds.contains(grammar.id)))} Grammar: ${grammar.pattern}',
+                          style:
+                              const TextStyle(fontWeight: FontWeight.w900)),
+                      Text(grammar.title,
+                          style: TextStyle(
+                              fontSize: 12, color: cs.onSurfaceVariant)),
+                      const SizedBox(height: 4),
+                      Text('Bentuk: ${grammar.formation}',
+                          style: const TextStyle(height: 1.4)),
+                      const SizedBox(height: 4),
+                      Text(grammar.explanation,
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(height: 1.4)),
                       if (grammar.examples.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text(
-                            '${grammar.examples.first.japanese}${showIndonesian ? ' — ${grammar.examples.first.meaning}' : ''}',
+                            '${grammar.examples.first.japanese} — ${grammar.examples.first.meaning}',
                             style: const TextStyle(height: 1.35)),
                       ],
                     ],
@@ -755,7 +745,7 @@ class _LessonInlineContent extends StatelessWidget {
                       for (final k in showKanjis)
                         Chip(
                             label: Text(
-                                '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('k:${k.id}'), mastered: app.masteredKanjiIds.contains(k.id), learned: app.learnedKanjiIds.contains(k.id)))} ${k.character}${showIndonesian ? ' · ${k.meaning}' : ''}')),
+                                '${_masteryGlyph(AppController.itemMasteryTier(score: app.lessonMasteryScore('k:${k.id}'), mastered: app.masteredKanjiIds.contains(k.id), learned: app.learnedKanjiIds.contains(k.id)))} ${k.character} · ${k.meaning}')),
                     ],
                   ),
                 ],
@@ -787,7 +777,7 @@ class _LessonInlineContent extends StatelessWidget {
                   leading: const Icon(Icons.headphones_rounded),
                   title: Text(line.japanese,
                       style: const TextStyle(fontWeight: FontWeight.w800)),
-                  subtitle: Text('${line.reading}${showRomaji ? ' · ${Romaji.toRomaji(line.reading)}' : ''}${showIndonesian ? ' — ${line.meaning}' : ''}',
+                  subtitle: Text('${line.reading} — ${line.meaning}',
                       maxLines: 2, overflow: TextOverflow.ellipsis),
                   trailing: IconButton(
                     tooltip: 'Putar audio',
@@ -821,7 +811,7 @@ class _LessonInlineContent extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.w900,
                             height: 1.5)),
-                    Text('${line.reading}${lesson.levelId == 'N5' ? ' · ${Romaji.toRomaji(line.reading)}' : ''} — ${line.meaning}',
+                    Text('${line.reading} — ${line.meaning}',
                         style: TextStyle(
                             color: cs.onSurfaceVariant, height: 1.4)),
                     const SizedBox(height: 8),
@@ -1279,30 +1269,12 @@ class _LessonGuidedPracticeState extends State<_LessonGuidedPractice> {
     );
   }
 
-  CurriculumLesson? _nextLessonInChapter() {
-    final index = unitLessons.indexWhere((lesson) => lesson.id == widget.lesson.id);
-    if (index < 0 || index + 1 >= unitLessons.length) return null;
-    return unitLessons[index + 1];
-  }
-
-  void _continueToNextLesson(BuildContext context, CurriculumLesson next) {
-    final app = AppScope.of(context);
-    app.setCurriculumActiveLesson(next.id);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CurriculumLessonDetailScreen(lessonId: next.id),
-      ),
-    );
-  }
-
   Widget _resultCard(BuildContext context, AppController app) {
     final total = _questions.length;
     final percent =
         total == 0 ? 0 : ((_correct / total) * 100).round();
     final done = widget.alreadyDone || _claimed;
     final isTest = widget.isTest;
-    final nextLesson = _nextLessonInChapter();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

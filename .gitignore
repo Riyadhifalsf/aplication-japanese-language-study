@@ -46,6 +46,8 @@ desktop.ini
 # Logs / temp
 *.log
 __pycache__/
+tool/flutter_build_web.err.log
+tool/flutter_build_web.log
 *.tmp
 *.bak
 *.swp
@@ -101,19 +103,3 @@ remote-check*.sh
 # Skrip pribadi lokal, bukan tool repo
 tool/auto_tidy_system.ps1
 tool/organize_folder.ps1
-
-# Generated Flutter/platform state
-**/.dart_tool/
-**/.flutter-plugins-dependencies
-**/build/
-**/.gradle/
-**/ephemeral/
-**/.plugin_symlinks/
-
-# Local credentials/config
-**/local.properties
-**/key.properties
-**/upload-keystore.jks
-
-# Release binaries are distributed via GitHub Releases
-release/

@@ -1,7 +1,7 @@
 name: japanese_study
 description: A production-oriented Japanese language learning app covering Kana, JLPT N5-N1, JFT, SSW, adaptive review, and offline-first study.
 publish_to: "none"
-version: 1.7.1+9
+version: 1.7.0+8
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
