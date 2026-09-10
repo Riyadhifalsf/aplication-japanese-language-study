@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -13,6 +14,7 @@ import 'profile/profile_screen.dart';
 import 'quiz/quiz_center_screen.dart';
 import 'study/learning_experience_screen.dart';
 import 'review/review_experience_screen.dart';
+import 'notifications/notification_center_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -52,6 +54,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
     if (!mounted) return;
     unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())));
+  }
+
+  void _openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
+    );
   }
 
   Future<void> _select(int value) async {
@@ -98,7 +107,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     ];
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
 
-    final body = SafeArea(
+    final pageBody = SafeArea(
       bottom: false,
       child: AnimatedSwitcher(
         duration: disableAnimations ? Duration.zero : const Duration(milliseconds: 240),
@@ -113,6 +122,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         child: KeyedSubtree(key: ValueKey(_index), child: _page(app)),
       ),
     );
+
+    // Home sudah memiliki header khasnya sendiri. Semua tab lain memakai
+    // header global yang identik agar posisi notifikasi dan profil selalu simetris.
+    final body = _index == 0
+        ? pageBody
+        : Column(
+            children: [
+              _GlobalNavigationHeader(
+                app: app,
+                onNotifications: _openNotifications,
+                onProfile: _openProfile,
+              ),
+              Expanded(child: pageBody),
+            ],
+          );
 
     if (wide) {
       return Scaffold(
@@ -148,6 +172,88 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             destinations: destinations,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GlobalNavigationHeader extends StatelessWidget {
+  const _GlobalNavigationHeader({
+    required this.app,
+    required this.onNotifications,
+    required this.onProfile,
+  });
+
+  final AppController app;
+  final VoidCallback onNotifications;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    ImageProvider? photo;
+    try {
+      photo = app.profilePhotoData.isNotEmpty
+          ? MemoryImage(base64Decode(app.profilePhotoData))
+          : null;
+    } catch (_) {
+      photo = null;
+    }
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 72,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Japanese Study',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -.3,
+                        ),
+                  ),
+                ),
+                Badge(
+                  isLabelVisible: app.hasUnreadNotifications || app.dueKanjiReviewCount > 0,
+                  label: Text(app.dueKanjiReviewCount > 99 ? '99+' : '${app.dueKanjiReviewCount}'),
+                  child: IconButton.filledTonal(
+                    tooltip: 'Notifikasi',
+                    onPressed: onNotifications,
+                    icon: const Icon(Icons.notifications_rounded),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Tooltip(
+                  message: 'Profil',
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onProfile,
+                    child: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      backgroundImage: photo,
+                      child: photo == null
+                          ? (app.isAuthenticated
+                              ? Text(
+                                  app.homeDisplayName.isEmpty
+                                      ? '日'
+                                      : app.homeDisplayName.substring(0, 1).toUpperCase(),
+                                  style: const TextStyle(fontWeight: FontWeight.w900),
+                                )
+                              : const Icon(Icons.person_rounded))
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
