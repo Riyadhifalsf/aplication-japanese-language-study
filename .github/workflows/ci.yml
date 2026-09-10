@@ -26,7 +26,9 @@ jobs:
           git add lib/state/app_controller.dart \
                   lib/screens/home/home_screen.dart \
                   lib/screens/curriculum/curriculum_path_screen.dart \
-                  lib/screens/curriculum/curriculum_lesson_detail_screen.dart
+                  lib/screens/curriculum/curriculum_lesson_detail_screen.dart \
+                  lib/features/curriculum/lesson_questions.dart \
+                  test/gamification_progression_test.dart
           if git diff --cached --quiet; then
             echo "No source repair changes needed."
             exit 0
