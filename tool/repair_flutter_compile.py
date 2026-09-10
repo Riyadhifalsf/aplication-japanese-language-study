@@ -143,7 +143,20 @@ if "List<CurriculumLesson> get unitLessons {" not in s:
 write(p, s)
 
 
-# No unresolved merge markers in the files touched by this repair.
+# Remaining compile compatibility fixes from the current models/tests.
+p = "lib/features/curriculum/lesson_questions.dart"
+s = read(p)
+s = s.replace("k.onReading", "k.onyomi").replace("k.kunReading", "k.kunyomi")
+write(p, s)
+
+p = "test/gamification_progression_test.dart"
+s = read(p)
+s = s.replace("MasteryTier.warrior", "MasteryTier.n5")
+s = s.replace("MasteryTier.mythic", "MasteryTier.n1")
+write(p, s)
+
+
+# No unresolved merge markers in the curriculum files touched by this repair.
 for path in [
     "lib/screens/curriculum/curriculum_path_screen.dart",
     "lib/screens/curriculum/curriculum_lesson_detail_screen.dart",
