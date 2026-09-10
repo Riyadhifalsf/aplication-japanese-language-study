@@ -7,6 +7,7 @@ import 'terms_of_service_screen.dart';
 import 'voucher_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'reminder_settings_screen.dart';
+import 'profile_edit_screen.dart';
 
 class ProfileSettingsScreen extends StatelessWidget {
   const ProfileSettingsScreen({super.key});
@@ -37,7 +38,7 @@ class ProfileSettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 10, 18, 34),
         children: [
           _section('Profil', [
-            _item(Icons.edit_rounded, 'Sunting profil', 'Foto, nama, bio, dan tautan sosial.', () => _showProfileEditor(context, app)),
+            _item(Icons.edit_rounded, 'Sunting profil', 'Foto, nama, username, bio, lokasi, tujuan, dan sosial media.', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileEditScreen()))),
             _item(Icons.public_rounded, 'Wilayah & negara', '${app.region} · ${app.country}', () => _regionCountry(context, app)),
           ]),
           _section('Belajar', [
@@ -95,5 +96,4 @@ class ProfileSettingsScreen extends StatelessWidget {
   Future<void> _reviewInterval(BuildContext context, AppController app) async { await showModalBottomSheet<void>(context: context, builder: (_) => SafeArea(child: ListView(shrinkWrap: true, children: [for (final d in const [1,2,3,5,7]) RadioListTile<int>(value: d, groupValue: app.reviewIntervalDays, title: Text('$d hari'), onChanged: (v) { if (v != null) { app.setReviewIntervalDays(v); Navigator.pop(context); } })]))); }
   Future<void> _storage(BuildContext context, AppController app) async { const note = 'Perkiraan ukuran berdasarkan data lokal yang dikelola aplikasi. Data sistem perangkat lain dapat memiliki ukuran berbeda.'; await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Data aplikasi & cache'), content: const Text(note), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')), FilledButton.tonal(onPressed: () async { await app.clearApplicationData(); if (context.mounted) Navigator.pop(context); }, child: const Text('Bersihkan data aplikasi'))])); }
   Future<void> _about(BuildContext context, AppController app) async { await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Tentang Japanese Study'), content: SelectableText('Versi: 1.7.1+9\nBergabung: ${app.firstUsedAt?.toLocal() ?? '-'}\nID instalasi: ${app.installationId}'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))])); }
-  Future<void> _showProfileEditor(BuildContext context, AppController app) async { final name = TextEditingController(text: app.profileName); final bio = TextEditingController(text: app.profileBio); await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Sunting profil'), content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama')), TextField(controller: bio, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Bio'))]), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')), FilledButton(onPressed: () { app.profileName = name.text.trim(); app.profileBio = bio.text.trim(); app.notifyListeners(); Navigator.pop(context); }, child: const Text('Simpan'))])); name.dispose(); bio.dispose(); }
 }
