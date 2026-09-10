@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../state/app_controller.dart';
 
 /// Reusable component system (Phase 2 redesign).
 /// Semua screen Learn/Home/Review memakai komponen ini agar konsisten.
@@ -113,7 +114,6 @@ class LevelBadge extends StatelessWidget {
         color: cs.primaryContainer,
         borderRadius: BorderRadius.circular(99),
       ),
-      // Bedakan tegas: ini Player Level (dari XP), bukan JLPT N5-N1.
       child: Text('Player Lv $level',
           style: TextStyle(
               fontWeight: FontWeight.w900,
@@ -353,4 +353,16 @@ class AnswerFeedback extends StatelessWidget {
       ),
     );
   }
+}
+
+extension MasteryTierColorExtension on MasteryTier {
+  Color get color => switch (this) {
+        MasteryTier.warrior => const Color(0xFF9E9E9E),
+        MasteryTier.elite => const Color(0xFF4FC3F7),
+        MasteryTier.master => const Color(0xFFBA68C8),
+        MasteryTier.grandmaster => const Color(0xFFFFB300),
+        MasteryTier.epic => const Color(0xFFFF5722),
+        MasteryTier.legend => const Color(0xFFFFD700),
+        MasteryTier.mythic => const Color(0xFFE040FB),
+      };
 }
