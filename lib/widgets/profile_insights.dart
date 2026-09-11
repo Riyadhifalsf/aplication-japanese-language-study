@@ -1,9 +1,12 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../state/app_controller.dart';
 
 class ProfileInsights extends StatelessWidget {
   const ProfileInsights({required this.app, super.key});
+
   final AppController app;
 
   @override
@@ -20,57 +23,52 @@ class ProfileInsights extends StatelessWidget {
       final type = '${app.activityJournal[index]['type'] ?? ''}';
       return type.contains('study') || type.contains('session') ? 1.0 : .35;
     });
-    final skillValues = <double>[
-      app.levelOverallMastery(app.selectedStudyLevel),
-      (quiz / 100).clamp(0, 1).toDouble(),
-      mastered > 0 ? (mastered / math.max(1, learned)).clamp(0, 1).toDouble() : 0,
-      vocab > 0 ? math.min(1, vocab / 2000).toDouble() : 0,
-      math.min(1, app.totalActiveMinutes / 600).toDouble(),
-    ];
 
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Insight belajar', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text('Ringkasan visual supaya progres tidak cuma terlihat sebagai angka.', style: TextStyle(color: cs.onSurfaceVariant)),
+            Row(children: [
+              Container(width: 42, height: 42, alignment: Alignment.center, decoration: BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(14)), child: Icon(Icons.insights_rounded, color: cs.primary)),
+              const SizedBox(width: 11),
+              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Insight belajar', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                SizedBox(height: 2),
+                Text('Gambaran progres belajarmu', style: TextStyle(fontSize: 12)),
+              ])),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5), decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(99)), child: Text('$events aktivitas', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: cs.primary))),
+            ]),
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _Stat('Kanji dipelajari', '$learned', Icons.translate_rounded),
-                _Stat('Kanji dikuasai', '$mastered', Icons.verified_rounded),
-                _Stat('Kosakata dikuasai', '$vocab', Icons.abc_rounded),
-                _Stat('Akurasi quiz', '$quiz%', Icons.track_changes_rounded),
-                _Stat('Event belajar', '$events', Icons.insights_rounded),
-                _Stat('Hari aktif', '${app.activeDays}', Icons.calendar_month_rounded),
-                _Stat('Waktu aktif', '${app.totalActiveMinutes}m', Icons.timer_rounded),
-                _Stat('Grammar selesai', '${app.completedGrammarIds.length}', Icons.rule_rounded),
-              ],
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+              decoration: BoxDecoration(color: cs.primaryContainer.withValues(alpha: .48), borderRadius: BorderRadius.circular(18)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Expanded(child: Text('Ritme 14 aktivitas terakhir', style: TextStyle(fontWeight: FontWeight.w900))),
+                  Icon(Icons.show_chart_rounded, color: cs.primary, size: 20),
+                ]),
+                const SizedBox(height: 8),
+                SizedBox(height: 72, child: CustomPaint(painter: _SparklinePainter(values: values, color: cs.primary), child: const SizedBox.expand())),
+                const SizedBox(height: 3),
+                Row(children: [Text('Lebih lama', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)), const Spacer(), Text('Terbaru', style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant))]),
+              ]),
             ),
-            const SizedBox(height: 18),
-            const Text('Ritme 14 aktivitas terakhir', style: TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 10),
-            SizedBox(height: 92, child: CustomPaint(painter: _SparklinePainter(values: values, color: cs.primary), child: const SizedBox.expand())),
-            const SizedBox(height: 18),
-            const Text('Profil kemampuan', style: TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text('Mastery level, akurasi, retensi kanji, kosakata, dan waktu belajar.', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
-            const SizedBox(height: 12),
-            Center(
-              child: SizedBox(
-                width: 190,
-                height: 190,
-                child: CustomPaint(
-                  painter: _RadarPainter(values: skillValues, color: cs.primary),
-                  child: const Center(child: Text('Skill\nProfile', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900))),
-                ),
-              ),
-            ),
+            const SizedBox(height: 14),
+            LayoutBuilder(builder: (context, constraints) {
+              final width = (constraints.maxWidth - 10) / 2;
+              return Wrap(spacing: 10, runSpacing: 10, children: [
+                _Stat(width: width, label: 'Kanji dipelajari', value: '$learned', icon: Icons.brush_rounded, color: cs.primary),
+                _Stat(width: width, label: 'Kanji dikuasai', value: '$mastered', icon: Icons.verified_rounded, color: cs.tertiary),
+                _Stat(width: width, label: 'Kosakata dikuasai', value: '$vocab', icon: Icons.abc_rounded, color: cs.secondary),
+                _Stat(width: width, label: 'Akurasi quiz', value: '$quiz%', icon: Icons.track_changes_rounded, color: cs.primary),
+                _Stat(width: width, label: 'Hari aktif', value: '${app.activeDays}', icon: Icons.calendar_month_rounded, color: cs.tertiary),
+                _Stat(width: width, label: 'Waktu aktif', value: '${app.totalActiveMinutes}m', icon: Icons.timer_rounded, color: cs.secondary),
+                _Stat(width: width, label: 'Grammar selesai', value: '${app.completedGrammarIds.length}', icon: Icons.rule_rounded, color: cs.primary),
+              ]);
+            }),
           ],
         ),
       ),
@@ -79,25 +77,61 @@ class ProfileInsights extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value, this.icon);
+  const _Stat({required this.width, required this.label, required this.value, required this.icon, required this.color});
+  final double width;
   final String label;
   final String value;
   final IconData icon;
-  @override Widget build(BuildContext c) => Container(width: 150, padding: const EdgeInsets.all(13), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: Theme.of(c).colorScheme.surfaceContainerHighest.withValues(alpha: .45)), child: Row(children: [Icon(icon, size: 19), const SizedBox(width: 8), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)), Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10))]))]));
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: width,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: color.withValues(alpha: .085), borderRadius: BorderRadius.circular(17), border: Border.all(color: color.withValues(alpha: .13))),
+          child: Row(children: [
+            Container(width: 32, height: 32, alignment: Alignment.center, decoration: BoxDecoration(color: color.withValues(alpha: .14), borderRadius: BorderRadius.circular(11)), child: Icon(icon, size: 17, color: color)),
+            const SizedBox(width: 9),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            ])),
+          ]),
+        ),
+      );
 }
 
 class _SparklinePainter extends CustomPainter {
   const _SparklinePainter({required this.values, required this.color});
   final List<double> values;
   final Color color;
-  @override void paint(Canvas canvas, Size size) { if (values.isEmpty) return; final p = Paint()..color = color..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round; final fill = Paint()..color = color.withValues(alpha: .10)..style = PaintingStyle.fill; final path = Path(); final area = Path(); for (var i = 0; i < values.length; i++) { final x = values.length == 1 ? 0.0 : i / (values.length - 1) * size.width; final y = size.height - (values[i].clamp(0, 1) * size.height * .82) - 8; if (i == 0) { path.moveTo(x, y); area.moveTo(x, size.height); area.lineTo(x, y); } else { path.lineTo(x, y); area.lineTo(x, y); } } area.lineTo(size.width, size.height); area.close(); canvas.drawPath(area, fill); canvas.drawPath(path, p); }
-  @override bool shouldRepaint(covariant _SparklinePainter oldDelegate) => oldDelegate.values != values || oldDelegate.color != color;
-}
 
-class _RadarPainter extends CustomPainter {
-  const _RadarPainter({required this.values, required this.color});
-  final List<double> values;
-  final Color color;
-  @override void paint(Canvas canvas, Size size) { final center = Offset(size.width / 2, size.height / 2); final radius = size.shortestSide * .36; final grid = Paint()..color = color.withValues(alpha: .14)..style = PaintingStyle.stroke; final shape = Paint()..color = color.withValues(alpha: .18)..style = PaintingStyle.fill; final outline = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 2.4; for (var ring = 1; ring <= 4; ring++) { final path = Path(); for (var i = 0; i < 5; i++) { final a = -math.pi / 2 + i * 2 * math.pi / 5; final r = radius * ring / 4; final pt = center + Offset(math.cos(a) * r, math.sin(a) * r); if (i == 0) path.moveTo(pt.dx, pt.dy); else path.lineTo(pt.dx, pt.dy); } path.close(); canvas.drawPath(path, grid); } final path = Path(); for (var i = 0; i < 5; i++) { final a = -math.pi / 2 + i * 2 * math.pi / 5; final r = radius * values[i].clamp(0, 1); final pt = center + Offset(math.cos(a) * r, math.sin(a) * r); if (i == 0) path.moveTo(pt.dx, pt.dy); else path.lineTo(pt.dx, pt.dy); } path.close(); canvas.drawPath(path, shape); canvas.drawPath(path, outline); }
-  @override bool shouldRepaint(covariant _RadarPainter oldDelegate) => oldDelegate.values != values || oldDelegate.color != color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.isEmpty) return;
+    final line = Paint()..color = color..strokeWidth = 3..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+    final fill = Paint()..color = color.withValues(alpha: .12)..style = PaintingStyle.fill;
+    final path = Path();
+    final area = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = values.length == 1 ? 0.0 : i / (values.length - 1) * size.width;
+      final y = size.height - (values[i].clamp(0, 1) * size.height * .72) - 7;
+      if (i == 0) {
+        path.moveTo(x, y);
+        area.moveTo(x, size.height);
+        area.lineTo(x, y);
+      } else {
+        path.lineTo(x, y);
+        area.lineTo(x, y);
+      }
+    }
+    area.lineTo(size.width, size.height);
+    area.close();
+    canvas.drawPath(area, fill);
+    canvas.drawPath(path, line);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) => oldDelegate.values != values || oldDelegate.color != color;
 }

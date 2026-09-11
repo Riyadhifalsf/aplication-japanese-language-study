@@ -335,7 +335,7 @@ class _ReadingBookScreenState extends State<ReadingBookScreen> {
                           ),
                           _ToolChip(
                             selected: _showMeaning,
-                            icon: Icons.translate_rounded,
+                            icon: Icons.language_rounded,
                             label: '文A',
                             onTap: () => setState(() => _showMeaning = !_showMeaning),
                           ),
@@ -464,7 +464,7 @@ class _ReadingBookScreenState extends State<ReadingBookScreen> {
                   ),
                   FilledButton.tonalIcon(
                     onPressed: () => setState(() => _showMeaning = true),
-                    icon: const Icon(Icons.translate_rounded),
+                    icon: const Icon(Icons.language_rounded),
                     label: const Text('Translate'),
                   ),
                   FilledButton.tonalIcon(

@@ -213,7 +213,7 @@ class FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
+    final accent = color;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -234,11 +234,11 @@ class FeatureCard extends StatelessWidget {
                         width: compact ? 40 : 44,
                         height: compact ? 40 : 44,
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: .13),
+                          color: accent.withValues(alpha: .13),
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child:
-                            Icon(icon, color: color, size: compact ? 21 : 24),
+                            Icon(icon, color: accent, size: compact ? 21 : 24),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -246,14 +246,14 @@ class FeatureCard extends StatelessWidget {
                           alignment: Alignment.centerRight,
                           child: badge == null
                               ? Icon(Icons.arrow_forward_rounded,
-                                  color: color, size: 20)
+                                  color: accent, size: 20)
                               : Container(
                                   constraints:
                                       const BoxConstraints(maxWidth: 118),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: color.withValues(alpha: .1),
+                                    color: accent.withValues(alpha: .1),
                                     borderRadius: BorderRadius.circular(99),
                                   ),
                                   child: Text(
@@ -263,7 +263,7 @@ class FeatureCard extends StatelessWidget {
                                     textAlign: TextAlign.center,
                                     textScaler: TextScaler.noScaling,
                                     style: TextStyle(
-                                      color: color,
+                                      color: accent,
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -303,8 +303,8 @@ class FeatureCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: progress!.clamp(0.0, 1.0).toDouble(),
                         minHeight: 6,
-                        color: color,
-                        backgroundColor: color.withValues(alpha: .12),
+                        color: accent,
+                        backgroundColor: accent.withValues(alpha: .12),
                       ),
                     ),
                   ],

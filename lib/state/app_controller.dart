@@ -43,8 +43,8 @@ enum AuthStatus {
   error,
 }
 
-/// Tier progresi ala game (pengganti player level berbasis XP yang dihapus).
-/// Dihitung murni dari penguasaan materi + akurasi — tanpa angka XP.
+/// Indikator level JLPT berdasarkan penguasaan materi dan akurasi.
+/// Tidak memengaruhi level kurikulum aktif atau akses materi.
 enum MasteryTier {
   warrior,
   elite,
@@ -65,23 +65,19 @@ enum MasteryTier {
   }
 
   String get label => switch (this) {
-        MasteryTier.warrior => 'Warrior',
-        MasteryTier.elite => 'Elite',
-        MasteryTier.master => 'Master',
-        MasteryTier.grandmaster => 'Grandmaster',
-        MasteryTier.epic => 'Epic',
-        MasteryTier.legend => 'Legend',
-        MasteryTier.mythic => 'Mythic',
+        MasteryTier.warrior || MasteryTier.elite => 'N5',
+        MasteryTier.master => 'N4',
+        MasteryTier.grandmaster => 'N3',
+        MasteryTier.epic => 'N2',
+        MasteryTier.legend || MasteryTier.mythic => 'N1',
       };
 
   Color get color => switch (this) {
-        MasteryTier.warrior => const Color(0xFF9E9E9E),
-        MasteryTier.elite => const Color(0xFF4FC3F7),
-        MasteryTier.master => const Color(0xFFBA68C8),
-        MasteryTier.grandmaster => const Color(0xFFFFB300),
-        MasteryTier.epic => const Color(0xFFFF5722),
-        MasteryTier.legend => const Color(0xFFFFD700),
-        MasteryTier.mythic => const Color(0xFFE040FB),
+        MasteryTier.warrior || MasteryTier.elite => const Color(0xFF4FC3F7),
+        MasteryTier.master => const Color(0xFF6D4AFF),
+        MasteryTier.grandmaster => const Color(0xFFFFB020),
+        MasteryTier.epic => const Color(0xFFFF6B35),
+        MasteryTier.legend || MasteryTier.mythic => const Color(0xFFD92D20),
       };
 }
 
@@ -194,8 +190,12 @@ class AppController extends ChangeNotifier {
   final Set<int> reviewReminderWeekdays = {1, 2, 3, 4, 5, 6, 7};
   bool calendarReminderEnabled = false;
   bool glassTheme = true;
+  bool hideContinueBanner = false;
   String todayKanjiMode = 'adaptive';
   int todayKanjiPinnedId = 0;
+  /// Jumlah kartu Kanji hari ini di beranda (bisa diatur di Pengaturan).
+  int todayKanjiCount = 5;
+  static const allowedTodayKanjiCounts = [3, 5, 7, 10];
   DateTime? firstUsedAt;
   DateTime? sessionStartedAt;
   int totalActiveSeconds = 0;
@@ -425,8 +425,13 @@ class AppController extends ChangeNotifier {
     }
     calendarReminderEnabled = prefs.getBool('calendarReminderEnabled') ?? false;
     glassTheme = prefs.getBool('glassTheme') ?? true;
+    hideContinueBanner = prefs.getBool('hideContinueBanner') ?? false;
     todayKanjiMode = prefs.getString('todayKanjiMode') ?? 'adaptive';
     todayKanjiPinnedId = prefs.getInt('todayKanjiPinnedId') ?? 0;
+    final loadedKanjiCount = prefs.getInt('todayKanjiCount') ?? 5;
+    todayKanjiCount = allowedTodayKanjiCounts.contains(loadedKanjiCount)
+        ? loadedKanjiCount
+        : 5;
     featureFlags = await FeatureFlagsService.load();
     firstUsedAt = _readDate(prefs.getString('firstUsedAt'));
     totalActiveSeconds = prefs.getInt('totalActiveSeconds') ?? 0;
@@ -946,12 +951,27 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Banner Continue Learning disembunyikan via tombol X (persist).
+  void setHideContinueBanner(bool value) {
+    hideContinueBanner = value;
+    _preferences?.setBool('hideContinueBanner', hideContinueBanner);
+    notifyListeners();
+  }
+
   void setTodayKanjiMode(String mode, {int? pinnedId}) {
     if (!{'adaptive', 'favorites', 'due', 'manual'}.contains(mode)) return;
     todayKanjiMode = mode;
     if (pinnedId != null) todayKanjiPinnedId = pinnedId;
     _preferences?.setString('todayKanjiMode', todayKanjiMode);
     _preferences?.setInt('todayKanjiPinnedId', todayKanjiPinnedId);
+    notifyListeners();
+  }
+
+  /// Atur jumlah kartu Kanji hari ini (3/5/7/10). Tidak mereset progres.
+  Future<void> setTodayKanjiCount(int value) async {
+    if (!allowedTodayKanjiCounts.contains(value)) return;
+    todayKanjiCount = value;
+    _preferences?.setInt('todayKanjiCount', todayKanjiCount);
     notifyListeners();
   }
 
@@ -3125,8 +3145,10 @@ class AppController extends ChangeNotifier {
         'reviewReminderWeekdays': reviewReminderWeekdays.toList()..sort(),
         'calendarReminderEnabled': calendarReminderEnabled,
         'glassTheme': glassTheme,
+        'hideContinueBanner': hideContinueBanner,
         'todayKanjiMode': todayKanjiMode,
         'todayKanjiPinnedId': todayKanjiPinnedId,
+        'todayKanjiCount': todayKanjiCount,
         'firstUsedAt': firstUsedAt?.toIso8601String(),
         'totalActiveSeconds': totalActiveSeconds,
         'sessionCount': sessionCount,
@@ -3267,6 +3289,11 @@ class AppController extends ChangeNotifier {
       todayKanjiMode = (json['todayKanjiMode'] as String?) ?? todayKanjiMode;
       todayKanjiPinnedId =
           (json['todayKanjiPinnedId'] as num? ?? todayKanjiPinnedId).toInt();
+      final importedKanjiCount =
+          (json['todayKanjiCount'] as num?)?.toInt() ?? todayKanjiCount;
+      todayKanjiCount = allowedTodayKanjiCounts.contains(importedKanjiCount)
+          ? importedKanjiCount
+          : todayKanjiCount;
       final importedFirstUsed = json['firstUsedAt'] as String?;
       if (importedFirstUsed != null)
         firstUsedAt = DateTime.tryParse(importedFirstUsed);

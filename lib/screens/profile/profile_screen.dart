@@ -9,7 +9,6 @@ import 'profile_settings_screen.dart';
 import 'study_stats_screen.dart';
 import '../../widgets/profile_insights.dart';
 import '../../widgets/achievement_gallery.dart';
-import '../../widgets/weekly_learning_pulse.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -150,8 +149,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 14),
           ProfileInsights(app: app),
-          const SizedBox(height: 14),
-          WeeklyLearningPulse(app: app),
           const SizedBox(height: 14),
           AchievementGallery(app: app),
           const SizedBox(height: 14),

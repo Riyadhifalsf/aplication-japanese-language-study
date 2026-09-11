@@ -374,7 +374,7 @@ class _DialogDetailScreenState extends State<DialogDetailScreen> {
                   ),
                   FilledButton.tonalIcon(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.translate_rounded),
+                    icon: const Icon(Icons.language_rounded),
                     label: const Text('Terjemahan'),
                   ),
                   FilledButton.tonalIcon(
@@ -1692,7 +1692,7 @@ final List<DialogLesson> _dialogLessons = [
     title: 'Pertukaran bahasa',
     description: 'Mengatur latihan bahasa Indonesia dan Jepang.',
     level: 'N4',
-    icon: Icons.translate_rounded,
+    icon: Icons.language_rounded,
 
     tags: ['bahasa', 'teman'],
     lines: const [

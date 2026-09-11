@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../screens/curriculum/curriculum_lesson_detail_screen.dart';
 import '../screens/curriculum/curriculum_path_screen.dart';
-import '../screens/kanji/kanji_review_screen.dart';
 import '../state/app_controller.dart';
 
 /// Dashboard "Continue Learning" untuk Home.
@@ -23,12 +22,14 @@ class ContinueLearningCard extends StatelessWidget {
     final unit = cont.unit;
     final lesson = cont.lesson;
     final progress = cont.progress;
-    final adaptive = app.curriculumAdaptive(level.id);
-    final reviews = app.curriculumReviewQueue(level.id, limit: 3);
 
+    if (app.hideContinueBanner) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -163,64 +164,36 @@ class ContinueLearningCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-                child: _MiniStat(
-                    icon: Icons.refresh_rounded,
-                    label: 'Daily Review',
-                    value: reviews.isEmpty
-                        ? 'Bersih'
-                        : '${reviews.length} item',
-                    onTap: reviews.isEmpty
-                        ? null
-                        : () {
-                            final first = reviews.first;
-                            app.setCurriculumActiveLesson(first.id);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    CurriculumLessonDetailScreen(
-                                        lessonId: first.id),
-                              ),
-                            );
-                          })),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _MiniStat(
-                    icon: Icons.translate_rounded,
-                    label: 'Kanji Today',
-                    value: app.todayKanjiCharacter,
-                    onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  const KanjiReviewScreen()),
-                        ))),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _MiniStat(
-                    icon: Icons.menu_book_rounded,
-                    label: 'Vocab Review',
-                    value: adaptive?.skillKey == 'vocabulary'
-                        ? 'Disarankan'
-                        : '${app.masteredVocabularyIds.length}',
-                    onTap: adaptive?.targetLessonId == null
-                        ? null
-                        : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    CurriculumLessonDetailScreen(
-                                        lessonId:
-                                            adaptive!.targetLessonId!),
-                              ),
-                            ))),
+        Positioned(
+          right: -10,
+          top: -10,
+          child: Tooltip(
+            message: 'Sembunyikan',
+            child: GestureDetector(
+              onTap: () => app.setHideContinueBanner(true),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: scheme.error,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+        ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -232,7 +205,7 @@ class ContinueLearningCard extends StatelessWidget {
             Expanded(
                 child: _MiniStat(
                     icon: Icons.star_rounded,
-                    label: 'Tier',
+                    label: 'JLPT',
                     value: app.masteryTier.label)),
           ],
         ),

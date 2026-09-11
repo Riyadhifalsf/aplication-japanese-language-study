@@ -160,7 +160,8 @@ class ProgressSyncService {
       'activeRoadmapStepId',
       'lastStudyDate',
       'todayKanjiMode',
-      'todayKanjiPinnedId'
+      'todayKanjiPinnedId',
+      'todayKanjiCount',
     ]) {
       out[k] = lastWriteWins(k, l[k] ?? r[k]);
     }

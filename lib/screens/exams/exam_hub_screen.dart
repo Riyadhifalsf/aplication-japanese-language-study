@@ -15,45 +15,128 @@ class ExamHubScreen extends StatefulWidget {
   State<ExamHubScreen> createState() => _ExamHubScreenState();
 }
 
-class _ExamHubScreenState extends State<ExamHubScreen> {
-  late ExamType _type = widget.initialType;
+class _ExamHubScreenState extends State<ExamHubScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
   String _jlptLevel = 'N5';
   String _jftTrack = 'A2.1';
 
   @override
-  Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    final repository = ExamSimulatorRepository(app.repository);
-    final levels = _type == ExamType.jlpt
-        ? ExamSimulatorRepository.jlptLevels
-        : ExamSimulatorRepository.jftTracks;
-    final activeLevel = _type == ExamType.jlpt ? _jlptLevel : _jftTrack;
-    final format = ExamSimulatorRepository.formatSummary(_type, activeLevel);
+  void initState() {
+    super.initState();
+    _tab = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialType == ExamType.jft ? 1 : 0,
+    );
+  }
 
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
           children: [
-            PageHeader(
-              title: 'Simulasi ${examTypeLabel(_type)}',
-              subtitle:
-                  '$format. Ujian penuh: pewaktu aktif, skor dihitung di akhir, dan pembahasan muncul setelah selesai.',
-              trailing: IconButton.filledTonal(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .65),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                child: TabBar(
+                  controller: _tab,
+                  indicator: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  // Warna label dikelola _TabStyle bawaan (termasuk saat
+                  // drag via _DragAnimation), sama seperti tab Kana.
+                  labelColor: Theme.of(context).colorScheme.onPrimary,
+                  unselectedLabelColor:
+                      Theme.of(context).colorScheme.onSurface,
+                  // Nol-kan padding label bawaan supaya konten pas
+                  // selebar tab.
+                  labelPadding: EdgeInsets.zero,
+                  tabs: const [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.school_rounded, size: 18),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'JLPT',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.work_history_rounded, size: 18),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'JFT-Basic',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            _ExamSwitch(
-              type: _type,
-              onChanged: (value) => setState(() => _type = value),
+            Expanded(
+              child: TabBarView(
+                controller: _tab,
+                children: [
+                  _buildPage(ExamType.jlpt),
+                  _buildPage(ExamType.jft),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            _ExamSummary(app: app, type: _type, activeLevel: activeLevel),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Satu halaman penuh untuk satu tipe ujian (dipakai TabBarView).
+  /// Fisika geser + indikator bawaan Flutter sehingga halus seperti tab Kana.
+  Widget _buildPage(ExamType type) {
+    final app = AppScope.of(context);
+    final repository = ExamSimulatorRepository(app.repository);
+    final levels = type == ExamType.jlpt
+        ? ExamSimulatorRepository.jlptLevels
+        : ExamSimulatorRepository.jftTracks;
+    final activeLevel = type == ExamType.jlpt ? _jlptLevel : _jftTrack;
+    return ListView(
+      key: PageStorageKey('exam-hub-${type.name}'),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      children: [
+            _ExamSummary(app: app, type: type, activeLevel: activeLevel),
             const SizedBox(height: 20),
             SectionTitle(
-              title: _type == ExamType.jlpt ? 'Pilih tingkat JLPT' : 'Pilih jalur JFT-Basic',
-              subtitle: _type == ExamType.jlpt
+              title: type == ExamType.jlpt ? 'Pilih tingkat JLPT' : 'Pilih jalur JFT-Basic',
+              subtitle: type == ExamType.jlpt
                   ? 'N5 sampai N1, 50 paket simulasi per tingkat. Level mengikuti progress atau placement quiz.'
                   : 'A1 sampai A2, 50 paket ujian komputer per jalur.',
             ),
@@ -61,9 +144,9 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
             _LevelChips(
               levels: levels,
               selected: activeLevel,
-              lockedLevels: _type == ExamType.jlpt ? levels.where((l) => !app.isLevelUnlocked(l)).toSet() : const <String>{},
+              lockedLevels: type == ExamType.jlpt ? levels.where((l) => !app.isLevelUnlocked(l)).toSet() : const <String>{},
               onSelected: (value) => setState(() {
-                if (_type == ExamType.jlpt) {
+                if (type == ExamType.jlpt) {
                   _jlptLevel = value;
                 } else {
                   _jftTrack = value;
@@ -71,7 +154,7 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
               }),
             ),
             const SizedBox(height: 22),
-            _ExamBlueprint(type: _type, level: activeLevel),
+            _ExamBlueprint(type: type, level: activeLevel),
             const SizedBox(height: 22),
             SectionTitle(
               title: 'Paket simulasi penuh',
@@ -100,22 +183,22 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
                   ),
                   itemBuilder: (context, index) {
                     final stage = index + 1;
-                    final key = app.examKey(_type, activeLevel, stage);
+                    final key = app.examKey(type, activeLevel, stage);
                     final best = app.examBestScores[key] ?? 0;
                     return _StageCard(
-                      type: _type,
+                      type: type,
                       level: activeLevel,
                       stage: stage,
                       bestScore: best,
                       // Phase 1: semua stage gratis. Lock hanya progression level.
-                      locked: (_type == ExamType.jlpt && !app.isLevelUnlocked(activeLevel)),
+                      locked: (type == ExamType.jlpt && !app.isLevelUnlocked(activeLevel)),
                       onTap: () {
-                        if (_type == ExamType.jlpt && !app.isLevelUnlocked(activeLevel)) {
+                        if (type == ExamType.jlpt && !app.isLevelUnlocked(activeLevel)) {
                           _showLevelLockedHint(context, activeLevel);
                           return;
                         }
                         final plan = repository.buildSession(
-                          type: _type,
+                          type: type,
                           level: activeLevel,
                           stage: stage,
                         );
@@ -132,9 +215,8 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
               },
             ),
           ],
-        ),
-      ),
-    );
+        );
+  }
   }
 
   void _showLevelLockedHint(BuildContext context, String level) {
@@ -197,88 +279,6 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
       ),
     );
   }
-}
-
-class _ExamSwitch extends StatelessWidget {
-  const _ExamSwitch({required this.type, required this.onChanged});
-
-  final ExamType type;
-  final ValueChanged<ExamType> onChanged;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .65),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _SwitchItem(
-                label: 'JLPT',
-                selected: type == ExamType.jlpt,
-                icon: Icons.school_rounded,
-                onTap: () => onChanged(ExamType.jlpt),
-              ),
-            ),
-            Expanded(
-              child: _SwitchItem(
-                label: 'JFT-Basic',
-                selected: type == ExamType.jft,
-                icon: Icons.work_history_rounded,
-                onTap: () => onChanged(ExamType.jft),
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
-class _SwitchItem extends StatelessWidget {
-  const _SwitchItem({
-    required this.label,
-    required this.selected,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-          decoration: BoxDecoration(
-            color: selected ? Theme.of(context).colorScheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 18, color: selected ? Theme.of(context).colorScheme.onPrimary : null),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: selected ? Theme.of(context).colorScheme.onPrimary : null,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
 
 class _ExamSummary extends StatelessWidget {
   const _ExamSummary({required this.app, required this.type, required this.activeLevel});
@@ -309,7 +309,6 @@ class _ExamSummary extends StatelessWidget {
           ),
           _SummaryText(label: 'Poin simulasi', value: '${app.examPoints}'),
           _SummaryText(label: 'Paket terbaik', value: '${app.examBestScores.length}'),
-          _SummaryText(label: 'Format', value: ExamSimulatorRepository.formatSummary(type, activeLevel)),
         ],
       ),
     );
@@ -453,7 +452,6 @@ class _StageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = type == ExamType.jlpt ? const Color(0xFFD92D20) : const Color(0xFF17A673);
-    final format = ExamSimulatorRepository.formatSummary(type, level);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -489,7 +487,7 @@ class _StageCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$level · $format',
+                      level,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),

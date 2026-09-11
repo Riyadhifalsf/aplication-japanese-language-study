@@ -46,6 +46,8 @@ class ProfileSettingsScreen extends StatelessWidget {
           _surface(context, app, Column(children: [
             ListTile(leading: const Icon(Icons.school_rounded), title: const Text('Level materi', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Materi aktif: ${app.selectedStudyLevel}'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _selectLevel(context, app)),
             const Divider(height: 1),
+            ListTile(leading: const Icon(Icons.today_rounded), title: const Text('Target belajar harian', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.dailyStudyMinutes} menit per hari'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _dailyStudyGoal(context, app)),
+            const Divider(height: 1),
             ListTile(leading: const Icon(Icons.notifications_active_rounded), title: const Text('Pengingat ulangan Kanji', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.reviewReminderDaysLabel} · ${app.reviewReminderTimeLabel}'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderSettingsScreen()))),
             const Divider(height: 1),
             ListTile(leading: const Icon(Icons.update_rounded), title: const Text('Interval review Kanji', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('${app.reviewIntervalDays} hari awal · otomatis diperpanjang'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _reviewInterval(context, app)),
@@ -54,6 +56,15 @@ class ProfileSettingsScreen extends StatelessWidget {
             SwitchListTile(value: app.darkMode, onChanged: (_) => app.toggleTheme(), secondary: const Icon(Icons.dark_mode_rounded), title: const Text('Tema gelap', style: TextStyle(fontWeight: FontWeight.w900))),
             SwitchListTile(value: app.glassTheme, onChanged: (_) => app.toggleGlassTheme(), secondary: const Icon(Icons.blur_on_rounded), title: const Text('Liquid Glass', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: const Text('Efek kaca blur dipakai langsung pada panel pengaturan dan kartu beranda.')),
             ListTile(leading: const Icon(Icons.auto_awesome_rounded), title: const Text('Kanji hari ini', style: TextStyle(fontWeight: FontWeight.w900)), subtitle: Text('Mode ${app.todayKanjiMode} · ${app.todayKanjiCharacter}'), trailing: const Icon(Icons.chevron_right_rounded), onTap: () => _todayKanjiMode(context, app)),
+            const Divider(height: 1),
+            ListTile(
+                leading: const Icon(Icons.style_rounded),
+                title: const Text('Jumlah Kanji hari ini',
+                    style: TextStyle(fontWeight: FontWeight.w900)),
+                subtitle:
+                    Text('${app.todayKanjiCount} kartu di beranda'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _todayKanjiCount(context, app)),
           ])),
           const SizedBox(height: 20),
           const Text('Bahasa & suara', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
@@ -250,6 +261,43 @@ class ProfileSettingsScreen extends StatelessWidget {
     );
   }
 
+  void _dailyStudyGoal(BuildContext context, AppController app) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Target belajar harian', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              const Text('Pilih durasi belajar yang realistis untuk menjaga konsistensi setiap hari.'),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final minutes in AppController.allowedDailyStudyMinutes)
+                    ChoiceChip(
+                      label: Padding(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5), child: Text('$minutes menit')),
+                      selected: app.dailyStudyMinutes == minutes,
+                      onSelected: (_) {
+                        app.setDailyStudyMinutes(minutes);
+                        Navigator.pop(context);
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _language(BuildContext context, AppController app) {
     showModalBottomSheet<void>(
       context: context,
@@ -329,9 +377,164 @@ class ProfileSettingsScreen extends StatelessWidget {
           children: [
             const Padding(padding: EdgeInsets.all(16), child: Align(alignment: Alignment.centerLeft, child: Text('Mode Kanji hari ini', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)))),
             for (final item in [('adaptive', 'Adaptif'), ('favorites', 'Favorit'), ('due', 'Jatuh tempo'), ('manual', 'Kanji pilihan')])
-              RadioListTile<String>(value: item.$1, groupValue: app.todayKanjiMode, title: Text(item.$2), onChanged: (v) { if (v != null) { app.setTodayKanjiMode(v); Navigator.pop(context); } }),
+              RadioListTile<String>(
+                value: item.$1,
+                groupValue: app.todayKanjiMode,
+                title: Text(item.$2),
+                subtitle: item.$1 == 'manual' && app.todayKanjiPinnedId > 0
+                    ? Text(
+                        'Terpilih: ${app.repository.kanjiById(app.todayKanjiPinnedId)?.character ?? ''}')
+                    : null,
+                onChanged: (v) {
+                  if (v == null) return;
+                  Navigator.pop(context);
+                  if (v == 'manual') {
+                    _pickKanji(context, app);
+                  } else {
+                    app.setTodayKanjiMode(v);
+                  }
+                },
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Pilih jumlah kartu Kanji hari ini di beranda (3/5/7/10).
+  void _todayKanjiCount(BuildContext context, AppController app) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+                padding: EdgeInsets.all(16),
+                child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Jumlah Kanji hari ini',
+                        style: TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900)))),
+            for (final n in AppController.allowedTodayKanjiCounts)
+              RadioListTile<int>(
+                value: n,
+                groupValue: app.todayKanjiCount,
+                title: Text('$n kartu'),
+                onChanged: (v) {
+                  if (v == null) return;
+                  app.setTodayKanjiCount(v);
+                  Navigator.pop(sheetContext);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pilih manual kanji hari ini (cari per huruf/arti/bacaan).
+  void _pickKanji(BuildContext context, AppController app) {
+    var query = '';
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final q = query.trim().toLowerCase();
+          final all = app.repository.kanji;
+          final filtered = q.isEmpty
+              ? all.take(200).toList()
+              : all
+                  .where((k) =>
+                      k.character.contains(query.trim()) ||
+                      k.meaning.toLowerCase().contains(q) ||
+                      k.onyomi.toLowerCase().contains(q) ||
+                      k.kunyomi.toLowerCase().contains(q))
+                  .take(200)
+                  .toList();
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 8,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Pilih kanji hari ini',
+                      style:
+                          TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 10),
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Cari huruf, arti, atau bacaan…',
+                      prefixIcon: Icon(Icons.search_rounded),
+                      border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.all(Radius.circular(16))),
+                    ),
+                    onChanged: (v) =>
+                        setSheetState(() => query = v),
+                  ),
+                  const SizedBox(height: 10),
+                  Flexible(
+                    child: filtered.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('Tidak ketemu. Coba kata lain.'),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (_, i) {
+                              final k = filtered[i];
+                              final selected =
+                                  app.todayKanjiPinnedId == k.id;
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: CircleAvatar(
+                                    child: Text(k.character,
+                                        style: const TextStyle(
+                                            fontWeight:
+                                                FontWeight.w900))),
+                                title: Text(k.meaning,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800)),
+                                subtitle: Text(
+                                    '${k.level} · ${k.preferredReading}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                                trailing: selected
+                                    ? const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: Colors.green)
+                                    : null,
+                                onTap: () {
+                                  app.setTodayKanjiMode('manual',
+                                      pinnedId: k.id);
+                                  Navigator.pop(sheetContext);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -643,7 +643,7 @@ class _SectionChip extends StatelessWidget {
   IconData _iconFor(ExamSection section) {
     switch (section) {
       case ExamSection.mojiGoi:
-        return Icons.translate_rounded;
+        return Icons.menu_book_rounded;
       case ExamSection.bunpou:
         return Icons.account_tree_rounded;
       case ExamSection.dokkai:

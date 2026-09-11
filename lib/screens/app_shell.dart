@@ -23,11 +23,21 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
   AppController? _app;
+  late final PageController _pages;
 
   @override
-  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); }
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _pages = PageController(initialPage: 0);
+  }
   @override
-  void dispose() { _app?.endSession(); WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  void dispose() {
+    _app?.endSession();
+    _pages.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
   @override
   void didChangeDependencies() { super.didChangeDependencies(); _app = AppScope.of(context); }
 
@@ -39,6 +49,20 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   Future<void> _select(int value) async {
+    final target = value.clamp(0, 4);
+    setState(() => _index = target);
+    if (_pages.hasClients) {
+      _pages.animateToPage(
+        target,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    }
+    unawaited(AdsService.instance.onTabChange());
+  }
+
+  void _onPageChanged(int value) {
+    if (value == _index) return;
     setState(() => _index = value);
     unawaited(AdsService.instance.onTabChange());
   }
@@ -49,13 +73,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused || state == AppLifecycleState.detached) _app?.endSession();
   }
 
-  Widget _page(AppController app) => switch (_index) {
-    0 => HomeScreen(onOpenStudy: () => _select(1), onOpenQuiz: () => _select(2), onOpenProfile: _openProfile),
-    1 => CurriculumPathScreen(initialLevel: app.curriculumActiveLevelId),
-    2 => const QuizCenterScreen(),
-    3 => const StudyHubScreen(),
-    _ => const DonationScreen(),
-  };
+  /// Urutan tab: 0 Beranda, 1 Learning, 2 Donasi (tengah),
+  /// 3 Practice, 4 Library. Daftar dipakai PageView agar bisa digeser.
+  List<Widget> _tabPages(AppController app) => [
+        HomeScreen(
+            key: const PageStorageKey('tab-beranda'),
+            onOpenStudy: () => _select(1),
+            onOpenQuiz: () => _select(3),
+            onOpenProfile: _openProfile),
+        CurriculumPathScreen(
+            key: const PageStorageKey('tab-learning'),
+            initialLevel: app.curriculumActiveLevelId),
+        const DonationScreen(key: PageStorageKey('tab-donasi')),
+        const QuizCenterScreen(key: PageStorageKey('tab-practice')),
+        const StudyHubScreen(key: PageStorageKey('tab-library')),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -64,23 +96,21 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final pages = [
       const NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: Text('Beranda')),
       const NavigationRailDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book_rounded), label: Text('Learning')),
+      const NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
       const NavigationRailDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: Text('Practice')),
       const NavigationRailDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: Text('Library')),
-      const NavigationRailDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: Text('Donasi')),
     ];
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final body = SafeArea(
       bottom: false,
       child: AdaptiveContent(
-        child: AnimatedSwitcher(
-          duration: disableAnimations ? Duration.zero : const Duration(milliseconds: 240),
-          reverseDuration: disableAnimations ? Duration.zero : const Duration(milliseconds: 180),
-          transitionBuilder: (child, animation) {
-            final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-            return FadeTransition(opacity: curved, child: ScaleTransition(scale: Tween<double>(begin: .985, end: 1).animate(curved), child: child));
-          },
-          child: KeyedSubtree(key: ValueKey(_index), child: _page(app)),
-        ),
+        child: disableAnimations
+            ? _tabPages(app)[_index]
+            : PageView(
+                controller: _pages,
+                onPageChanged: _onPageChanged,
+                children: _tabPages(app),
+              ),
       ),
     );
     if (wide) {
@@ -101,9 +131,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         NavigationBar(selectedIndex: _index, onDestinationSelected: _select, destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_rounded), label: 'Beranda'),
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book_rounded), label: 'Learning'),
+          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
           NavigationDestination(icon: Icon(Icons.quiz_outlined), selectedIcon: Icon(Icons.quiz_rounded), label: 'Practice'),
           NavigationDestination(icon: Icon(Icons.library_books_outlined), selectedIcon: Icon(Icons.library_books_rounded), label: 'Library'),
-          NavigationDestination(icon: Icon(Icons.volunteer_activism_outlined, size: 30), selectedIcon: Icon(Icons.volunteer_activism_rounded, size: 30), label: 'Donasi'),
         ]),
       ]),
     );

@@ -1,11 +1,5 @@
-import 'dart:async';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
-import '../../core/app_theme.dart';
-import '../../models/kana_character.dart';
-import '../../services/kana_catalog.dart';
 import '../../state/app_controller.dart';
 
 class KanaScreen extends StatefulWidget {
@@ -18,7 +12,7 @@ class KanaScreen extends StatefulWidget {
 class _KanaScreenState extends State<KanaScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  String _group = 'Semua';
+  bool _downloading = false;
 
   @override
   void initState() {
@@ -30,6 +24,26 @@ class _KanaScreenState extends State<KanaScreen>
   void dispose() {
     _tabs.dispose();
     super.dispose();
+  }
+
+  /// Unduh paket kana untuk offline via sistem paket yang sudah ada.
+  /// Bundel lokal menjamin tetap bisa dipakai tanpa internet.
+  Future<void> _downloadKana(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final app = AppScope.of(context);
+    if (_downloading) return;
+    setState(() => _downloading = true);
+    final refreshed = await app.downloadOfflinePack('kana');
+    if (!mounted) return;
+    setState(() => _downloading = false);
+    final synced = app.packSyncedAt['kana'];
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(refreshed
+            ? 'Kana diperbarui dari server dan tersimpan offline.'
+            : 'Kana tersimpan untuk offline.${synced == null ? '' : ' Sinkron terakhir $synced.'}'),
+      ),
+    );
   }
 
   @override
@@ -44,92 +58,155 @@ class _KanaScreenState extends State<KanaScreen>
             ],
           ),
           actions: [
-            IconButton(
-              tooltip: 'Kuis seluruh kana',
-              onPressed: _openQuiz,
-              icon: const Icon(Icons.quiz_rounded),
+            _DownloadKanaButton(
+              downloading: _downloading,
+              onPressed: () => _downloadKana(context),
             ),
           ],
         ),
-        body: Column(
+        body: TabBarView(
+          controller: _tabs,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final group in ['Semua', 'Dasar', 'Dakuten', 'Yōon'])
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          selected: _group == group,
-                          label: Text(group),
-                          onSelected: (_) => setState(() => _group = group),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: [
-                  _group == 'Dasar'
-                      ? const _KanaChart(hiragana: true)
-                      : _group == 'Yōon'
-                          ? const _YoonChart(hiragana: true)
-                          : _KanaGrid(
-                              items: _filter(KanaCatalog.hiragana),
-                              label: 'hiragana',
-                            ),
-                  _group == 'Dasar'
-                      ? const _KanaChart(hiragana: false)
-                      : _group == 'Yōon'
-                          ? const _YoonChart(hiragana: false)
-                          : _KanaGrid(
-                              items: _filter(KanaCatalog.katakana),
-                              label: 'katakana',
-                            ),
-                ],
-              ),
-            ),
+            _KanaTabPage(hiragana: true),
+            _KanaTabPage(hiragana: false),
           ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _openQuiz,
-          icon: const Icon(Icons.play_arrow_rounded),
-          label: const Text('Mulai kuis'),
         ),
       );
+}
 
-  List<KanaCharacter> _filter(List<KanaCharacter> values) => _group == 'Semua'
-      ? values
-      : values.where((item) => item.group == _group).toList(growable: false);
+/// Tombol unduh kana di pojok kanan atas: spinner saat mengunduh,
+/// centang bila paket kana sudah tersimpan offline.
+class _DownloadKanaButton extends StatelessWidget {
+  const _DownloadKanaButton({required this.downloading, required this.onPressed});
 
-  void _openQuiz() {
-    final source =
-        _tabs.index == 0 ? KanaCatalog.hiragana : KanaCatalog.katakana;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => KanaQuizScreen(
-          title: _tabs.index == 0 ? 'Hiragana' : 'Katakana',
-          items: source,
+  final bool downloading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (downloading) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
         ),
+      );
+    }
+    final downloaded =
+        AppScope.of(context).downloadedPacks.contains('kana');
+    return IconButton(
+      tooltip: downloaded ? 'Kana sudah offline' : 'Unduh kana offline',
+      onPressed: onPressed,
+      icon: Icon(
+        downloaded
+            ? Icons.check_circle_rounded
+            : Icons.download_rounded,
       ),
     );
   }
 }
 
-
-class _KanaChart extends StatelessWidget {
-  const _KanaChart({required this.hiragana});
+/// Satu halaman scroll penuh per tab: shortcut + Dasar + Dakuten + Yoon
+/// (semua gaya tabel Dasar).
+class _KanaTabPage extends StatelessWidget {
+  _KanaTabPage({required this.hiragana});
 
   final bool hiragana;
+  final _dasarKey = GlobalKey();
+  final _dakutenKey = GlobalKey();
+  final _yoonKey = GlobalKey();
 
-  static const _rows = [
+  void _jump(GlobalKey key) {
+    final context = key.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+      alignment: 0.0,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 96),
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _ShortcutChip(
+                  label: 'Dasar', onTap: () => _jump(_dasarKey)),
+              const SizedBox(width: 8),
+              _ShortcutChip(
+                  label: 'Dakuten', onTap: () => _jump(_dakutenKey)),
+              const SizedBox(width: 8),
+              _ShortcutChip(
+                  label: 'Yōon', onTap: () => _jump(_yoonKey)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        KeyedSubtree(
+          key: _dasarKey,
+          child: _ChartSection(
+            title: 'Dasar',
+            subtitle: 'Bunyi dasar gojuon + bacaannya.',
+            rows: _KanaChartRows.dasar,
+            columns: const ['-A', '-I', '-U', '-E', '-O'],
+            hiragana: hiragana,
+          ),
+        ),
+        const SizedBox(height: 22),
+        KeyedSubtree(
+          key: _dakutenKey,
+          child: _ChartSection(
+            title: 'Dakuten',
+            subtitle: 'Bunyi berubah dengan tenten dan maru.',
+            rows: _KanaChartRows.dakuten,
+            columns: const ['-A', '-I', '-U', '-E', '-O'],
+            hiragana: hiragana,
+          ),
+        ),
+        const SizedBox(height: 22),
+        KeyedSubtree(
+          key: _yoonKey,
+          child: _ChartSection(
+            title: 'Yōon',
+            subtitle: 'Bunyi gabungan (kecil ゃゅょ).',
+            rows: _KanaChartRows.yoon,
+            columns: const ['-A', '-U', '-O'],
+            hiragana: hiragana,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShortcutChip extends StatelessWidget {
+  const _ShortcutChip({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => ActionChip(
+        label: Text(label),
+        avatar: const Icon(Icons.arrow_downward_rounded, size: 16),
+        onPressed: onTap,
+      );
+}
+
+
+/// Baris tabel kana gaya Dasar (kana + romaji), dipakai semua section.
+class _KanaChartRows {
+  _KanaChartRows._();
+
+  static const dasar = [
     ('A-', ['あ', 'い', 'う', 'え', 'お'], ['A', 'I', 'U', 'E', 'O']),
     ('K-', ['か', 'き', 'く', 'け', 'こ'], ['KA', 'KI', 'KU', 'KE', 'KO']),
     ('S-', ['さ', 'し', 'す', 'せ', 'そ'], ['SA', 'SHI', 'SU', 'SE', 'SO']),
@@ -143,29 +220,15 @@ class _KanaChart extends StatelessWidget {
     ('N', ['ん', '', '', '', ''], ['N', '', '', '', '']),
   ];
 
-  static const _columns = ['-A', '-I', '-U', '-E', '-O'];
+  static const dakuten = [
+    ('G-', ['が', 'ぎ', 'ぐ', 'げ', 'ご'], ['GA', 'GI', 'GU', 'GE', 'GO']),
+    ('Z-', ['ざ', 'じ', 'ず', 'ぜ', 'ぞ'], ['ZA', 'JI', 'ZU', 'ZE', 'ZO']),
+    ('D-', ['だ', 'ぢ', 'づ', 'で', 'ど'], ['DA', 'JI', 'ZU', 'DE', 'DO']),
+    ('B-', ['ば', 'び', 'ぶ', 'べ', 'ぼ'], ['BA', 'BI', 'BU', 'BE', 'BO']),
+    ('P-', ['ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ'], ['PA', 'PI', 'PU', 'PE', 'PO']),
+  ];
 
-  @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 96),
-        children: [
-          const _KanaColumnHeader(columns: _columns),
-          for (final row in _rows) _KanaTableRow(row: row, hiragana: hiragana),
-          const SizedBox(height: 20),
-          Text(
-            'Huruf di tabel bisa dipencet untuk mendengarkan suara. Susunannya mengikuti baris bunyi A, K, S, T, N, H, M, Y, R, W seperti referensi.',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.45),
-          ),
-        ],
-      );
-}
-
-class _YoonChart extends StatelessWidget {
-  const _YoonChart({required this.hiragana});
-
-  final bool hiragana;
-
-  static const _rows = [
+  static const yoon = [
     ('KY-', ['きゃ', 'きゅ', 'きょ'], ['KYA', 'KYU', 'KYO']),
     ('SH-', ['しゃ', 'しゅ', 'しょ'], ['SHA', 'SHU', 'SHO']),
     ('CH-', ['ちゃ', 'ちゅ', 'ちょ'], ['CHA', 'CHU', 'CHO']),
@@ -178,13 +241,52 @@ class _YoonChart extends StatelessWidget {
     ('BY-', ['びゃ', 'びゅ', 'びょ'], ['BYA', 'BYU', 'BYO']),
     ('PY-', ['ぴゃ', 'ぴゅ', 'ぴょ'], ['PYA', 'PYU', 'PYO']),
   ];
+}
+
+/// Satu section tabel (judul + kolom + baris) untuk halaman scroll.
+class _ChartSection extends StatelessWidget {
+  const _ChartSection({
+    required this.title,
+    required this.subtitle,
+    required this.rows,
+    required this.columns,
+    required this.hiragana,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<(String, List<String>, List<String>)> rows;
+  final List<String> columns;
+  final bool hiragana;
 
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 96),
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _KanaColumnHeader(columns: ['-A', '-U', '-O']),
-          for (final row in _rows) _KanaTableRow(row: row, hiragana: hiragana),
+          Text(
+            title,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 10),
+          _KanaColumnHeader(columns: columns),
+          for (final row in rows)
+            _KanaTableRow(row: row, hiragana: hiragana),
+          const SizedBox(height: 6),
+          Text(
+            'Huruf di tabel bisa dipencet untuk mendengarkan suara.',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.45),
+          ),
         ],
       );
 }
@@ -290,317 +392,6 @@ class _KanaTableCell extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      );
-}
-
-class _KanaGrid extends StatelessWidget {
-  const _KanaGrid({required this.items, required this.label});
-
-  final List<KanaCharacter> items;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final app = AppScope.of(context);
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-      itemCount: items.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: MediaQuery.sizeOf(context).width >= 600 ? 8 : 5,
-        mainAxisSpacing: 9,
-        crossAxisSpacing: 9,
-        mainAxisExtent:
-            MediaQuery.sizeOf(context).width >= 600 ? 96 : 86,
-      ),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => app.tts.speak(item.character),
-            child: Semantics(
-              label: '${item.character}, ${item.romaji}, $label',
-              button: true,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(6, 7, 6, 6),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            item.character,
-                            textScaler: TextScaler.noScaling,
-                            style: const TextStyle(
-                              fontSize: 40,
-                              height: 1,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item.romaji,
-                      maxLines: 1,
-                      overflow: TextOverflow.fade,
-                      textScaler: TextScaler.noScaling,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontSize: 11,
-                        height: 1,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class KanaQuizScreen extends StatefulWidget {
-  const KanaQuizScreen({
-    required this.title,
-    required this.items,
-    super.key,
-  });
-
-  final String title;
-  final List<KanaCharacter> items;
-
-  @override
-  State<KanaQuizScreen> createState() => _KanaQuizScreenState();
-}
-
-class _KanaQuizScreenState extends State<KanaQuizScreen> {
-  final _random = Random();
-  Timer? _autoNextTimer;
-  late List<KanaCharacter> _questions;
-  int _index = 0;
-  int _correct = 0;
-  String? _selected;
-  bool _recorded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _restartData();
-  }
-
-  @override
-  void dispose() {
-    _autoNextTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_index >= _questions.length) return _result(context);
-    final item = _questions[_index];
-    final choices = _choices(item);
-    return Scaffold(
-      appBar: AppBar(title: Text('Kuis ${widget.title}')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Row(
-            children: [
-              Text('Soal ${_index + 1}/${_questions.length}'),
-              const Spacer(),
-              Text(
-                '$_correct benar',
-                style: const TextStyle(
-                  color: AppTheme.success,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(value: _index / _questions.length),
-          const SizedBox(height: 28),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Column(
-                children: [
-                  Text(
-                    item.character,
-                    style: const TextStyle(
-                      fontSize: 82,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  IconButton.filledTonal(
-                    onPressed: () =>
-                        AppScope.of(context).tts.speak(item.character),
-                    icon: const Icon(Icons.volume_up_rounded),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          for (final choice in choices)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: OutlinedButton(
-                onPressed: _selected == null
-                    ? () => _answer(choice, item)
-                    : null,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  side: _selected != null && choice.romaji == item.romaji
-                      ? const BorderSide(
-                          color: AppTheme.success,
-                          width: 2,
-                        )
-                      : _selected == choice.romaji
-                          ? BorderSide(
-                              color: Theme.of(context).colorScheme.error,
-                              width: 2,
-                            )
-                          : null,
-                ),
-                child: Text(
-                  choice.romaji,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ),
-          if (_selected != null)
-            if (_selected == item.romaji)
-              const _KanaAutoNextIndicator()
-            else
-              FilledButton(
-                onPressed: _next,
-                child: const Text('Saya sudah paham, lanjutkan'),
-              ),
-        ],
-      ),
-    );
-  }
-
-  Widget _result(BuildContext context) {
-    final app = AppScope.of(context);
-    if (!_recorded) {
-      _recorded = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        app.recordQuiz(correct: _correct, total: _questions.length);
-      });
-    }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hasil kuis kana')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$_correct/${_questions.length}',
-              style: const TextStyle(
-                color: AppTheme.seed,
-                fontSize: 58,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('Kuis memakai seluruh koleksi, bukan hanya 15 kana.'),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _restart,
-              icon: const Icon(Icons.replay_rounded),
-              label: const Text('Ulangi'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<KanaCharacter> _choices(KanaCharacter correct) {
-    final seed =
-        correct.character.codeUnits.fold<int>(0, (sum, value) => sum + value);
-    final random = Random(seed);
-    final pool = [...widget.items]..shuffle(random);
-    final values = <KanaCharacter>[correct];
-    final used = <String>{correct.romaji};
-    for (final item in pool) {
-      if (used.add(item.romaji)) values.add(item);
-      if (values.length == 4) break;
-    }
-    values.shuffle(random);
-    return values;
-  }
-
-  void _answer(KanaCharacter choice, KanaCharacter correct) {
-    final isCorrect = choice.romaji == correct.romaji;
-    setState(() {
-      _selected = choice.romaji;
-      if (isCorrect) _correct++;
-    });
-    if (isCorrect) {
-      _autoNextTimer?.cancel();
-      _autoNextTimer = Timer(const Duration(milliseconds: 550), () {
-        if (mounted) _next();
-      });
-    }
-  }
-
-  void _next() {
-    _autoNextTimer?.cancel();
-    setState(() {
-      _index++;
-      _selected = null;
-    });
-  }
-
-  void _restart() {
-    _autoNextTimer?.cancel();
-    setState(_restartData);
-  }
-
-  void _restartData() {
-    _questions = [...widget.items]..shuffle(_random);
-    _questions = _questions.take(20).toList(growable: false);
-    _index = 0;
-    _correct = 0;
-    _selected = null;
-    _recorded = false;
-  }
-}
-
-class _KanaAutoNextIndicator extends StatelessWidget {
-  const _KanaAutoNextIndicator();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 17,
-              height: 17,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-            SizedBox(width: 10),
-            Text(
-              'Benar — lanjut otomatis…',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
         ),
       );
 }

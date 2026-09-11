@@ -32,9 +32,90 @@ class CurriculumLessonDetailScreen extends StatefulWidget {
       _CurriculumLessonDetailScreenState();
 }
 
+class _LoadingLesson extends StatelessWidget {
+  const _LoadingLesson({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.primary.withValues(alpha: .14),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/branding/japanese_study_logo.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Center(
+                  child: Text(
+                    '日本語',
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: 140,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  backgroundColor: colors.surfaceContainerHighest,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(colors.primary),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Menyiapkan materi…',
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CurriculumLessonDetailScreenState
     extends State<CurriculumLessonDetailScreen> {
   bool _celebrated = false;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Tampilkan splash loading (logo + bar) sejenak saat masuk Bab agar
+    // transisi terasa halus sekaligus menutupi build konten yang berat.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted) setState(() => _ready = true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +127,7 @@ class _CurriculumLessonDetailScreenState
         body: const Center(child: Text('Lesson tidak ditemukan.')),
       );
     }
+    if (!_ready) return _LoadingLesson(title: lesson.title);
     final unit = CurriculumCatalogData.unitById(lesson.unitId);
     final status = app.curriculumLessonStatus(lesson);
     final progress = app.curriculumProgressById[lesson.id];
@@ -1396,7 +1478,7 @@ class _ActivityTile extends StatelessWidget {
   IconData _iconFor(CurriculumActivityType type) => switch (type) {
         CurriculumActivityType.introduction => Icons.flag_rounded,
         CurriculumActivityType.vocabulary => Icons.menu_book_rounded,
-        CurriculumActivityType.kanji => Icons.translate_rounded,
+        CurriculumActivityType.kanji => Icons.brush_rounded,
         CurriculumActivityType.grammar => Icons.account_tree_rounded,
         CurriculumActivityType.exampleSentences => Icons.subject_rounded,
         CurriculumActivityType.reading => Icons.auto_stories_rounded,

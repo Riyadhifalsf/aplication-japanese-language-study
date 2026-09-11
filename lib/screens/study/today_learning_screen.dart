@@ -873,7 +873,7 @@ class _LearningMistakesScreenState extends State<LearningMistakesScreen> {
 IconData _skillIcon(LearningSkill skill) => switch (skill) {
       LearningSkill.vocabulary => Icons.menu_book_rounded,
       LearningSkill.grammar => Icons.account_tree_rounded,
-      LearningSkill.kanji => Icons.translate_rounded,
+      LearningSkill.kanji => Icons.brush_rounded,
       LearningSkill.listening => Icons.headphones_rounded,
       LearningSkill.reading => Icons.auto_stories_rounded,
       LearningSkill.speaking => Icons.mic_rounded,

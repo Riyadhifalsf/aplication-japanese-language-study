@@ -65,7 +65,7 @@ class KanjiStudyScreen extends StatelessWidget {
                 _ActionData(
                   'Kumpulan Kanji',
                   '5.000 kanji',
-                  Icons.translate_rounded,
+                  Icons.brush_rounded,
                   AppTheme.seed,
                   () => _open(
                       context, KanjiLibraryScreen(initialLevel: targetLevel)),

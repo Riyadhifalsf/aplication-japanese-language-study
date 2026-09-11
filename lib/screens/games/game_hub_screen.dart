@@ -32,7 +32,7 @@ class GameHubScreen extends StatelessWidget {
           _GameCard(
             title: 'Ketik Kanji',
             subtitle: 'Tulis kanji yang sesuai dengan kata.',
-            icon: Icons.translate_rounded,
+            icon: Icons.brush_rounded,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const TypingGameScreen(mode: 'kanji')),

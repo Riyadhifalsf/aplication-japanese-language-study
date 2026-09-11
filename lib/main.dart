@@ -29,8 +29,14 @@ Future<void> main() async {
   AppController.logStartup('runApp');
   WidgetsBinding.instance.addPostFrameCallback((_) {
     AppController.logStartup('first-frame');
+    // Tampilkan splash Flutter (dengan loading bar) sesegera mungkin.
+    // Splash bawaan HP hanya untuk frame pertama; sisanya biar splash
+    // Flutter yang tampil selama data dimuat, kalau tidak bar tidak
+    // akan pernah kelihatan.
+    FlutterNativeSplash.remove();
   });
-  // Tahan native splash sampai startup data lokal benar-benar selesai.
+  // Tahan splash Flutter sampai data lokal benar-benar selesai.
+  // (remove() ganda aman — panggilan kedua diabaikan.)
   unawaited(() async {
     try {
       await controller.load();
@@ -184,6 +190,20 @@ class _StartupSplashState extends State<_StartupSplash> {
                 ),
               ),
               const SizedBox(height: 20),
+              SizedBox(
+                width: 160,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    minHeight: 6,
+                    backgroundColor:
+                        colors.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        colors.primary),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               const Text(
                 'Japanese Study',
                 style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),

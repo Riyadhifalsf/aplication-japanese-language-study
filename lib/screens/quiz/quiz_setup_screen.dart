@@ -57,7 +57,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
             segments: const [
               ButtonSegment(
                 value: true,
-                icon: Icon(Icons.translate_rounded),
+                icon: Icon(Icons.brush_rounded),
                 label: Text('Kanji'),
               ),
               ButtonSegment(
@@ -184,7 +184,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
           _QuickTile(
             'Kanji ke Hiragana',
             'Lihat kanji, pilih bacaannya',
-            Icons.translate_rounded,
+            Icons.brush_rounded,
             () => _open(context, const KanjiHiraganaQuizScreen()),
           ),
           _QuickTile(

@@ -36,7 +36,7 @@ class StudyHubScreen extends StatelessWidget {
         ]),
         const SizedBox(height: 22),
         _Shelf(title: 'Kanji & membaca', cards: [
-          _Item('Kanji', 'Cari, baca, dan lihat detail kanji', Icons.translate_rounded, const KanjiLibraryScreen()),
+          _Item('Kanji', 'Cari, baca, dan lihat detail kanji', Icons.brush_rounded, const KanjiLibraryScreen(), symbol: '日'),
           _Item('Review Kanji', 'Ulangi kanji yang perlu diperkuat', Icons.replay_rounded, const KanjiReviewScreen()),
           _Item('Kana', 'Hiragana dan Katakana', Icons.grid_view_rounded, const KanaScreen()),
           _Item('Reading', 'Cerita dan bacaan lebih panjang', Icons.auto_stories_rounded, const ReadingScreen()),
@@ -93,7 +93,10 @@ class _Shelf extends StatelessWidget {
   final List<_Item> cards;
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        Row(children: [
+          Expanded(child: Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+          Text('${cards.length} materi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        ]),
         const SizedBox(height: 10),
         LayoutBuilder(builder: (context, constraints) {
           final columns = constraints.maxWidth >= 900 ? 4 : constraints.maxWidth >= 600 ? 3 : 2;
@@ -109,11 +112,12 @@ class _Shelf extends StatelessWidget {
 }
 
 class _Item extends StatelessWidget {
-  const _Item(this.title, this.subtitle, this.icon, this.screen);
+  const _Item(this.title, this.subtitle, this.icon, this.screen, {this.symbol});
   final String title;
   final String subtitle;
   final IconData icon;
   final Widget screen;
+  final String? symbol;
   @override
   Widget build(BuildContext context) => Card(
         clipBehavior: Clip.antiAlias,
@@ -122,11 +126,26 @@ class _Item extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
+              Row(children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: symbol == null
+                      ? Icon(icon, size: 23, color: Theme.of(context).colorScheme.primary)
+                      : Text(symbol!, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary)),
+                ),
+                const Spacer(),
+                Icon(Icons.arrow_forward_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
+              ]),
               const Spacer(),
               Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
-              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, height: 1.25, color: Theme.of(context).colorScheme.onSurfaceVariant)),
             ]),
           ),
         ),

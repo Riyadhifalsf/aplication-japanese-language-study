@@ -44,12 +44,32 @@ class AppTheme {
       brightness: brightness,
       surface: surface,
     );
+    final textTheme = ThemeData(brightness: brightness).textTheme.apply(
+          bodyColor: scheme.onSurface,
+          displayColor: scheme.onSurface,
+        );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffold,
       fontFamily: 'sans-serif',
+      textTheme: textTheme.copyWith(
+        headlineSmall: textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w900,
+          letterSpacing: -.55,
+        ),
+        titleLarge: textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w900,
+          letterSpacing: -.3,
+        ),
+        titleMedium: textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -.15,
+        ),
+        bodyMedium: textTheme.bodyMedium?.copyWith(height: 1.42),
+        bodySmall: textTheme.bodySmall?.copyWith(height: 1.35),
+      ),
       appBarTheme: AppBarTheme(
         centerTitle: false,
         backgroundColor: scaffold,
@@ -62,14 +82,17 @@ class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: brightness == Brightness.light ? 1.2 : 0,
+        shadowColor: Colors.black.withValues(alpha: .075),
         color: surface,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: .42),
+            color: scheme.outlineVariant.withValues(
+              alpha: brightness == Brightness.light ? .52 : .32,
+            ),
           ),
         ),
       ),
@@ -119,8 +142,10 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 50),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
@@ -128,8 +153,9 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(0, 50),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
@@ -142,6 +168,25 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant.withValues(alpha: .55),
+        space: 1,
+        thickness: 1,
+      ),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        iconColor: scheme.primary,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: scheme.inverseSurface,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        textStyle: TextStyle(color: scheme.onInverseSurface, fontSize: 12),
       ),
     );
   }
